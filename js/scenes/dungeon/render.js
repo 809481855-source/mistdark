@@ -1565,16 +1565,23 @@
     ctx.globalAlpha = 1;
   },
   drawScreenOverlay(ctx) {
-    // 边缘暗角（渐变对象复用，避免逐帧创建）
-    let v = this._vignette;
-    if (!v) {
-      v = ctx.createRadialGradient(W / 2, H / 2, H * 0.42, W / 2, H / 2, H * 0.92);
-      v.addColorStop(0, 'rgba(0,0,0,0)');
-      v.addColorStop(1, 'rgba(0,0,0,0.62)');
-      this._vignette = v;
+    // 边缘暗角：预渲染成半分辨率离屏图后逐帧 drawImage。
+    // 整屏径向渐变填充在高分屏手机上每帧要重算数百万像素，是掉帧大户。
+    let vign = this._vignetteImg;
+    if (!vign) {
+      vign = document.createElement('canvas');
+      vign.width = Math.ceil(W / 2);
+      vign.height = Math.ceil(H / 2);
+      const vg = vign.getContext('2d');
+      vg.scale(0.5, 0.5);
+      const rg = vg.createRadialGradient(W / 2, H / 2, H * 0.42, W / 2, H / 2, H * 0.92);
+      rg.addColorStop(0, 'rgba(0,0,0,0)');
+      rg.addColorStop(1, 'rgba(0,0,0,0.62)');
+      vg.fillStyle = rg;
+      vg.fillRect(0, 0, W, H);
+      this._vignetteImg = vign;
     }
-    ctx.fillStyle = v;
-    ctx.fillRect(0, 0, W, H);
+    ctx.drawImage(vign, 0, 0, W, H);
 
     // 受击红闪
     if (this.hurtFlash > 0) {
@@ -1661,17 +1668,24 @@
   // 画布固定按 810×1680 绘制，再等比缩放（cover）进舞台，
   // 因此不能直接用 720 舞台里的写死坐标，否则地图会缩一圈并整体偏移。
   minimapRectNow() {
+    // getBoundingClientRect 会强制同步布局，逐帧调用在手机上很贵；
+    // 400ms 内复用上次结果，转屏 / 改尺寸后最多半秒内自动跟上。
+    const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    if (this._mapRect && this._mapRectAt && now - this._mapRectAt < 400) return this._mapRect;
     const c = this.canvas.getBoundingClientRect();
     const f = this.$map && this.$map.getBoundingClientRect();
     if (!f || !c.width || !c.height) return DG.scenes.dungeon.minimapRect;
     const kx = W / c.width;
     const ky = H / c.height;
-    return {
+    const rect = {
       x: (f.left - c.left) * kx,
       y: (f.top - c.top) * ky,
       w: f.width * kx,
       h: f.height * ky
     };
+    this._mapRect = rect;
+    this._mapRectAt = now;
+    return rect;
   },
   // 左上角小地图：只显示已探索区域、玩家位置与首领方位
   drawMinimap(ctx) {

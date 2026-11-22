@@ -42,6 +42,16 @@
     noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
     const d = noiseBuf.getChannelData(0);
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    // 系统抢占音频焦点（来电、其他应用播放、蓝牙切换）会让上下文自己挂起：
+    // 只要页面在前台，就立刻尝试恢复，不等下一次手势
+    ctx.onstatechange = () => {
+      if (!ctx || document.hidden) return;
+      if (ctx.state === 'closed') { rebuild(); return; }
+      if (ctx.state !== 'running') {
+        const p = ctx.resume();
+        if (p && p.catch) p.catch(() => {});
+      }
+    };
     return ctx;
   }
 
@@ -53,10 +63,10 @@
   }
 
   function unlock() {
-    if (unlocked) return;
+    if (unlocked) { wakeAudio(); return; }
     const c = ensure();
     unlocked = true;
-    if (c && c.state === 'suspended') c.resume();
+    if (c && c.state !== 'running') c.resume().catch(() => {});
     if (current) buildAmbient(current);
     preloadAll();
     resumeBgm();
@@ -64,16 +74,160 @@
 
   // 系统可能在任何时候挂起音频上下文（来电、锁屏、息屏、切后台、系统省电）
   function ensureRunning() {
-    if (ctx && ctx.state !== 'running') {
-      const p = ctx.resume();
-      if (p && p.catch) p.catch(() => {});
+    if (!ctx) return;
+    if (ctx.state === 'closed') { rebuild(); return; }
+    if (ctx.state === 'running') return;
+    const p = ctx.resume();
+    if (p && p.catch) p.catch(() => {});
+  }
+
+  /* ---------------- 回前台 / 解锁后的强制恢复 ----------------
+     浏览器最小化、切换应用、锁屏、音频焦点被抢占后，AudioContext 常常停在
+     suspended / interrupted，单次 resume() 也可能被拒绝。这里做三件事：
+       1) 等待挂起操作真正结束，再发 resume，避免 suspend/resume 竞态
+       2) 连续重试，直到上下文回到 running
+       3) 恢复成功后校验 BGM / 环境音节点，必要时重新起播，做到“回来必有声” */
+  let suspendPromise = null;
+  let wakeSeq = 0;
+  let rebuilding = false;
+  let lastRebuildAt = 0;
+
+  function suspendAudio() {
+    if (ctx && unlocked && ctx.state === 'running') {
+      const p = ctx.suspend();
+      // 记录挂起 Promise：回前台时先等它落地，防止“先 resume 又被旧 suspend 挂起”
+      suspendPromise = p && p.then ? p.then(() => {}, () => {}) : Promise.resolve();
     }
+    if (bgmEl) bgmEl.pause();
+  }
+
+  // 恢复成功后，确认背景音乐与环境音确实在响
+  function hardRecover() {
+    if (!ctx || document.hidden || ctx.state !== 'running') return;
+    // 主音量被异常事件压死（来电 / 蓝牙切换中途）时补回，避免“上下文在跑却没声”
+    if (master && enabled && master.gain.value < 0.05) {
+      const t = ctx.currentTime;
+      master.gain.cancelScheduledValues(t);
+      master.gain.setValueAtTime(master.gain.value, t);
+      master.gain.linearRampToValueAtTime(0.42, t + 0.2);
+    }
+    if (enabled && musicOn && bgmKey) {
+      if (bgmNodes.src) {
+        const g = bgmNodes.gain && bgmNodes.gain.gain;
+        // 增益被意外压死或上下文被系统重建：重新起播当前曲目
+        if (!g || g.value < 0.005) startBgmNode(bgmKey, BGM_FADE);
+      } else if (bgmEl) {
+        if (bgmEl.paused) {
+          const p = bgmEl.play();
+          if (p && p.catch) p.catch(() => {});
+        }
+      } else if (bgmFailed[bgmKey] && !bgmBroken[bgmKey]) {
+        playBgmHtml(bgmKey);
+      } else {
+        loadBgm(bgmKey);
+      }
+    }
+    if (current) {
+      if (!amb) buildAmbient(current);
+      else if (!battlePaused) fadeGain(amb.gain.gain, ambLevel(), 300);
+    }
+  }
+
+  function wakeAudio() {
+    if (document.hidden) return;
+    if (!ctx) {
+      // 上下文丢失但曾经解锁过：直接重建，保证下一次音效有输出
+      if (unlocked) rebuild();
+      return;
+    }
+    // 在手势回调栈内同步 resume 一次：严格自动播放策略（iOS Safari / 省电模式）
+    // 只认手势里发出的 resume，延迟到 Promise 里再调会被拒绝
+    if (ctx.state !== 'running' && ctx.state !== 'closed') {
+      try {
+        const p = ctx.resume();
+        if (p && p.catch) p.catch(() => {});
+      } catch (e) { /* 忽略 */ }
+    }
+    const token = ++wakeSeq;
+    const pending = suspendPromise;
+    suspendPromise = null;
+    const wait = pending || Promise.resolve();
+    wait.then(() => {
+      if (token !== wakeSeq || document.hidden) return;
+      if (!ctx) return;
+      if (ctx.state === 'closed') { rebuild(); return; }
+      let tries = 0;
+      const attempt = () => {
+        if (token !== wakeSeq || document.hidden) return;
+        if (!ctx) return;
+        if (ctx.state === 'closed') { rebuild(); return; }
+        if (ctx.state === 'running') { hardRecover(); return; }
+        // 不能依赖 resume() 的 Promise：页面被冻结 / 音频焦点被抢占时
+        // 该 Promise 可能永远不落地，必须靠定时器自己重试
+        try {
+          const p = ctx.resume();
+          if (p && p.then) p.then(() => {
+            if (token === wakeSeq && !document.hidden && ctx && ctx.state === 'running') hardRecover();
+          }, () => {});
+        } catch (e) { /* 旧内核没有 resume */ }
+        tries++;
+        if (tries <= 3) {
+          setTimeout(attempt, 160 * tries);
+        } else if (!document.hidden && Date.now() - lastRebuildAt > 10000) {
+          // 重试仍拿不回来：上下文已卡死，换一张新的音频图（含 BGM / 环境音补播）
+          rebuild();
+        }
+      };
+      attempt();
+    });
+  }
+
+  // 上下文被浏览器彻底关闭（bfcache 恢复、系统回收）：重建音频图并补播
+  function rebuild() {
+    if (rebuilding) return;
+    rebuilding = true;
+    lastRebuildAt = Date.now();
+    try {
+      if (ctx && ctx.close) {
+        const p = ctx.close();
+        if (p && p.catch) p.catch(() => {});
+      }
+    } catch (e) { /* 已关闭 */ }
+    ctx = null;
+    master = null;
+    noiseBuf = null;
+    sfxBus = null;
+    musicBus = null;
+    amb = null;
+    bgmNodes = { key: null, src: null, gain: null, bornAt: 0 };
+    Object.keys(buffers).forEach(k => delete buffers[k]);
+    Object.keys(failed).forEach(k => delete failed[k]);
+    Object.keys(lastPlay).forEach(k => delete lastPlay[k]);
+    Object.keys(htmlPool).forEach(k => delete htmlPool[k]);
+    Object.keys(bgmBuffers).forEach(k => delete bgmBuffers[k]);
+    Object.keys(bgmLoop).forEach(k => delete bgmLoop[k]);
+    Object.keys(bgmLoading).forEach(k => delete bgmLoading[k]);
+    Object.keys(bgmFailed).forEach(k => delete bgmFailed[k]);
+    Object.keys(bgmBroken).forEach(k => delete bgmBroken[k]);
+    preloadQueue.length = 0;
+    preloadActive = 0;
+    if (enabled) {
+      const c = ensure();
+      if (c) {
+        unlocked = true;
+        if (c.state !== 'running') c.resume().catch(() => {});
+        preloadAll();
+        if (current) buildAmbient(current);
+        resumeBgm();
+      }
+    }
+    rebuilding = false;
   }
 
   // 已解锁后，每次手势都顺手检查一次：避免中断后一直静音
   function onGesture() {
     if (!unlocked) { unlock(); return; }
-    ensureRunning();
+    wakeAudio();
     healBgm(true);
   }
   window.addEventListener('pointerdown', onGesture, { passive: true });
@@ -82,24 +236,25 @@
 
   // 切后台时挂起音频，回来再恢复，避免后台一直占 CPU
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      if (ctx && unlocked) ctx.suspend();
-      if (bgmEl) bgmEl.pause();
-    } else {
-      ensureRunning();
-      resumeBgm();
-      healBgm(true);
-    }
+    if (document.hidden) suspendAudio();
+    else wakeAudio();
   });
   window.addEventListener('focus', () => {
     if (document.hidden) return;
-    ensureRunning();
-    healBgm(true);
+    wakeAudio();
   });
   window.addEventListener('pageshow', () => {
     if (document.hidden) return;
-    ensureRunning();
-    healBgm(true);
+    wakeAudio();
+  });
+  // 移动端从后台恢复时部分浏览器只派发 resume / 页面重新可见
+  window.addEventListener('resume', () => {
+    if (document.hidden) return;
+    wakeAudio();
+  });
+  document.addEventListener('resume', () => {
+    if (document.hidden) return;
+    wakeAudio();
   });
 
   function stopAmbient(fade) {
@@ -476,6 +631,8 @@
   // 播放一个音效：opt = { vol, rate, gap }，gap 为同音效最小间隔（秒）
   function play(key, opt) {
     if (!enabled || !FILES[key]) return;
+    // 从后台回来时上下文可能还被系统挂着：走完整的唤醒重试，避免这一声被吞掉
+    if (ctx && ctx.state !== 'running' && !document.hidden) wakeAudio();
     opt = opt || {};
     const now = ctx ? ctx.currentTime : ((window.performance && performance.now ? performance.now() : Date.now()) / 1000);
     const gap = opt.gap == null ? 0.035 : opt.gap;
@@ -701,7 +858,11 @@
     }
     resumeBgm();
   }
-  setInterval(() => healBgm(false), 2500);
+  // 前台看门狗：即使没收到 visibility / focus 事件，也定期把被系统挂起的上下文拉回来
+  setInterval(() => {
+    if (!document.hidden && ctx && ctx.state !== 'running') wakeAudio();
+    healBgm(false);
+  }, 2500);
 
   // 切换背景音乐：同一首不重启；切换时双轨交叉淡化，旧曲在淡出结束点精确停止
   function playBgm(key) {

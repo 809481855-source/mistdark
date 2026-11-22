@@ -360,3 +360,50 @@ input[type=text],input[type=password]{height:62px;font-size:21px;padding:0 20px;
 }
 .pause-card .modal-body{gap:10px;padding:6px 24px 18px;}
 .pause-card .hint{font-size:20px;color:#5c4a33;}
+
+/* ============================================================
+   移动端渲染优化
+   下面这些呼吸/流光动画逐帧修改 filter:drop-shadow 或 left，
+   手机上每帧都要把整块元素重新栅格化、重排——首领战掉帧的主因。
+   改成静态光晕 + transform 位移动画，观感基本一致，但回到合成层。
+   ============================================================ */
+@keyframes dpSweepX{
+  0%{transform:translateX(0) skewX(-18deg);}
+  100%{transform:translateX(286px) skewX(-18deg);}
+}
+@keyframes bossSweepX{
+  0%{transform:translateX(0) skewX(-18deg);}
+  100%{transform:translateX(424px) skewX(-18deg);}
+}
+
+@media (pointer:coarse){
+  .boss-frame{
+    animation:none;
+    filter:drop-shadow(0 0 10px rgba(255,130,70,.6)) drop-shadow(0 0 20px rgba(255,60,40,.3));
+  }
+  .boss-head{
+    animation:none;
+    filter:drop-shadow(0 0 10px rgba(255,130,80,.75)) drop-shadow(0 0 4px rgba(255,225,180,.45));
+  }
+  .boss-bar-bg{
+    animation:none;
+    filter:drop-shadow(0 0 9px rgba(255,80,50,.6));
+  }
+  /* 填充条只保留纹理滚动，去掉逐帧重算的发光滤镜 */
+  .boss-bar-track i{
+    animation:bossStripes 1.1s linear infinite;
+    filter:none;
+  }
+  .dp-track i{
+    animation:dpStripes 1.3s linear infinite;
+    filter:none;
+  }
+  .exp-bar .exp-fill{
+    animation:xpStripes 1.3s linear infinite;
+    filter:none;
+  }
+  .dg-progress .dp-hourglass-glow{animation:none;opacity:.8;}
+  /* 流光位移改用 transform，避免逐帧触发居中重排 */
+  .dp-track i::after{animation-name:dpSweepX;}
+  .boss-bar-track i::after{animation-name:bossSweepX;}
+}

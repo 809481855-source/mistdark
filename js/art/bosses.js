@@ -14,15 +14,15 @@
   // 25 位首领全部使用本轮新贴图（一一对应，无复用 / 无染色）
   const DEFS = {
     slimeking: { src: 'assets/bosses/slimeking.png', height: 250, kind: 'golem', glow: '#5fd0c0' },
-    reaper: { src: 'assets/bosses/reaper.png', height: 260, kind: 'reaper', glow: '#8b5fd6' },
-    goatbrute: { src: 'assets/bosses/goatbrute.png', height: 244, kind: 'goat', glow: '#c07be0' },
+    reaper: { parts: 'reaper', height: 260, kind: 'reaper', glow: '#8b5fd6' },
+    goatbrute: { parts: 'goatbrute', height: 244, kind: 'goat', glow: '#c07be0' },
     mawfish: { src: 'assets/bosses/mawfish.png', height: 240, kind: 'maw', glow: '#e0666a' },
-    croc: { src: 'assets/bosses/croc.png', height: 236, kind: 'croc', glow: '#93d47a' },
-    mushroomgun: { src: 'assets/bosses/mushroomgun.png', height: 240, kind: 'hierophant', glow: '#ffcf7a' },
-    golem: { src: 'assets/bosses/golem.png', height: 264, kind: 'golem', glow: '#7fd8f0' },
-    eyehorror: { src: 'assets/bosses/eyehorror.png', height: 244, kind: 'eye', glow: '#f0d060' },
-    mawflowerking: { src: 'assets/bosses/mawflowerking.png', height: 250, kind: 'maw', glow: '#e05a7a' },
-    cauldron: { src: 'assets/bosses/cauldron.png', height: 240, kind: 'cauldron', glow: '#ffa54a' },
+    croc: { parts: 'croc', height: 236, kind: 'croc', glow: '#93d47a' },
+    mushroomgun: { parts: 'cactus', height: 240, kind: 'hierophant', glow: '#ffcf7a' },
+    golem: { parts: 'icegolem', height: 264, kind: 'golem', glow: '#7fd8f0' },
+    eyehorror: { parts: 'grimoire', height: 244, kind: 'eye', glow: '#f0d060' },
+    mawflowerking: { parts: 'flowerking', height: 250, kind: 'maw', glow: '#e05a7a' },
+    cauldron: { parts: 'potknight', height: 240, kind: 'cauldron', glow: '#ffa54a' },
     crystalcrab: { src: 'assets/bosses/crystalcrab.png', height: 232, kind: 'crystal', glow: '#b877e0' },
     pinkdemon: { src: 'assets/bosses/pinkdemon.png', height: 244, kind: 'demon', glow: '#ff7aa0' },
     pumpkinlord: { src: 'assets/bosses/pumpkinlord.png', height: 248, kind: 'cauldron', glow: '#ff9a3c' },
@@ -39,6 +39,505 @@
     silverknight: { src: 'assets/bosses/silverknight.png', height: 244, kind: 'knight', glow: '#c0c8d8' },
     piratecrab: { src: 'assets/bosses/piratecrab.png', height: 232, kind: 'crab', glow: '#7fd0d8' }
   };
+
+  // ---------- 分件首领：拆件原画 + 骨骼式待机 / 行走 / 攻击 ----------
+  // 坐标全部使用 PSD 像素空间（宽×高分别为 230×188 / 224×174 / 191×143），
+  // 绘制时统一缩放到首领显示高度并把脚底对齐地面，分件之间按枢轴做局部摆动。
+  const PART_DIR = 'assets/bosses/_parts/';
+  const BONES = {
+    goatbrute: {
+      w: 230, h: 188,
+      srcs: ['boss_a.png'],
+      parts: {
+        // 双脚是连在一起的一整块（中间有布带），整体做重心左右压步，避免撕开
+        feet: { src: 'boss_a.png', x: 56, y: 155, w: 46, h: 33, px: 79, py: 160 },
+        body: { src: 'boss_a.png', sx: 46, x: 44, y: 97, w: 66, h: 67, px: 77, py: 160 },
+        armR: { src: 'boss_a.png', sx: 112, x: 0, y: 102, w: 60, h: 84, px: 56, py: 110 },
+        armL: { src: 'boss_a.png', sx: 172, x: 100, y: 132, w: 42, h: 48, px: 121, py: 157 },
+        weapon: { src: 'boss_a.png', sx: 214, x: 106, y: 96, w: 124, h: 84, px: 126, py: 161 },
+        head: { src: 'boss_a.png', sx: 338, x: 40, y: 0, w: 116, h: 119, px: 78, py: 115 }
+      },
+      draw: drawGoat
+    },
+    reaper: {
+      w: 224, h: 174,
+      srcs: ['boss_b.png'],
+      parts: {
+        footL: { src: 'boss_b.png', x: 31, y: 158, w: 33, h: 14, sw: 33, sh: 14, px: 47, py: 160 },
+        footR: { src: 'boss_b.png', x: 64, y: 158, w: 34, h: 14, sx: 33, sw: 34, sh: 14, px: 81, py: 160 },
+        hand: { src: 'boss_b.png', sx: 67, x: 94, y: 105, w: 32, h: 40, px: 118, py: 136 },
+        body: { src: 'boss_b.png', sx: 99, x: 3, y: 79, w: 102, h: 84, px: 55, py: 159 },
+        head: { src: 'boss_b.png', sx: 201, x: 2, y: 0, w: 127, h: 103, px: 63, py: 101 },
+        weapon: { src: 'boss_b.png', sx: 328, x: 110, y: 12, w: 110, h: 160, px: 122, py: 137 }
+      },
+      draw: drawReaper
+    },
+    croc: {
+      w: 191, h: 143,
+      srcs: ['boss_c.png'],
+      parts: {
+        leg0: { src: 'boss_c.png', x: 119, y: 118, w: 24, h: 25, px: 131, py: 120 },
+        leg1: { src: 'boss_c.png', sx: 24, x: 92, y: 115, w: 31, h: 28, px: 107, py: 117 },
+        leg2: { src: 'boss_c.png', sx: 55, x: 65, y: 116, w: 31, h: 27, px: 80, py: 118 },
+        leg3: { src: 'boss_c.png', sx: 86, x: 41, y: 114, w: 28, h: 29, px: 55, py: 116 },
+        body: { src: 'boss_c.png', sx: 114, x: 18, y: 0, w: 164, h: 129, px: 46, py: 118 },
+        tail: { src: 'boss_c.png', sx: 278, x: 0, y: 90, w: 30, h: 21, px: 29, py: 100 },
+        toothA: { src: 'boss_c.png', sx: 308, x: 170, y: 62, w: 21, h: 33, px: 180, py: 65 },
+        toothB: { src: 'boss_c.png', sx: 329, x: 123, y: 64, w: 28, h: 32, px: 137, py: 67 }
+      },
+      draw: drawCroc
+    },
+    // 仙人掌枪手（boss_d 215×163）：双脚 / 双手 / 左轮 / 花帽
+    cactus: {
+      w: 215, h: 163,
+      srcs: ['boss_d.png'],
+      parts: {
+        footL: { src: 'boss_d.png', sx: 66, x: 57, y: 94, w: 69, h: 69, px: 112, py: 97 },
+        footR: { src: 'boss_d.png', x: 60, y: 94, w: 66, h: 68, px: 68, py: 97 },
+        armR: { src: 'boss_d.png', sx: 135, x: 113, y: 85, w: 74, h: 31, px: 118, py: 101 },
+        gun: { src: 'boss_d.png', sx: 209, x: 150, y: 70, w: 65, h: 45, px: 171, py: 104 },
+        body: { src: 'boss_d.png', sx: 274, x: 40, y: 61, w: 97, h: 91, px: 88, py: 150 },
+        armL: { src: 'boss_d.png', sx: 371, x: 0, y: 89, w: 53, h: 42, px: 49, py: 110 },
+        head: { src: 'boss_d.png', sx: 424, x: 7, y: 0, w: 159, h: 68, px: 86, py: 64 }
+      },
+      draw: drawCactus
+    },
+    // 冰晶巨像（boss_e 202×155）：双脚 / 双臂 / 岩体 / 金冠
+    icegolem: {
+      w: 202, h: 155,
+      srcs: ['boss_e.png'],
+      parts: {
+        footL: { src: 'boss_e.png', sx: 50, x: 39, y: 100, w: 42, h: 56, px: 60, py: 104 },
+        footR: { src: 'boss_e.png', x: 114, y: 96, w: 50, h: 59, px: 139, py: 100 },
+        armR: { src: 'boss_e.png', sx: 92, x: 148, y: 78, w: 54, h: 54, px: 153, py: 83 },
+        body: { src: 'boss_e.png', sx: 146, x: 40, y: 13, w: 133, h: 131, px: 106, py: 142 },
+        armL: { src: 'boss_e.png', sx: 279, x: 2, y: 28, w: 68, h: 115, px: 64, py: 34 },
+        head: { src: 'boss_e.png', sx: 347, x: 58, y: 2, w: 98, h: 68, px: 107, py: 66 }
+      },
+      draw: drawIceGolem
+    },
+    // 魔法书（boss_f 241×153）：双翼 / 书身 / 小帽脸 / 红长舌
+    grimoire: {
+      w: 241, h: 153,
+      srcs: ['boss_f.png'],
+      parts: {
+        wingL: { src: 'boss_f.png', sx: 123, x: 4, y: 17, w: 84, h: 48, px: 84, py: 30 },
+        wingR: { src: 'boss_f.png', sx: 207, x: 171, y: 8, w: 69, h: 44, px: 175, py: 20 },
+        body: { src: 'boss_f.png', x: 58, y: 0, w: 123, h: 135, px: 120, py: 131 },
+        head: { src: 'boss_f.png', sx: 276, x: 110, y: 42, w: 44, h: 45, px: 132, py: 84 },
+        tongue: { src: 'boss_f.png', sx: 320, x: 110, y: 92, w: 46, h: 60, px: 133, py: 94 }
+      },
+      draw: drawGrimoire
+    },
+    // 噬人花王（boss_g 216×177）：茎身 / 底座 / 双叶 / 巨口花头
+    flowerking: {
+      w: 216, h: 177,
+      srcs: ['boss_g.png'],
+      parts: {
+        leafR: { src: 'boss_g.png', x: 124, y: 120, w: 92, h: 56, px: 128, py: 150 },
+        foot: { src: 'boss_g.png', sx: 92, x: 36, y: 143, w: 54, h: 32, px: 63, py: 174 },
+        leafL: { src: 'boss_g.png', sx: 146, x: 0, y: 124, w: 104, h: 44, px: 100, py: 150 },
+        stem: { src: 'boss_g.png', sx: 250, x: 43, y: 80, w: 96, h: 96, px: 91, py: 176 },
+        head: { src: 'boss_g.png', sx: 346, x: 44, y: 1, w: 154, h: 134, px: 121, py: 132 }
+      },
+      draw: drawFlowerKing
+    },
+    // 魔锅骑士（boss_h 205×171）：双脚 / 锅身 / 盾手 / 锅盖头 / 长矛
+    potknight: {
+      w: 205, h: 171,
+      srcs: ['boss_h.png'],
+      parts: {
+        footR: { src: 'boss_h.png', x: 101, y: 111, w: 31, h: 48, px: 116, py: 115 },
+        footL: { src: 'boss_h.png', sx: 31, x: 46, y: 120, w: 33, h: 39, px: 62, py: 124 },
+        body: { src: 'boss_h.png', sx: 64, x: 31, y: 48, w: 115, h: 88, px: 88, py: 134 },
+        shield: { src: 'boss_h.png', sx: 179, x: 1, y: 66, w: 57, h: 80, px: 52, py: 72 },
+        head: { src: 'boss_h.png', sx: 236, x: 40, y: 2, w: 94, h: 60, px: 87, py: 60 },
+        spear: { src: 'boss_h.png', sx: 330, x: 146, y: 10, w: 58, h: 152, px: 172, py: 100 }
+      },
+      draw: drawPotKnight
+    }
+  };
+
+  // 绘制单件：o = { rot, x, y, px, py }，枢轴默认取分件自带的 PSD 坐标
+  function part(ctx, m, bone, key, o) {
+    const p = bone.parts[key];
+    const s = source(PART_DIR + p.src);
+    if (!s.ready) return;
+    const px = (o && o.px != null) ? o.px : p.px;
+    const py = (o && o.py != null) ? o.py : p.py;
+    ctx.save();
+    if (o && (o.rot || o.x || o.y)) {
+      ctx.translate(px, py);
+      if (o.rot) ctx.rotate(o.rot);
+      ctx.translate(-px, -py);
+    }
+    if (o && (o.x || o.y)) ctx.translate(o.x || 0, o.y || 0);
+    const sx = p.sx || 0, sy = p.sy || 0, sw = p.sw || p.w, sh = p.sh || p.h;
+    const img = m.tint ? tinted(s, m.tint, true) : (s.dark || s.canvas);
+    ctx.drawImage(img, sx, sy, sw, sh, p.x, p.y, p.w, p.h);
+    if (m.flash > 0 && s.flash) {
+      ctx.globalAlpha *= Math.min(0.8, m.flash / 0.16);
+      ctx.drawImage(s.flash, sx, sy, sw, sh, p.x, p.y, p.w, p.h);
+    }
+    ctx.restore();
+  }
+
+  // 大剑恶魔：呼吸 / 走路摆臂 / 举剑过顶再下劈
+  function drawGoat(ctx, m, bone, t, a) {
+    const seed = m.seed || 0;
+    const ph = t * 9.2 + seed;
+    const br = Math.sin(t * 2.1 + seed);
+    const ws = a.moving ? Math.sin(ph) : 0;
+    // 施法型招式只抬手不出刀，避免和吐息/弹幕特效打架
+    const swing = (a.type === 'slash' || a.type === 'arc') ? 1 : 0.28;
+
+    let bodyY = br * 1.1 + (a.moving ? Math.abs(ws) * 1.8 : 0);
+    let bodyRot = br * 0.012 + (a.moving ? ws * 0.018 : 0);
+    let headRot = Math.sin(t * 1.55 + seed) * 0.032 - (a.moving ? ws * 0.028 : 0);
+    let headY = br * 0.5;
+    let armR = Math.sin(t * 1.35 + seed) * 0.05 + (a.moving ? ws * 0.14 : 0);
+    let armL = 0;
+    let sword = Math.sin(t * 1.8 + seed) * 0.02 + (a.moving ? ws * 0.055 : 0);
+    let lunge = 0;
+    const feetY = a.moving ? -Math.abs(ws) * 1.2 : 0;
+    const feetRot = a.moving ? ws * 0.04 : 0;
+
+    if (a.windup) {
+      const e = Math.sin(a.k * Math.PI * 0.5);
+      bodyRot -= e * 0.06;
+      bodyY -= e * 2.4;
+      headRot -= e * 0.1;
+      headY -= e * 1.2;
+      armR -= e * 0.22;
+      armL -= e * 0.22;
+      sword = sword * (1 - e) - 0.7 * e * swing;
+      lunge = -e * 3;
+    } else if (a.strike) {
+      const e = Math.sin(Math.pow(a.k, 0.55) * Math.PI);
+      bodyRot += e * 0.08;
+      bodyY += e * 1.5;
+      headRot += e * 0.12;
+      headY += e;
+      armR += e * 0.24;
+      armL += e * 0.5 * swing;
+      sword = -0.7 * swing + e * 1.45 * swing;
+      lunge = e * 6 * swing;
+    }
+
+    part(ctx, m, bone, 'feet', { x: lunge, y: feetY, rot: feetRot });
+    part(ctx, m, bone, 'body', { x: lunge, y: bodyY, rot: bodyRot });
+    part(ctx, m, bone, 'armR', { x: lunge, y: bodyY * 0.7, rot: armR });
+    part(ctx, m, bone, 'armL', { x: lunge, y: bodyY * 0.7, rot: armL * 0.5 });
+    part(ctx, m, bone, 'weapon', { x: lunge, y: bodyY * 0.7, rot: sword });
+    part(ctx, m, bone, 'head', { x: lunge, y: bodyY + headY, rot: headRot });
+  }
+
+  // 镰刀巫师：袍身浮动 / 小碎步 / 镰刀高举横斩
+  function drawReaper(ctx, m, bone, t, a) {
+    const seed = m.seed || 0;
+    const br = Math.sin(t * 1.7 + seed);
+    const ph = t * 8 + seed;
+    const ws = a.moving ? Math.sin(ph) : 0;
+    const swing = (a.type === 'slash' || a.type === 'arc') ? 1 : 0.3;
+
+    let bodyRot = br * 0.01 + (a.moving ? ws * 0.02 : 0);
+    let bodyY = 0;
+    let headRot = Math.sin(t * 1.3 + seed) * 0.025 - (a.moving ? ws * 0.03 : 0);
+    let armRot = Math.sin(t * 1.5 + seed) * 0.03;
+    let scythe = Math.sin(t * 1.4 + seed) * 0.02 + (a.moving ? ws * 0.05 : 0);
+    let lunge = 0;
+    const liftL = a.moving ? Math.max(0, ws) * 2 : 0;
+    const liftR = a.moving ? Math.max(0, -ws) * 2 : 0;
+
+    if (a.windup) {
+      const e = Math.sin(a.k * Math.PI * 0.5);
+      bodyRot -= e * 0.04;
+      bodyY -= e * 1.6;
+      headRot -= e * 0.08;
+      armRot -= e * 0.35;
+      scythe = scythe * (1 - e) - 0.65 * e * swing;
+      lunge = -e * 4;
+    } else if (a.strike) {
+      const e = Math.sin(Math.pow(a.k, 0.5) * Math.PI);
+      bodyRot += e * 0.06;
+      bodyY += e * 0.6;
+      headRot += e * 0.1;
+      armRot += e * 0.55 * swing;
+      scythe = -0.65 * swing + e * 1.55 * swing;
+      lunge = e * 7 * swing;
+    }
+
+    part(ctx, m, bone, 'footL', { x: lunge * 0.4, y: -liftL });
+    part(ctx, m, bone, 'footR', { x: lunge * 0.4, y: -liftR });
+    part(ctx, m, bone, 'hand', { x: lunge, y: bodyY, rot: armRot * 0.4 + scythe * 0.45 });
+    part(ctx, m, bone, 'body', { x: lunge, y: bodyY, rot: bodyRot });
+    part(ctx, m, bone, 'head', { x: lunge, y: bodyY, rot: headRot });
+    part(ctx, m, bone, 'weapon', { x: lunge, y: bodyY, rot: scythe });
+  }
+
+  // 四足獠牙兽：身体起伏 / 对角步态 / 后退蓄力再前冲顶撞
+  function drawCroc(ctx, m, bone, t, a) {
+    const seed = m.seed || 0;
+    const ph = t * 10 + seed;
+    const br = Math.sin(t * 2.4 + seed);
+    const ws = a.moving ? Math.sin(ph) : 0;
+    // 吐息/弹幕/召唤类不做过猛的顶撞，只有挥砍才全力前冲
+    const melee = (a.type === 'slash' || a.type === 'arc');
+    const hit = melee ? 1 : 0.5;
+    let bodyY = br * 0.9 + (a.moving ? Math.abs(ws) * 1.5 : 0);
+    let bodyRot = br * 0.008 + (a.moving ? ws * 0.012 : 0);
+    let tail = Math.sin(t * 2.2 + seed) * 0.18 + (a.moving ? ws * 0.2 : 0);
+    let tooth = 0;
+    let lunge = 0;
+    const lift = [0, 0, 0, 0];
+    if (a.moving) {
+      const s1 = Math.sin(ph), s2 = Math.sin(ph + Math.PI);
+      lift[0] = Math.max(0, s1) * 3;
+      lift[3] = Math.max(0, s1) * 3;
+      lift[1] = Math.max(0, s2) * 3;
+      lift[2] = Math.max(0, s2) * 3;
+    }
+    if (a.windup) {
+      const e = Math.sin(a.k * Math.PI * 0.5);
+      bodyRot -= e * 0.1 * hit;
+      bodyY += e * 1.2 * hit;
+      tail -= e * 0.2;
+      tooth -= e * 0.16;
+      lunge = -e * 5 * hit;
+    } else if (a.strike) {
+      const e = Math.sin(Math.pow(a.k, 0.5) * Math.PI);
+      bodyRot += e * 0.16 * hit;
+      bodyY -= e * 1.2 * hit;
+      tail += e * 0.28;
+      tooth += e * 0.2;
+      lunge = e * 10 * hit;
+    }
+
+    for (let i = 0; i < 4; i++) part(ctx, m, bone, 'leg' + i, { x: lunge * 0.6, y: -lift[i] });
+    part(ctx, m, bone, 'body', { x: lunge, y: bodyY, rot: bodyRot });
+    part(ctx, m, bone, 'tail', { x: lunge * 0.4, y: bodyY * 0.5, rot: tail });
+    // 獠牙跟随身体整体旋转，再叠加咬合位移
+    part(ctx, m, bone, 'toothA', { x: lunge, y: bodyY - tooth * 2, rot: bodyRot, px: 46, py: 118 });
+    part(ctx, m, bone, 'toothB', { x: lunge, y: bodyY - tooth * 2, rot: bodyRot, px: 46, py: 118 });
+  }
+
+  // 仙人掌枪手：呼吸 / 交替迈步 / 举枪瞄准再开火后坐
+  function drawCactus(ctx, m, bone, t, a) {
+    const seed = m.seed || 0;
+    const br = Math.sin(t * 2.2 + seed);
+    const ph = t * 8.6 + seed;
+    const ws = a.moving ? Math.sin(ph) : 0;
+    const melee = (a.type === 'arc' || a.type === 'slash');
+
+    let bodyY = br * 1.0 + (a.moving ? Math.abs(ws) * 1.6 : 0);
+    let bodyRot = br * 0.01 + (a.moving ? ws * 0.02 : 0);
+    let headRot = Math.sin(t * 1.6 + seed) * 0.03 - (a.moving ? ws * 0.03 : 0);
+    let headY = br * 0.45;
+    let armR = Math.sin(t * 1.5 + seed) * 0.04;
+    let armL = Math.sin(t * 1.2 + seed) * 0.04;
+    let gunRot = Math.sin(t * 1.7 + seed) * 0.02;
+    let lunge = 0;
+    const liftL = a.moving ? Math.max(0, ws) * 2 : 0;
+    const liftR = a.moving ? Math.max(0, -ws) * 2 : 0;
+
+    if (a.windup) {
+      const e = Math.sin(a.k * Math.PI * 0.5);
+      bodyRot -= e * 0.05;
+      bodyY -= e * 1.4;
+      headRot -= e * 0.07;
+      armR -= e * 0.5;                 // 抬枪
+      gunRot -= e * 0.35;
+      armL -= e * 0.18;
+      lunge = -e * 2.5;
+    } else if (a.strike) {
+      const e = Math.sin(Math.pow(a.k, 0.55) * Math.PI);
+      bodyRot += melee ? e * 0.07 : e * 0.03;
+      bodyY += e * 0.8;
+      headRot += e * 0.05;
+      // 开火后坐：枪口上跳；近战枪托则是向前抡
+      gunRot += e * (melee ? 0.5 : -0.3);
+      armR += e * (melee ? 0.4 : 0.15);
+      lunge = e * (melee ? 5 : 2);
+    }
+
+    part(ctx, m, bone, 'footL', { y: -liftL });
+    part(ctx, m, bone, 'footR', { y: -liftR });
+    part(ctx, m, bone, 'body', { x: lunge, y: bodyY, rot: bodyRot });
+    part(ctx, m, bone, 'armL', { x: lunge, y: bodyY, rot: armL });
+    part(ctx, m, bone, 'head', { x: lunge, y: bodyY + headY, rot: headRot });
+    part(ctx, m, bone, 'armR', { x: lunge, y: bodyY, rot: armR + gunRot * 0.25 });
+    part(ctx, m, bone, 'gun', { x: lunge, y: bodyY, rot: gunRot });
+  }
+
+  // 冰晶巨像：沉重呼吸 / 交替跺步 / 双臂高举后砸地
+  function drawIceGolem(ctx, m, bone, t, a) {
+    const seed = m.seed || 0;
+    const br = Math.sin(t * 1.8 + seed);
+    const ph = t * 6.8 + seed;
+    const ws = a.moving ? Math.sin(ph) : 0;
+    const big = (a.type === 'arc' || a.type === 'slash');
+
+    let bodyY = br * 1.4 + (a.moving ? Math.abs(ws) * 2.2 : 0);
+    let bodyRot = br * 0.01 + (a.moving ? ws * 0.02 : 0);
+    let headRot = Math.sin(t * 1.3 + seed) * 0.025;
+    let armL = Math.sin(t * 1.4 + seed) * 0.05 + (a.moving ? ws * 0.1 : 0);
+    let armR = -Math.sin(t * 1.4 + seed) * 0.05 - (a.moving ? ws * 0.1 : 0);
+    let lunge = 0;
+    const liftL = a.moving ? Math.max(0, ws) * 2.5 : 0;
+    const liftR = a.moving ? Math.max(0, -ws) * 2.5 : 0;
+
+    if (a.windup) {
+      const e = Math.sin(a.k * Math.PI * 0.5);
+      bodyRot -= e * 0.035;
+      bodyY -= e * 1.8;
+      headRot -= e * 0.05;
+      armL += e * (big ? 0.75 : 0.3);
+      armR -= e * (big ? 0.75 : 0.3);
+      lunge = -e * 2.5;
+    } else if (a.strike) {
+      const e = Math.sin(Math.pow(a.k, 0.5) * Math.PI);
+      bodyRot += e * (big ? 0.08 : 0.03);
+      bodyY += e * (big ? 2.2 : 0.9);
+      headRot += e * 0.04;
+      armL -= e * (big ? 0.55 : 0.2);
+      armR += e * (big ? 0.55 : 0.2);
+      lunge = e * (big ? 5 : 2);
+    }
+
+    part(ctx, m, bone, 'footL', { y: -liftL });
+    part(ctx, m, bone, 'footR', { y: -liftR });
+    part(ctx, m, bone, 'body', { x: lunge, y: bodyY, rot: bodyRot });
+    part(ctx, m, bone, 'armL', { x: lunge, y: bodyY, rot: armL });
+    part(ctx, m, bone, 'armR', { x: lunge, y: bodyY, rot: armR });
+    part(ctx, m, bone, 'head', { x: lunge, y: bodyY, rot: headRot });
+  }
+
+  // 魔法书：悬浮起伏 / 振翅 / 前倾吐舌
+  function drawGrimoire(ctx, m, bone, t, a) {
+    const seed = m.seed || 0;
+    const hover = Math.sin(t * 2.0 + seed);
+    const flapSpeed = a.moving ? 7.5 : 4.6;
+    const flap = Math.sin(t * flapSpeed + seed);
+
+    let bodyY = hover * 2.2 - (a.moving ? 1.5 : 0);
+    let bodyRot = Math.sin(t * 0.9 + seed) * 0.02;
+    let wingL = 0.1 + flap * 0.22;
+    let wingR = -0.1 - flap * 0.22;
+    let tongue = Math.sin(t * 2.6 + seed) * 0.12;
+    let headRot = Math.sin(t * 1.4 + seed) * 0.03;
+    let lunge = 0;
+
+    if (a.windup) {
+      const e = Math.sin(a.k * Math.PI * 0.5);
+      bodyRot -= e * 0.1;
+      bodyY -= e * 3;
+      wingL += e * 0.5;
+      wingR -= e * 0.5;
+      tongue -= e * 0.35;
+      lunge = -e * 4;
+    } else if (a.strike) {
+      const e = Math.sin(Math.pow(a.k, 0.5) * Math.PI);
+      bodyRot += e * 0.12;
+      bodyY += e * 2;
+      wingL += e * 0.75;
+      wingR -= e * 0.75;
+      tongue += e * 0.8;              // 长舌前甩
+      lunge = e * 7;
+    }
+
+    part(ctx, m, bone, 'wingL', { x: lunge, y: bodyY, rot: wingL });
+    part(ctx, m, bone, 'wingR', { x: lunge, y: bodyY, rot: wingR });
+    part(ctx, m, bone, 'body', { x: lunge, y: bodyY, rot: bodyRot });
+    part(ctx, m, bone, 'head', { x: lunge, y: bodyY, rot: headRot });
+    part(ctx, m, bone, 'tongue', { x: lunge, y: bodyY + tongue * 3, rot: bodyRot + tongue });
+  }
+
+  // 噬人花王：花头摇晃 / 底座蹦跳 / 后仰再前咬
+  function drawFlowerKing(ctx, m, bone, t, a) {
+    const seed = m.seed || 0;
+    const br = Math.sin(t * 1.9 + seed);
+    const ph = t * 7.5 + seed;
+    const ws = a.moving ? Math.sin(ph) : 0;
+    const melee = (a.type === 'arc' || a.type === 'slash');
+
+    let bodyY = br * 0.9 + (a.moving ? Math.abs(ws) * 2 : 0);
+    let bodyRot = br * 0.012 + (a.moving ? ws * 0.03 : 0);
+    let headRot = Math.sin(t * 1.5 + seed) * 0.04 - (a.moving ? ws * 0.05 : 0);
+    let headY = br * 0.6;
+    let leafL = Math.sin(t * 1.7 + seed) * 0.1;
+    let leafR = -Math.sin(t * 1.7 + seed) * 0.1;
+    let lunge = 0;
+    const hop = a.moving ? Math.abs(ws) * 1.4 : 0;
+
+    if (a.windup) {
+      const e = Math.sin(a.k * Math.PI * 0.5);
+      bodyRot -= e * 0.05;
+      bodyY -= e * 1.5;
+      headRot -= e * (melee ? 0.28 : 0.12);   // 花头后仰蓄力
+      headY -= e * 1.5;
+      leafL -= e * 0.3;
+      leafR += e * 0.3;
+      lunge = -e * 3;
+    } else if (a.strike) {
+      const e = Math.sin(Math.pow(a.k, 0.5) * Math.PI);
+      bodyRot += e * 0.07;
+      bodyY += e * 1.2;
+      headRot += e * (melee ? 0.42 : 0.16);   // 巨口前咬
+      headY += e * 2;
+      leafL += e * 0.45;
+      leafR -= e * 0.45;
+      lunge = e * (melee ? 7 : 3);
+    }
+
+    part(ctx, m, bone, 'stem', { x: lunge, y: bodyY, rot: bodyRot });
+    part(ctx, m, bone, 'foot', { x: lunge * 0.6, y: -hop });
+    part(ctx, m, bone, 'leafL', { x: lunge, y: bodyY, rot: leafL });
+    part(ctx, m, bone, 'leafR', { x: lunge, y: bodyY, rot: leafR });
+    part(ctx, m, bone, 'head', { x: lunge, y: bodyY + headY, rot: headRot });
+  }
+
+  // 魔锅骑士：锅身摇摆 / 交替迈步 / 举盾长矛前刺
+  function drawPotKnight(ctx, m, bone, t, a) {
+    const seed = m.seed || 0;
+    const br = Math.sin(t * 2.1 + seed);
+    const ph = t * 8.2 + seed;
+    const ws = a.moving ? Math.sin(ph) : 0;
+    const thrust = (a.type === 'arc' || a.type === 'slash');
+
+    let bodyY = br * 1.1 + (a.moving ? Math.abs(ws) * 1.8 : 0);
+    let bodyRot = br * 0.012 + (a.moving ? ws * 0.035 : 0);
+    let headRot = Math.sin(t * 1.4 + seed) * 0.03 - (a.moving ? ws * 0.04 : 0);
+    let shield = Math.sin(t * 1.5 + seed) * 0.05;
+    let spear = Math.sin(t * 1.3 + seed) * 0.03;
+    let lunge = 0;
+    const liftL = a.moving ? Math.max(0, ws) * 2 : 0;
+    const liftR = a.moving ? Math.max(0, -ws) * 2 : 0;
+
+    if (a.windup) {
+      const e = Math.sin(a.k * Math.PI * 0.5);
+      bodyRot -= e * 0.06;
+      bodyY -= e * 1.4;
+      headRot -= e * 0.06;
+      shield -= e * 0.28;              // 举盾护身
+      spear -= e * 0.55;               // 长矛后引
+      lunge = -e * 3;
+    } else if (a.strike) {
+      const e = Math.sin(Math.pow(a.k, 0.55) * Math.PI);
+      bodyRot += e * 0.08;
+      bodyY += e * 1.2;
+      headRot += e * 0.06;
+      shield += e * 0.18;
+      spear += e * (thrust ? 0.9 : 0.25);   // 长矛前刺
+      lunge = e * (thrust ? 8 : 3);
+    }
+
+    part(ctx, m, bone, 'footL', { x: lunge * 0.5, y: -liftL });
+    part(ctx, m, bone, 'footR', { x: lunge * 0.5, y: -liftR });
+    part(ctx, m, bone, 'body', { x: lunge, y: bodyY, rot: bodyRot });
+    part(ctx, m, bone, 'shield', { x: lunge, y: bodyY, rot: shield });
+    part(ctx, m, bone, 'head', { x: lunge, y: bodyY, rot: headRot });
+    part(ctx, m, bone, 'spear', { x: lunge, y: bodyY, rot: spear });
+  }
 
   const cache = {};
   const glows = {};
@@ -163,12 +662,13 @@
 
   function draw(ctx, m, opts) {
     const def = defOf(m);
+    const bone = def.parts ? BONES[def.parts] : null;
     const s = def.src ? source(def.src) : null;
     const t = (opts && opts.t) || 0;
     const cast = (opts && opts.cast) || m.cast;
     const seed = m.seed || 0;
     const h = displayHeight(m);
-    const w = s.ready ? h * (s.w / s.h) : h * 0.82;
+    const w = bone ? h * (bone.w / bone.h) : (s.ready ? h * (s.w / s.h) : h * 0.82);
 
     const k = cast
       ? (cast.phase === 'windup'
@@ -242,7 +742,13 @@
     ctx.scale(sx * (flip ? -1 : 1), sy);
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
-    if (s.ready) {
+    if (bone) {
+      // 分件：换算到 PSD 像素空间，原点 = 脚底中心
+      const sc = h / bone.h;
+      ctx.scale(sc, sc);
+      ctx.translate(-bone.w / 2, -bone.h);
+      bone.draw(ctx, m, bone, t, { moving, windup, strike, k, type: atkType });
+    } else if (s.ready) {
       const img = m.tint ? tinted(s, m.tint, true) : (s.dark || s.canvas);
       ctx.drawImage(img, -w / 2, -h, w, h);
       if (m.flash > 0 && s.flash) {
@@ -714,7 +1220,10 @@
     preload: (ids) => {
       (ids || []).forEach((id) => {
         const d = DEFS[id];
-        if (d && d.src) source(d.src);
+        if (!d) return;
+        if (d.src) source(d.src);
+        const bone = d.parts && BONES[d.parts];
+        if (bone) bone.srcs.forEach((f) => source(PART_DIR + f));
       });
     },
     // 预载进度：已进入缓存的贴图里，完成加载（成功或失败）的数量
@@ -729,7 +1238,11 @@
     },
     isReady: (art) => {
       const d = DEFS[art];
-      return !!(d && d.src && source(d.src).ready);
+      if (!d) return false;
+      if (d.src) return source(d.src).ready;
+      const bone = d.parts && BONES[d.parts];
+      if (!bone) return false;
+      return bone.srcs.every((f) => source(PART_DIR + f).ready);
     }
   };
 })();

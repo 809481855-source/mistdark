@@ -78,10 +78,6 @@
   function begin() {
     // 全部小怪贴图（内部按 src 去重，并顺带烘焙暗色调 / 白闪）
     if (DG.art.monsters && DG.art.monsters.preload) DG.art.monsters.preload();
-    // 全部首领贴图
-    if (DG.art.bosses && DG.art.bosses.preload) {
-      DG.art.bosses.preload(Object.keys(DG.art.bosses.defs || {}));
-    }
     // 地图内路线装饰与地图外黑域装饰图集
     if (DG.art.terrainDecor && DG.art.terrainDecor.load) DG.art.terrainDecor.load();
     // 死亡骨头图集：提前切片，避免首次击杀时卡顿
@@ -95,6 +91,16 @@
   }
 
   DG.art.preloadAssets = preloadAssets;
+  // 首领贴图（含分件，约 50 张、解码也重）推迟到进入副本后再拉：
+  // 放在登录页会和首屏抢连接、拖慢进镇；首领通常要打几间房才出现，时间完全够。
+  let bossesStarted = false;
+  DG.art.preloadBosses = function () {
+    if (bossesStarted) return;
+    bossesStarted = true;
+    if (DG.art.bosses && DG.art.bosses.preload) {
+      DG.art.bosses.preload(Object.keys(DG.art.bosses.defs || {}));
+    }
+  };
   DG.art.assetsReady = () => state.ready;
   DG.art.assetsProgress = () => state.percent;
   DG.art.onAssetsReady = (fn) => {

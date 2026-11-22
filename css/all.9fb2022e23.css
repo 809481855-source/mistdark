@@ -1,0 +1,4287 @@
+/* 自动生成：合并 index.html 中的全部样式，勿手改 */
+/* ==== css/base.css ==== */
+/* ============ 迷雾暗黑 · 竖版 720×1440 ============ */
+/* 设计令牌：颜色 / 字号 / 间距 / 层级统一在此维护 */
+:root{
+  /* 背景与面板 */
+  --bg:#07080a;
+  --panel:#15171c;
+  --panel-2:#1b1e24;
+  --panel-3:#22252d;
+  --line:#38342b;
+  --line-mid:#2e3037;
+  --line-soft:#26282f;
+
+  /* 文字层级：主 / 次 / 弱 / 极弱 */
+  --text:#e9e3d7;
+  --text-2:#c0b9ab;
+  --muted:#9c9587;
+  --dim:#837d71;
+  --faint:#6a655c;
+
+  /* 主题色 */
+  --gold:#d2ab68;
+  --gold-2:#efd9a8;
+  --gold-dim:#a68b55;
+  --danger:#d0655d;
+  --danger-2:#f0a29b;
+  --ok:#7cb377;
+  --blue:#6d9bdf;
+
+  /* 品质：白 → 蓝 → 紫 → 绿（套装）→ 橙（暗金） */
+  --rar-normal:#b0aca2;
+  --rar-magic:#6d9bdf;
+  --rar-rare:#b06fd8;
+  --rar-set:#5fae5a;
+  --rar-legend:#e8853c;
+
+  /* 层级 */
+  --z-screen:1;
+  --z-hud:10;
+  --z-touch:20;
+  --z-pause:40;
+  --z-modal:60;
+  --z-toast:80;
+
+  /* 黑金浮雕皮肤令牌（与主城底部战斗条同源） */
+  --sk-line:#57452c;
+  --sk-line-soft:rgba(201,162,95,.16);
+  --sk-hi:rgba(239,217,168,.12);
+  --sk-lo:rgba(0,0,0,.55);
+  --sk-ink-0:#0b0d11;
+  --sk-ink-1:#0f1116;
+  --sk-ink-2:#191d24;
+  --sk-cut:7px;
+
+  --font:"Microsoft YaHei","PingFang SC","Noto Sans SC","Hiragino Sans GB",sans-serif;
+}
+
+*{box-sizing:border-box;margin:0;padding:0;
+  /* 微信 / 移动端：取消点击高亮、长按菜单与文字选择（输入框单独放开） */
+  -webkit-tap-highlight-color:transparent;
+  -webkit-touch-callout:none;
+  -webkit-user-select:none;
+  user-select:none;}
+html,body{height:100%;width:100%;overscroll-behavior:none;}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;}
+body{
+  background:#050608;
+  color:var(--text);
+  font-family:var(--font);
+  font-size:14px;
+  line-height:1.6;
+  overflow:hidden;
+  touch-action:manipulation;
+  user-select:none;
+  -webkit-tap-highlight-color:transparent;
+  -webkit-font-smoothing:antialiased;
+}
+#app{
+  position:fixed;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  background:radial-gradient(ellipse at 50% 40%, #191c22 0%, #0a0b0e 55%, #050608 100%);
+}
+/* 逻辑设计尺寸 720×1440（9:16），整体等比缩放居中 */
+#stage{
+  position:relative;
+  width:720px;
+  height:1440px;
+  flex:0 0 auto;
+  transform:scale(1);
+  transform-origin:center center;
+  overflow:hidden;
+  border-radius:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  box-shadow:0 0 0 1px #24262b, 0 0 90px rgba(0,0,0,.85);
+  will-change:transform;
+}
+#game{
+  position:absolute;
+  left:0;
+  top:0;
+  display:block;
+  background:#0c1210;
+}
+/* 图标一律不参与指针事件：点击落到上层按钮；同时禁止微信长按识别/保存图片 */
+img{
+  pointer-events:none;
+  -webkit-touch-callout:none;
+  -webkit-user-drag:none;
+  user-drag:none;
+  -webkit-user-select:none;
+  user-select:none;
+}
+/* 输入框保留文本选择、光标与键盘，否则无法输入 */
+input,textarea{-webkit-user-select:text;user-select:text;}
+/* UI 层默认不拦截鼠标，战斗场景下事件才能落到 canvas；
+   需要交互的界面/弹窗单独开启 pointer-events */
+.ui-layer{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:var(--z-screen);}
+/* UI 固定 720×1440 居中：舞台切到 810×1680 / 720×1680 时 UI 不挪位，多出的区域只露场景背景 */
+#ui{
+  left:50%;top:50%;right:auto;bottom:auto;
+  width:720px;height:1440px;margin:-720px 0 0 -360px;
+  overflow:visible;
+}
+.hidden{display:none !important;}
+
+/* ---------- 资源预载遮罩（进入场景前的等待，避免黑屏） ---------- */
+.asset-mask{
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  /* 加载遮罩不再是纯黑：叠一层迷雾背景图与暗色渐变，弱网等待时也有画面 */
+  background:
+    linear-gradient(rgba(5,7,11,.82), rgba(5,7,11,.92)),
+    url("../assets/login-bg.jpg") center/cover no-repeat,
+    url("data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABUOEBIQDRUSERIYFhUZHzQiHx0dH0AuMCY0TENQT0tDSUhUXnlmVFlyWkhJaY9qcnyAh4iHUWWUn5ODnXmEh4L/2wBDARYYGB8cHz4iIj6CVklWgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoL/wAARCABDACQDASIAAhEBAxEB/8QAGgAAAwEBAQEAAAAAAAAAAAAAAAIDBAEFBv/EACQQAAICAQMEAwEBAAAAAAAAAAECABEDEiFBBDFRYRMioQUU/8QAFgEBAQEAAAAAAAAAAAAAAAAAAAEC/8QAGREBAQEBAQEAAAAAAAAAAAAAAAERAjFB/9oADAMBAAIRAxEAPwD5qhyagBqHj3DTa3Yj4cbZGKodxwYxXVG1VHCEiaMPTMt6tvAuS6t1RdCN9uam/jJCghIfO42sQk0Oh+Mn6g7dzwZ6fSZMOldaqHPc1MWLCGTWxrmXxspIAWh5klxqq/1WCqgxH0SJ5hUi73uelnwrkUHxM79MumwbqOtJjAQL7fkJU0pINQkDgsVAUtQ4lFViVq9u/uRxPU24coHEzdbmV1v9GNFBSlI2mfVkUMs35utfIiK7AhBQ2AmDNmJMnN6vq2czxnJaza/sIrZW1GE2w7jIHapUZJjv3GXJKy1lweYjab2uQOQGLdcwqpO/aElrMIRIGMO0ISDsUmEIHLMIQgf/2Q==") center/cover no-repeat,
+    radial-gradient(ellipse at 50% 40%, #232a36 0%, #0d1118 58%, #06080c 100%);
+  pointer-events:auto;
+  z-index:var(--z-toast);
+}
+.asset-box{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:20px;
+  color:var(--text-2);
+  font-size:17px;
+  letter-spacing:1px;
+}
+.asset-box b{font-weight:600;color:var(--gold-2);}
+.asset-box i{font-style:normal;font-size:14px;color:var(--gold);letter-spacing:1px;}
+.asset-spinner{
+  width:48px;
+  height:48px;
+  border-radius:50%;
+  border:3px solid rgba(201,162,95,.2);
+  border-top-color:var(--gold);
+  animation:asset-spin .9s linear infinite;
+}
+@keyframes asset-spin{to{transform:rotate(360deg);}}
+
+/* ---------- 通用控件 ---------- */
+/* 通用按钮：统一使用公用九宫按钮资源
+   资源原尺寸 238×98，九宫切片 30/40/30/40（切在装饰角内侧，不贴边）。
+   默认褐色（次要操作），primary / danger 使用红色（主要操作）。
+   高度固定 98，只有中间平色区随宽度横向拉伸，边角保持原像素。 */
+.btn{
+  --btn-img:url("../assets/ui/public/btn-primary-brown.png");
+  appearance:none;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  height:98px;
+  min-width:238px;
+  padding:0 36px;
+  border-style:solid;
+  border-width:30px 40px;
+  border-image:var(--btn-img) 30 40 30 40 fill stretch;
+  border-radius:0;
+  background:none;
+  color:#fff;
+  font-family:var(--font);
+  font-size:36px;
+  font-weight:800;
+  line-height:1;
+  letter-spacing:1px;
+  cursor:pointer;
+  white-space:nowrap;
+  text-shadow:0 2px 3px rgba(0,0,0,.55);
+  -webkit-text-stroke:1.5px #1b0a0d;
+  paint-order:stroke fill;
+  box-shadow:none;
+  transition:filter .14s ease, transform .06s ease;
+}
+.btn:hover{filter:brightness(1.1);}
+.btn:active{transform:translateY(2px) scale(.92);filter:brightness(.9);}
+.btn:focus-visible{outline:2px solid rgba(255,240,205,.7);outline-offset:4px;}
+.btn.primary,.btn.danger{--btn-img:url("../assets/ui/public/btn-primary-red.png");}
+.btn.ghost{--btn-img:url("../assets/ui/public/btn-primary-brown.png");filter:saturate(.78) brightness(.9);}
+.btn.ghost:hover{filter:saturate(.9) brightness(1.02);}
+.btn:disabled{filter:grayscale(.4) brightness(.72);cursor:not-allowed;}
+.btn:disabled:hover{filter:grayscale(.4) brightness(.72);}
+/* 小号按钮：整体等比缩到 90%，按钮与文字同步缩放 */
+.btn-sm{height:88px;min-width:214px;padding:0 30px;border-width:27px 36px;font-size:32px;letter-spacing:.5px;}
+
+input[type=text],input[type=password]{
+  width:100%;
+  height:50px;
+  background:linear-gradient(180deg,#080a0e,#0d1015);
+  border:1px solid #463d2e;
+  border-radius:3px;
+  color:var(--text);
+  font-family:var(--font);
+  font-size:16px;
+  padding:0 15px;
+  outline:none;
+  box-shadow:inset 0 2px 6px rgba(0,0,0,.55), 0 1px 0 rgba(255,255,255,.03);
+  transition:border-color .15s, box-shadow .15s;
+}
+input[type=text]:focus,input[type=password]:focus{
+  border-color:var(--gold-dim);
+  box-shadow:inset 0 2px 6px rgba(0,0,0,.55), 0 0 0 3px rgba(201,162,95,.12), 0 0 16px rgba(201,162,95,.12);
+}
+input::placeholder{color:#6b675e;}
+
+/* ---------- 滚动条 ---------- */
+::-webkit-scrollbar{width:8px;height:8px;}
+::-webkit-scrollbar-track{background:#0b0d11;}
+::-webkit-scrollbar-thumb{background:#4a4030;border-radius:4px;border:1px solid #2a2419;}
+::-webkit-scrollbar-thumb:hover{background:#6a583b;}
+
+/* ---------- 通用屏幕 ---------- */
+.screen{
+  position:absolute;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  pointer-events:auto;
+  z-index:var(--z-screen);
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(66,74,92,.26), transparent 62%),
+    radial-gradient(ellipse at 50% 120%, rgba(88,66,32,.12), transparent 60%),
+    #0a0b0e;
+}
+.screen::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background-image:
+    linear-gradient(rgba(255,255,255,.014) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.014) 1px, transparent 1px);
+  background-size:80px 80px;
+}
+
+/* ---------- 图片底按钮：主城 / 选角共用同一套资源与尺寸 ---------- */
+.plate-btn{
+  width:112px;height:58px;padding:0;border:0;
+  display:flex;align-items:center;justify-content:center;
+  background-color:transparent;
+  background-position:center;background-size:100% 100%;background-repeat:no-repeat;
+  -webkit-appearance:none;appearance:none;
+  font-family:inherit;font-size:28px;font-weight:700;line-height:1;
+  color:#fff;letter-spacing:1px;
+  text-shadow:0 2px 3px rgba(0,0,0,.7);
+  cursor:pointer;
+  transition:transform .12s, filter .16s;
+}
+.plate-btn.pick{background-image:url("../assets/ui/common/btn-pick.png");}
+.plate-btn.logout{background-image:url("../assets/ui/common/btn-logout.png");}
+.plate-btn:hover{filter:brightness(1.08);transform:translateY(-1px);}
+.plate-btn:active{transform:translateY(0) scale(.97);}
+
+
+/* ==== css/ui-kit.css ==== */
+/* ============================================================
+   公用 UI 套件（ui-kit）
+   ------------------------------------------------------------
+   资源来源：F:\暗黑\登录弹框资源
+   统一放在 assets/ui/public/，所有界面共用，禁止各自复制一份。
+
+   名称映射（PSD 图层 → 资源文件）：
+     公共黑色透明遮罩        → .ui-mask（CSS 纯色，rgba(0,0,0,.8)）
+     公共二级弹框            → dialog-frame.png      竖向三宫拉伸
+     公共二级弹框_九宫内容底 → dialog-content-bg.png 九宫拉伸
+     公共_九宫_可输入内容底  → input-field.png       九宫拉伸
+     公用主按钮_九宫_红色    → btn-primary-red.png   九宫拉伸
+     公用主按钮_九宫_褐色    → btn-primary-brown.png 九宫拉伸
+     公共_勾选底             → checkbox-box.png      固定尺寸
+     公共_勾选图标           → checkbox-tick.png     固定尺寸
+     公共_关闭按钮           → dialog-close.png      固定尺寸 61×59（所有二级弹框统一右上角）
+
+   九宫切片（上 右 下 左，单位 px，均按 1x 设计稿 720×1440）：
+     dialog-frame       55 12  8 12
+     dialog-content-bg   6  6  6  6
+     input-field         6  6  8  6
+     btn-primary-*      30 40 30 40（资源原尺寸 238×98，切在装饰角内侧）
+
+   使用方式：
+     <div class="screen ui-kit">           ← 界面根节点加 .ui-kit
+       <div class="ui-mask"></div>
+       <section class="ui-dialog">         ← 默认 636×883，可用 --ui-w / --ui-h 改尺寸
+         <div class="ui-dialog-title">标题</div>
+         <div class="ui-inset">…</div>     ← 内容底，尺寸由使用方定位
+         <input class="ui-input">         ← 输入框，九宫横向拉伸
+         <button class="ui-btn ui-btn-red"><span>登录</span></button>
+       </section>
+     </div>
+   新增界面只允许复用本文件，不要另建同名控件。
+   ============================================================ */
+
+.ui-kit{
+  --ui-paper:#b2a085;   /* 弹框纸面底色（PSD 178,160,133） */
+  --ui-ink:#544738;     /* 标签文字（PSD 84,71,56） */
+  --ui-ink-2:#4e4234;   /* 勾选说明文字（PSD 78,66,52） */
+  --ui-title:#fff;
+  --ui-outline:#0b0705;
+}
+
+/* ---------- 遮罩：公共黑色透明遮罩 ---------- */
+.ui-mask{
+  position:absolute;
+  inset:0;
+  background:rgba(0,0,0,.8);
+  pointer-events:auto;
+}
+
+/* ---------- 二级弹框：636×883（可按 --ui-w / --ui-h 缩放） ---------- */
+.ui-dialog{
+  position:relative;
+  width:var(--ui-w,636px);
+  height:var(--ui-h,883px);
+  color:var(--ui-ink);
+}
+.ui-dialog::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-style:solid;
+  border-width:55px 12px 8px 12px;
+  border-image:url("../assets/ui/public/dialog-frame.png") 55 12 8 12 fill stretch;
+  pointer-events:none;
+}
+.ui-dialog > *{position:relative;}
+
+/* 顶部缎带标题：位于弹框 y=10~46 的缎带内 */
+.ui-dialog-title{
+  position:absolute;
+  left:0;
+  right:0;
+  top:10px;
+  height:36px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-family:var(--font);
+  font-size:30px;
+  font-weight:800;
+  line-height:1;
+  letter-spacing:1px;
+  color:var(--ui-title);
+  -webkit-text-stroke:3px #000;
+  paint-order:stroke fill;
+  text-shadow:none;
+  pointer-events:none;
+}
+
+/* ---------- 内容底：九宫拉伸 ---------- */
+.ui-inset{
+  position:relative;
+}
+.ui-inset::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-style:solid;
+  border-width:6px;
+  border-image:url("../assets/ui/public/dialog-content-bg.png") 6 fill stretch;
+  pointer-events:none;
+}
+.ui-inset > *{position:relative;}
+
+/* ---------- 标签文字 ---------- */
+.ui-label{
+  font-family:var(--font);
+  font-size:30px;
+  font-weight:700;
+  line-height:1;
+  letter-spacing:.5px;
+  color:var(--ui-ink);
+}
+
+/* ---------- 输入框：九宫横向拉伸 ---------- */
+.ui-kit input.ui-input{
+  display:block;
+  width:472px;
+  height:79px;
+  margin:0;
+  padding:0 22px 4px;
+  border-style:solid;
+  border-width:6px;
+  border-image:url("../assets/ui/public/input-field.png") 6 6 8 6 fill stretch;
+  border-radius:0;
+  background:none;
+  box-shadow:none;
+  outline:none;
+  color:#fff;
+  font-family:var(--font);
+  font-size:30px;
+  font-weight:700;
+  line-height:1;
+  letter-spacing:1px;
+  caret-color:#fff;
+  text-shadow:0 1px 1px rgba(0,0,0,.4);
+  -webkit-appearance:none;
+  appearance:none;
+}
+.ui-kit input.ui-input::placeholder{
+  color:#cfcbc2;
+  font-weight:700;
+  opacity:1;
+}
+.ui-kit input.ui-input:focus{
+  filter:drop-shadow(0 0 6px rgba(255,240,205,.28));
+}
+.ui-kit input.ui-input:-webkit-autofill{
+  -webkit-text-fill-color:#fff;
+  -webkit-box-shadow:0 0 0 100px #6b5a46 inset;
+}
+
+/* ---------- 勾选框：固定 46×46 + 勾选图标 45×39（按原 58 尺寸缩小 20%） ---------- */
+.ui-check{
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.ui-check input{
+  position:absolute;
+  left:0;
+  top:0;
+  width:46px;
+  height:46px;
+  margin:0;
+  opacity:0;
+  cursor:pointer;
+}
+.ui-check-box{
+  flex:0 0 auto;
+  width:46px;
+  height:46px;
+  background:url("../assets/ui/public/checkbox-box.png") center / 100% 100% no-repeat;
+  pointer-events:none;
+}
+.ui-check-tick{
+  position:absolute;
+  left:9px;
+  top:-5px;
+  width:45px;
+  height:39px;
+  background:url("../assets/ui/public/checkbox-tick.png") center / 100% 100% no-repeat;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .12s ease;
+}
+.ui-check input:checked ~ .ui-check-tick{opacity:1;}
+.ui-check input:focus-visible ~ .ui-check-box{outline:2px solid rgba(255,240,205,.65);outline-offset:3px;}
+.ui-check-text{
+  margin-left:10px;
+  font-family:var(--font);
+  font-size:26px;
+  font-weight:700;
+  line-height:1;
+  letter-spacing:.5px;
+  color:var(--ui-ink-2);
+  white-space:nowrap;
+  pointer-events:none;
+}
+
+/* ---------- 主按钮：九宫拉伸，按资源原尺寸 238×98 ---------- */
+.ui-btn{
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:238px;
+  height:98px;
+  padding:0;
+  border:0;
+  background:none;
+  color:#fff;
+  font-family:var(--font);
+  font-size:36px;
+  font-weight:800;
+  line-height:1;
+  letter-spacing:1px;
+  cursor:pointer;
+  -webkit-appearance:none;
+  appearance:none;
+  -webkit-text-stroke:1.5px #1b0a0d;
+  paint-order:stroke fill;
+  text-shadow:0 2px 3px rgba(0,0,0,.55);
+  transition:filter .14s ease, transform .08s ease;
+}
+.ui-btn::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-style:solid;
+  border-width:30px 40px;
+  pointer-events:none;
+}
+.ui-btn > span{position:relative;}
+.ui-btn-red::before{
+  border-image:url("../assets/ui/public/btn-primary-red.png") 30 40 30 40 fill stretch;
+}
+.ui-btn-brown::before{
+  border-image:url("../assets/ui/public/btn-primary-brown.png") 30 40 30 40 fill stretch;
+}
+.ui-btn:hover{filter:brightness(1.1);}
+.ui-btn:active{transform:translateY(1px);filter:brightness(.94);}
+.ui-btn:focus-visible{outline:2px solid rgba(255,240,205,.7);outline-offset:4px;}
+.ui-btn:disabled{filter:grayscale(.35) brightness(.8);cursor:not-allowed;}
+
+
+/* ==== css/login.css ==== */
+/* 登录界面：严格按 720×1440 设计稿还原（登录弹框.psb）
+   公用控件全部来自 css/ui-kit.css，本文件只负责登录页的定位与背景。 */
+
+.login-screen{
+  display:block;
+  padding:0;
+  overflow:visible;
+  background:none;
+}
+/* 背景层铺满整个舞台（最大 810×1680）：UI 仍固定 720×1440 居中，
+   切到最大屏 / 短屏时只外扩背景与遮罩，四周不会露出底色 */
+.login-screen::before{
+  content:"";
+  position:absolute;
+  left:var(--ui-ox,0px);
+  top:var(--ui-oy,0px);
+  width:var(--stage-w,720px);
+  height:var(--stage-h,1440px);
+  background:url("../assets/login-bg.jpg") center bottom / cover no-repeat,
+    url("data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABUOEBIQDRUSERIYFhUZHzQiHx0dH0AuMCY0TENQT0tDSUhUXnlmVFlyWkhJaY9qcnyAh4iHUWWUn5ODnXmEh4L/2wBDARYYGB8cHz4iIj6CVklWgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoL/wAARCABDACQDASIAAhEBAxEB/8QAGgAAAwEBAQEAAAAAAAAAAAAAAAIDBAEFBv/EACQQAAICAQMEAwEBAAAAAAAAAAECABEDEiFBBDFRYRMioQUU/8QAFgEBAQEAAAAAAAAAAAAAAAAAAAEC/8QAGREBAQEBAQEAAAAAAAAAAAAAAAERAjFB/9oADAMBAAIRAxEAPwD5qhyagBqHj3DTa3Yj4cbZGKodxwYxXVG1VHCEiaMPTMt6tvAuS6t1RdCN9uam/jJCghIfO42sQk0Oh+Mn6g7dzwZ6fSZMOldaqHPc1MWLCGTWxrmXxspIAWh5klxqq/1WCqgxH0SJ5hUi73uelnwrkUHxM79MumwbqOtJjAQL7fkJU0pINQkDgsVAUtQ4lFViVq9u/uRxPU24coHEzdbmV1v9GNFBSlI2mfVkUMs35utfIiK7AhBQ2AmDNmJMnN6vq2czxnJaza/sIrZW1GE2w7jIHapUZJjv3GXJKy1lweYjab2uQOQGLdcwqpO/aElrMIRIGMO0ISDsUmEIHLMIQgf/2Q==") center bottom / cover no-repeat,
+    radial-gradient(ellipse at 50% 32%, #2a303c 0%, #141a24 50%, #07080b 100%);
+  pointer-events:none;
+}
+/* 黑色遮罩与背景同步铺满舞台，避免四周比中间亮一圈 */
+.login-screen > .login-mask{
+  left:var(--ui-ox,0px);
+  top:var(--ui-oy,0px);
+  right:auto;
+  bottom:auto;
+  width:var(--stage-w,720px);
+  height:var(--stage-h,1440px);
+}
+/* 设计稿为纯遮罩层，不再叠网格纹理 */
+.login-screen::after{content:none;}
+
+/* 弹框：设计稿坐标 (41,279)，尺寸 636×883 */
+.login-dialog{
+  position:absolute;
+  left:41px;
+  top:279px;
+}
+
+/* 内容底：设计稿坐标 (74,392)，尺寸 572×562，相对弹框 (33,113) */
+.login-inset{
+  position:absolute;
+  left:33px;
+  top:113px;
+  width:572px;
+  height:562px;
+}
+
+/* 账号 */
+.login-label-account{
+  position:absolute;
+  left:50px;
+  top:63px;
+}
+.login-input-account{
+  position:absolute;
+  left:51px;
+  top:111px;
+  height:79px;
+}
+
+/* 密码 */
+.login-label-pass{
+  position:absolute;
+  left:51px;
+  top:253px;
+}
+.ui-kit input.login-input-pass{
+  position:absolute;
+  left:51px;
+  top:301px;
+  height:80px;
+}
+
+/* 记住密码：勾选底 (126,820) → 内容底内 (52,428) */
+.login-remember{
+  position:absolute;
+  left:52px;
+  top:428px;
+  height:46px;
+}
+
+/* 底部按钮：按公用按钮资源原尺寸 238×98 居中排布 */
+.login-btn-register{
+  position:absolute;
+  left:32px;
+  top:739px;
+}
+.login-btn-login{
+  position:absolute;
+  left:366px;
+  top:739px;
+}
+
+
+/* ==== css/entry.css ==== */
+/* 入场界面（登录成功后的确认页）：不套卡片框，不压暗，只留两颗按钮。
+   与登录页完全解耦：登录页是弹窗、保留黑色遮罩，本页直接呈现原画。 */
+.entry-screen{
+  align-items:center;
+  justify-content:flex-start;
+  padding:40px 56px;
+  overflow:visible;
+  background:none;
+}
+/* 背景层铺满整个舞台（最大 810×1680）：UI 仍固定 720×1440 居中，大屏只外扩背景 */
+.entry-screen::before{
+  content:"";
+  position:absolute;
+  left:var(--ui-ox,0px);
+  top:var(--ui-oy,0px);
+  width:var(--stage-w,720px);
+  height:var(--stage-h,1440px);
+  background:url("../assets/login-bg.jpg") center bottom / cover no-repeat,
+    url("data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABUOEBIQDRUSERIYFhUZHzQiHx0dH0AuMCY0TENQT0tDSUhUXnlmVFlyWkhJaY9qcnyAh4iHUWWUn5ODnXmEh4L/2wBDARYYGB8cHz4iIj6CVklWgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoL/wAARCABDACQDASIAAhEBAxEB/8QAGgAAAwEBAQEAAAAAAAAAAAAAAAIDBAEFBv/EACQQAAICAQMEAwEBAAAAAAAAAAECABEDEiFBBDFRYRMioQUU/8QAFgEBAQEAAAAAAAAAAAAAAAAAAAEC/8QAGREBAQEBAQEAAAAAAAAAAAAAAAERAjFB/9oADAMBAAIRAxEAPwD5qhyagBqHj3DTa3Yj4cbZGKodxwYxXVG1VHCEiaMPTMt6tvAuS6t1RdCN9uam/jJCghIfO42sQk0Oh+Mn6g7dzwZ6fSZMOldaqHPc1MWLCGTWxrmXxspIAWh5klxqq/1WCqgxH0SJ5hUi73uelnwrkUHxM79MumwbqOtJjAQL7fkJU0pINQkDgsVAUtQ4lFViVq9u/uRxPU24coHEzdbmV1v9GNFBSlI2mfVkUMs35utfIiK7AhBQ2AmDNmJMnN6vq2czxnJaza/sIrZW1GE2w7jIHapUZJjv3GXJKy1lweYjab2uQOQGLdcwqpO/aElrMIRIGMO0ISDsUmEIHLMIQgf/2Q==") center bottom / cover no-repeat,
+    radial-gradient(ellipse at 50% 32%, #2a303c 0%, #141a24 50%, #07080b 100%);
+  pointer-events:none;
+}
+.entry-screen::after{background:none;}
+
+.entry-actions{
+  position:absolute;
+  z-index:2;
+  left:0;
+  right:0;
+  /* 按钮组中心落在画面约 68% 高度处（红框位置），再整体下移 110px */
+  top:calc(68% + 110px);
+  transform:translateY(-50%);
+  width:100%;
+  max-width:420px;
+  margin:0 auto;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.entry-start{
+  width:100%;
+  height:58px;
+  font-size:18px;
+  letter-spacing:8px;
+  padding-left:8px;
+}
+.entry-switch{
+  width:100%;
+  height:48px;
+  letter-spacing:4px;
+}
+
+
+/* ==== css/character.css ==== */
+/* 选角界面：三槽位名册 + 角色预览。只改本文件，不影响其它界面。 */
+
+/* ---------- 选角色（竖版三槽位，垂直居中） ---------- */
+.char-screen{
+  padding:38px 40px 24px;
+  overflow:visible;
+  background:none;
+}
+/* 背景层铺满整个舞台（最大 810×1680）：UI 仍固定 720×1440 居中，大屏只外扩背景 */
+.char-screen::before{
+  content:"";
+  position:absolute;
+  left:var(--ui-ox,0px);
+  top:var(--ui-oy,0px);
+  width:var(--stage-w,720px);
+  height:var(--stage-h,1440px);
+  /* 背景只放插画本身，不加网格 / 压暗叠加 */
+  background:url("../assets/char-bg.jpg") center top / cover no-repeat,
+    radial-gradient(ellipse at 50% 30%, #2a303c 0%, #141a24 50%, #07080b 100%);
+  pointer-events:none;
+}
+/* 选角不放通用网格纹理 */
+.char-screen::after{display:none;}
+
+/* ---------- 职业色彩分级：同一张背景图，按职业重新调色 ----------
+   野蛮人 = 原色暖褐；游侠 = 紫色系；术士 = 蓝色系。
+   g-hue 用 color 混合换色相，g-glow 用 soft-light 提亮石台，
+   g-mist 用 screen 叠雾气，g-shade 压回四周暗角保留纵深。 */
+.char-screen{
+  --grade-top:transparent;
+  --grade-mid:transparent;
+  --grade-bot:transparent;
+  --grade-glow:transparent;
+  --grade-mist:transparent;
+  --grade-rim:transparent;
+  --grade-hue-op:0;
+  --grade-glow-op:0;
+  --grade-mist-op:0;
+  --grade-rim-op:0;
+  --grade-shade-op:0;
+  --grade-grain-op:0;
+}
+.char-screen[data-cls="ranger"]{
+  --grade-top:#1b0f26;
+  --grade-mid:#4a2c74;
+  --grade-bot:#150d1f;
+  --grade-glow:rgba(178,128,246,.55);
+  --grade-mist:rgba(140,96,220,.24);
+  --grade-rim:rgba(196,146,255,.6);
+  --grade-hue-op:.58;
+  --grade-glow-op:.38;
+  --grade-mist-op:.2;
+  --grade-rim-op:.34;
+  --grade-shade-op:.66;
+  --grade-grain-op:.16;
+}
+.char-screen[data-cls="mage"]{
+  --grade-top:#081120;
+  --grade-mid:#2b5b8f;
+  --grade-bot:#07101c;
+  --grade-glow:rgba(122,182,255,.55);
+  --grade-mist:rgba(86,150,236,.24);
+  --grade-rim:rgba(128,190,255,.6);
+  --grade-hue-op:.58;
+  --grade-glow-op:.38;
+  --grade-mist-op:.2;
+  --grade-rim-op:.34;
+  --grade-shade-op:.66;
+  --grade-grain-op:.16;
+}
+.char-grade{
+  position:absolute;
+  /* 与背景层同步铺满舞台，避免大屏下四周没有被职业色调分级 */
+  left:var(--ui-ox,0px);
+  top:var(--ui-oy,0px);
+  right:auto;
+  bottom:auto;
+  width:var(--stage-w,720px);
+  height:var(--stage-h,1440px);
+  pointer-events:none;
+  z-index:1;
+}
+.char-grade i{position:absolute;inset:0;display:block;}
+.char-grade .g-hue{
+  background:linear-gradient(180deg,var(--grade-top) 0%,var(--grade-mid) 46%,var(--grade-bot) 100%);
+  mix-blend-mode:color;
+  opacity:var(--grade-hue-op);
+}
+.char-grade .g-glow{
+  background:radial-gradient(ellipse 54% 26% at 50% 41%,var(--grade-glow) 0%,rgba(0,0,0,0) 70%);
+  mix-blend-mode:soft-light;
+  opacity:var(--grade-glow-op);
+}
+.char-grade .g-mist{
+  background:
+    radial-gradient(ellipse 46% 22% at 26% 28%,var(--grade-mist) 0%,rgba(0,0,0,0) 70%),
+    radial-gradient(ellipse 42% 20% at 76% 56%,var(--grade-mist) 0%,rgba(0,0,0,0) 72%),
+    radial-gradient(ellipse 52% 24% at 50% 41%,var(--grade-mist) 0%,rgba(0,0,0,0) 74%),
+    linear-gradient(180deg,var(--grade-mist) 0%,rgba(0,0,0,0) 30%);
+  mix-blend-mode:screen;
+  opacity:var(--grade-mist-op);
+}
+.char-grade .g-rim{
+  background:radial-gradient(ellipse 26% 7% at 50% 41%,var(--grade-rim) 0%,rgba(0,0,0,0) 72%);
+  mix-blend-mode:screen;
+  opacity:var(--grade-rim-op);
+}
+.char-grade .g-shade{
+  background:radial-gradient(ellipse 74% 58% at 50% 42%,rgba(0,0,0,0) 42%,rgba(5,3,10,.72) 100%);
+  opacity:var(--grade-shade-op);
+}
+/* 细颗粒，压掉大面积渐变的色带，增加成片质感 */
+.char-grade .g-grain{
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='140' height='140' filter='url(%23n)' opacity='.55'/></svg>");
+  background-size:140px 140px;
+  mix-blend-mode:overlay;
+  opacity:var(--grade-grain-op);
+}
+.screen-head{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:20px;
+  padding-bottom:18px;
+  border-bottom:2px solid rgba(220,203,176,.3);
+  position:relative;
+  z-index:2;
+}
+.screen-head h2{
+  font-size:27px;
+  letter-spacing:9px;
+  color:#fff;
+  -webkit-text-stroke:3px #000;
+  paint-order:stroke fill;
+  font-weight:600;
+  line-height:1.2;
+  text-shadow:none;
+}
+.head-sub{
+  font-size:13px;
+  color:#dccbb0;
+  letter-spacing:1px;
+  margin-top:8px;
+  text-shadow:0 1px 3px rgba(0,0,0,.85);
+}
+/* 登出按钮：与主城右上角同资源、同尺寸、同位置（右 36 / 上 36） */
+.char-logout{
+  position:absolute;
+  top:36px;
+  right:36px;
+  z-index:3;
+}
+/* 新号无角色：只保留标题与创建区，背景压暗 30%，仅创建按钮与登出可操作 */
+.char-new-mask{display:none;}
+.char-screen.is-new .char-new-mask{
+  display:block;
+  position:absolute;
+  inset:0;
+  background:rgba(0,0,0,.3);
+  z-index:2;
+  pointer-events:auto;
+}
+.char-screen.is-new .screen-head{z-index:4;}
+.char-screen.is-new .char-logout{z-index:5;}
+.char-screen.is-new .char-preview{z-index:4;}
+.char-screen.is-new .preview-nav,
+.char-screen.is-new .char-slots,
+.char-screen.is-new .char-foot{display:none;}
+/* 新号创建区整体下移 100 像素，避开标题区 */
+.char-screen.is-new .preview-empty{top:691px;}
+/* 预览区：立绘按舞台坐标锚定，脚底永远落在石台中心，不随屏幕比例 / 字号档位漂移 */
+.char-preview{
+  position:absolute;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-start;
+  gap:6px;
+  /* 石台中心 ≈ 591 逻辑像素（背景图纵向 39.6%），立绘内脚底在 361 → 顶部留 230 */
+  padding:230px 0 0;
+  pointer-events:none;
+  z-index:2;
+}
+.preview-nav{
+  position:absolute;
+  top:38%;
+  width:58px;height:58px;
+  display:flex;align-items:center;justify-content:center;
+  border:1px solid rgba(201,162,95,.3);
+  border-radius:50%;
+  background:rgba(12,14,18,.82);
+  color:var(--gold-2);
+  font-size:30px;line-height:1;
+  padding-bottom:4px;
+  cursor:pointer;
+  pointer-events:auto;
+  z-index:3;
+  transition:border-color .15s, box-shadow .15s, transform .15s, opacity .15s;
+}
+.preview-nav:hover:not(:disabled){border-color:var(--gold);box-shadow:0 0 20px rgba(201,162,95,.3);transform:scale(1.06);}
+.preview-nav:disabled{opacity:.22;cursor:default;}
+.preview-nav.prev{left:2px;}
+.preview-nav.next{right:2px;}
+.preview-art{
+  position:relative;
+  width:420px;height:512px;
+  display:flex;align-items:center;justify-content:center;
+  flex:0 0 auto;
+}
+.preview-art svg,.preview-art canvas{display:block;}
+/* 立绘整体缩小到 70%，给待机动作留出呼吸空间 */
+.preview-art svg{width:70%;height:70%;animation:previewIdle 3.8s ease-in-out infinite;transform-origin:50% 90%;}
+.preview-art canvas{width:100%;height:100%;}
+@keyframes previewIdle{
+  0%,100%{transform:translateY(0) scaleY(1);}
+  50%{transform:translateY(-5px) scaleY(1.016);}
+}
+.preview-info{
+  width:100%;
+  max-width:560px;
+  pointer-events:auto;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:10px;
+  text-align:center;
+}
+.preview-name{
+  font-size:29px;
+  letter-spacing:5px;
+  color:var(--text);
+  font-weight:600;
+  line-height:1.2;
+  text-shadow:0 2px 8px rgba(0,0,0,.75);
+}
+.preview-lv{
+  margin-left:12px;
+  font-size:14px;
+  letter-spacing:1px;
+  color:#f2dcab;
+  font-weight:500;
+  text-shadow:0 1px 3px rgba(0,0,0,.8);
+}
+.preview-meta{
+  font-size:13px;
+  letter-spacing:2px;
+  color:#d9c8ab;
+  text-shadow:0 1px 3px rgba(0,0,0,.85);
+}
+.preview-stats{display:flex;gap:10px;margin-top:2px;}
+.pstat{
+  min-width:104px;
+  padding:8px 12px;
+  border:1px solid rgba(201,162,95,.26);
+  border-radius:4px;
+  background:rgba(8,6,4,.42);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+}
+.pstat i{
+  font-style:normal;font-size:11.5px;letter-spacing:2px;color:#cbb894;
+  text-shadow:0 1px 2px rgba(0,0,0,.8);
+}
+.pstat b{font-size:18px;color:var(--gold);font-weight:600;letter-spacing:.5px;}
+.preview-xp{width:100%;display:flex;flex-direction:column;gap:6px;margin-top:4px;}
+.pxp-bar{
+  width:100%;height:8px;
+  border-radius:4px;
+  background:rgba(8,6,4,.62);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);
+  overflow:hidden;
+}
+.pxp-bar i{
+  display:block;height:100%;
+  border-radius:4px;
+  background:linear-gradient(90deg,#8a7448,#e3c88e);
+  transition:width .2s;
+}
+.pxp-text{
+  font-size:12.5px;letter-spacing:.5px;color:#d6c5a7;
+  text-shadow:0 1px 3px rgba(0,0,0,.85);
+}
+.preview-actions{display:flex;justify-content:center;gap:12px;width:100%;margin-top:10px;}
+
+/* 空槽预览：以石台中心为基准居中，与立绘同一锚点 */
+.preview-empty{
+  position:absolute;
+  left:50%;
+  top:591px;
+  transform:translate(-50%,-50%);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:14px;
+  padding:0;
+  pointer-events:auto;
+}
+.preview-empty-glyph{
+  width:120px;height:120px;
+  display:flex;align-items:center;justify-content:center;
+  /* 与石台中心的圆环对齐，压在台面圆圈上 */
+  transform:translateY(-28px);
+  font-size:72px;line-height:1;color:#dccbb0;
+  border:3px dashed rgba(220,203,176,.7);border-radius:50%;
+}
+.preview-empty-text{font-size:19px;letter-spacing:2px;color:#ecdfc8;text-shadow:0 1px 3px rgba(0,0,0,.7);}
+.preview-empty-hint{
+  font-size:13px;letter-spacing:1px;color:#e2d6c0;
+  text-shadow:0 1px 3px rgba(0,0,0,.85);
+}
+/* 空槽创建按钮：使用公用按钮资源原尺寸 238×98，不压缩 */
+.preview-empty .btn{width:238px;height:98px;padding:0;margin-top:6px;font-size:36px;letter-spacing:.5px;}
+
+/* 底部槽位切换（预览层已脱离文档流，这里靠 margin-top 压到底部） */
+.char-slots{
+  display:flex;
+  gap:12px;
+  margin-top:auto;
+  position:relative;
+  z-index:2;
+  padding:8px 0 14px;
+  flex:0 0 auto;
+}
+.char-slot{
+  flex:1;
+  min-width:0;
+  height:76px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:0 14px;
+  border:1px solid var(--line);
+  border-radius:5px;
+  background:linear-gradient(180deg,#191c23,#101216);
+  cursor:pointer;
+  transition:border-color .16s, box-shadow .16s, transform .16s;
+}
+.char-slot:hover{border-color:var(--gold-dim);transform:translateY(-2px);}
+.char-slot.sel{
+  border-color:var(--gold);
+  background:linear-gradient(180deg,rgba(201,162,95,.13),rgba(16,18,22,.96));
+  box-shadow:0 0 0 1px rgba(201,162,95,.26), inset 0 0 24px rgba(201,162,95,.06);
+}
+.char-slot.empty{
+  justify-content:center;
+  gap:8px;
+  border-style:dashed;
+  border-color:#5d5544;
+  background:rgba(0,0,0,.22);
+  color:#cec0a7;
+}
+.char-slot.empty:hover{border-color:var(--gold-dim);color:var(--gold-2);}
+.slot-emblem{
+  width:46px;height:46px;
+  flex:0 0 auto;
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;font-weight:700;
+  border:1px solid rgba(255,255,255,.14);
+  background:radial-gradient(circle at 40% 32%, rgba(255,255,255,.06), rgba(0,0,0,.28));
+  box-shadow:inset 0 0 18px rgba(0,0,0,.55);
+}
+.slot-copy{min-width:0;display:flex;flex-direction:column;gap:4px;text-align:left;}
+/* 限定在选角槽位内，避免与装备栏的 .slot-name 冲突 */
+.char-slot .slot-name{
+  width:auto;text-align:left;
+  font-size:15px;letter-spacing:1px;color:var(--text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.char-slot .slot-lv{font-size:11.5px;color:#c3b49b;letter-spacing:.5px;}
+.char-slot .slot-plus{font-size:20px;line-height:1;color:#a99a80;}
+.char-slot .slot-empty{font-size:13px;letter-spacing:1px;}
+.char-foot{
+  position:relative;z-index:2;
+  font-size:12.5px;color:#c0ad8f;
+  letter-spacing:1px;
+  padding-bottom:4px;
+  text-align:center;
+  text-shadow:0 1px 3px rgba(0,0,0,.85);
+}
+.class-picks{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:12px;
+}
+.class-pick{
+  border:1px solid #3a3730;border-radius:4px;
+  padding:20px 12px;text-align:center;cursor:pointer;
+  background:rgba(255,255,255,.015);
+  transition:border-color .15s, box-shadow .15s, transform .15s, background .15s;
+}
+.class-pick:hover{border-color:#8a7448;transform:translateY(-1px);background:rgba(201,162,95,.04);}
+.class-pick.sel{
+  border-color:var(--gold);
+  background:linear-gradient(180deg,rgba(201,162,95,.14),rgba(201,162,95,.04));
+  box-shadow:0 0 0 1px rgba(201,162,95,.28), inset 0 0 22px rgba(201,162,95,.06);
+}
+.pick-glyph{font-size:30px;font-weight:700;line-height:1.2;}
+.pick-name{font-size:15px;letter-spacing:2px;margin-top:8px;color:var(--text);}
+.pick-title{font-size:12px;color:var(--muted);margin-top:4px;}
+.cls-desc{font-size:12.5px;color:var(--text-2);margin-top:12px;line-height:1.8;}
+.cls-base{color:var(--muted);}
+
+
+/* ==== css/town.css ==== */
+/* 主城界面：营地图层、功能图标、秘境入口。只改本文件，不影响其它界面。 */
+
+/* ---------- 主城：概览 + 主行动 + 次级行动 ---------- */
+.town-screen{padding:22px 26px 16px;}
+.town-top{
+  display:flex;
+  align-items:center;
+  padding:16px 20px;
+  position:relative;
+  z-index:2;
+}
+.town-zone{
+  display:flex;align-items:center;gap:16px;
+  width:100%;
+  min-width:0;
+}
+.char-emblem{
+  width:52px;height:52px;
+  flex:0 0 auto;
+  font-size:22px;
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700;
+  border:1px solid rgba(255,255,255,.16);
+  box-shadow:inset 0 0 24px rgba(0,0,0,.55);
+}
+.town-tools{display:flex;align-items:center;gap:14px;margin-left:auto;}
+/* 右上角按钮（选角 / 登出）的样式在 base.css 的 .plate-btn，主城与选角共用 */
+/* 顶栏左上角功能键：设置 */
+.town-corner-btn{
+  flex:0 0 auto;
+  display:flex;align-items:center;justify-content:center;
+  width:70px;height:70px;padding:0;
+  border:0;background:none;
+  cursor:pointer;
+  transition:transform .12s, filter .16s;
+}
+.town-corner-btn img{
+  display:block;width:100%;height:100%;object-fit:contain;
+  filter:drop-shadow(0 6px 12px rgba(0,0,0,.55));
+}
+.town-corner-btn:hover{
+  transform:translateY(-1px);
+  filter:brightness(1.08);
+}
+.town-corner-btn:active{transform:translateY(0);}
+.town-corner-btn:focus-visible{outline:2px solid var(--gold-2);outline-offset:2px;}
+.town-body{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  padding-top:16px;
+  position:relative;
+  z-index:2;
+  min-height:0;
+}
+
+/* 角色展示舞台 */
+.hero-stage{
+  position:relative;
+  flex:1;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  border:1px solid var(--line);
+  border-radius:6px;
+  overflow:hidden;
+  padding:18px 24px 16px;
+  background:
+    radial-gradient(circle at 50% 6%, rgba(201,162,95,.07), transparent 55%),
+    linear-gradient(180deg,rgba(23,26,32,.97),rgba(10,12,16,.98));
+}
+.hero-aura{
+  position:absolute;
+  inset:-12% -22%;
+  pointer-events:none;
+  filter:blur(8px);
+}
+.hero-stage-top{
+  position:relative;
+  z-index:2;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:16px;
+}
+.hero-id{min-width:0;}
+.hero-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;}
+.hero-name{
+  display:flex;align-items:center;gap:10px;
+  font-size:26px;font-weight:600;letter-spacing:2px;color:var(--text);
+  line-height:1.2;
+}
+.hero-lv{
+  font-size:12px;font-weight:600;letter-spacing:.5px;
+  color:#231a0d;
+  background:linear-gradient(180deg,#e3c88e,#bf9b58);
+  border-radius:20px;
+  padding:2px 10px;
+}
+.hero-power{text-align:right;line-height:1;flex:0 0 auto;}
+.hero-power span{display:block;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:5px;}
+.hero-power b{font-size:27px;color:var(--gold);font-weight:700;letter-spacing:1px;}
+.hero-sub{font-size:12.5px;color:var(--muted);letter-spacing:1px;margin-top:4px;}
+.hero-art-wrap{
+  position:relative;
+  z-index:1;
+  flex:1;
+  min-height:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:8px 0 4px;
+}
+.hero-svg{
+  display:block;
+  width:100%;
+  height:100%;
+  animation:heroFloat 5.5s ease-in-out infinite;
+  filter:drop-shadow(0 18px 40px rgba(0,0,0,.6));
+}
+@keyframes heroFloat{
+  0%,100%{transform:translateY(2px);}
+  50%{transform:translateY(-7px);}
+}
+.hero-foot{
+  position:relative;
+  z-index:2;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.hero-xp{margin-top:2px;}
+.hero-xp-meta{
+  display:flex;justify-content:space-between;align-items:baseline;
+  font-size:12px;color:var(--dim);letter-spacing:.5px;margin-bottom:6px;
+}
+.hero-xp-meta em{font-style:normal;color:var(--text-2);}
+.hero-xp-bar{height:5px;border-radius:3px;background:rgba(255,255,255,.07);overflow:hidden;}
+.hero-xp-bar i{display:block;height:100%;background:linear-gradient(90deg,#7d9fc9,#c3dcf5);border-radius:3px;}
+.hero-mini-stats{
+  list-style:none;
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:10px;
+}
+.hero-mini-stats li{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:3px;
+  padding:9px 4px 8px;
+  border:1px solid #2c2f36;
+  border-radius:4px;
+  background:rgba(0,0,0,.2);
+}
+.hero-mini-stats span{font-size:10.5px;color:var(--muted);letter-spacing:1px;}
+.hero-mini-stats b{font-size:15px;color:#f2ecdf;font-weight:600;}
+
+/* 功能图标坞：5 个入口与弹框一一对应 */
+
+/* 角色信息弹窗 */
+.ci-head{display:flex;align-items:flex-start;gap:20px;}
+.ci-emblem{flex:0 0 auto;font-size:34px;}
+.ci-id{flex:1;min-width:0;}
+.ci-name{
+  display:flex;align-items:center;gap:10px;
+  font-size:23px;font-weight:600;letter-spacing:2px;color:var(--text);line-height:1.2;
+}
+.ci-sub{font-size:12.5px;color:var(--text-2);letter-spacing:.5px;margin-top:5px;}
+.ci-desc{font-size:12px;color:var(--text-2);line-height:1.7;margin-top:6px;}
+.ci-power{flex:0 0 auto;text-align:right;line-height:1;padding-top:4px;}
+.ci-power span{display:block;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:5px;}
+.ci-power b{font-size:26px;color:var(--gold);font-weight:700;}
+
+
+/* ---------- 主城：可行走营地地图 ---------- */
+.town-screen{
+  display:block;
+  padding:0;
+  overflow:visible;
+  background:transparent;
+}
+.town-screen::after{display:none;}
+
+/* 场景层按舞台原点铺开（舞台切到 810×1680 时地图多出的部分由 #stage 裁掉），HUD 仍在 720×1440 内 */
+.town-world{
+  position:absolute;left:var(--ui-ox,0px);top:var(--ui-oy,0px);
+  overflow:hidden;
+  z-index:0;
+}
+.town-map{
+  position:absolute;inset:0;
+  /* 暗角直接叠在地图背景上（而不是盖一层遮罩），角色作为子元素始终在其上方，不会被压暗
+     下部渐变只压到 HUD 高度以内（底部约 19%），行走区域保持原图亮度 */
+  background:
+    linear-gradient(180deg,
+      rgba(6,7,10,.5) 0%,
+      rgba(6,7,10,.08) 18%,
+      rgba(6,7,10,0) 46%,
+      rgba(6,7,10,0) 81%,
+      rgba(6,7,10,.4) 100%),
+    url("../assets/town-map.jpg") center/cover no-repeat,
+    url("data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABUOEBIQDRUSERIYFhUZHzQiHx0dH0AuMCY0TENQT0tDSUhUXnlmVFlyWkhJaY9qcnyAh4iHUWWUn5ODnXmEh4L/2wBDARYYGB8cHz4iIj6CVklWgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoL/wAARCAA2AFADASIAAhEBAxEB/8QAGgAAAwEBAQEAAAAAAAAAAAAAAAIDBAEFBv/EACMQAAICAQQBBQEAAAAAAAAAAAABAhEDEiExQVEEEyJhcTL/xAAWAQEBAQAAAAAAAAAAAAAAAAAAAQL/xAAXEQEBAQEAAAAAAAAAAAAAAAAAAREh/9oADAMBAAIRAxEAPwD5WjqQLYpjhqK1hFGzqjqbS6OyWnYbEm+KKuOaLYaDXiwycU3F03Vlcvp/bqlZqTZpjz/b8Cyi4mqUEoNPnqiccMpK20l5Zm8MZ2hSsopPZtiqKfZEw9JpVyCWntr8CDa/nYbT2woi65Q2K3bit14LY4S00uH9Dxw72yqnrn1J2uUdc8mVcuy6hG77+xqQnFYpOUeqDFinkk1Gm3vTNc3GMbZP5yvQrVcVZKMk003GkSpl52m4pUSa8hmuK1aRRJtJ3ddE0+1R1SkgNWHI+JOqNKltuzJjxvKrW9blFl6sStNCdnSMciS3CeVKN2UUkotbqxVkWJ6o3B+U6J+7teolPKqe4sNGRJu7f7Znk3dBrauuBXxdkZKmMnW4AENHJOL+Lcb8D26u2ABSubbrqzsm3u+AAoVyrZI4703YARCWDYAB/9k=") center/cover no-repeat,
+    radial-gradient(ellipse at 50% 40%, #232a34 0%, #10141b 56%, #07090d 100%);
+  will-change:transform;
+}
+.town-actor{
+  position:absolute;left:0;top:0;
+  width:240px;height:256px;
+  will-change:transform;
+}
+.town-actor-art{
+  position:absolute;inset:0;
+  transform-origin:50% 100%;
+}
+.town-actor-art svg{display:block;width:100%;height:100%;}
+.town-hero-canvas{display:block;width:100%;height:100%;}
+/* 角色自带的地面阴影交给 .town-actor-shadow，避免重影 */
+.town-actor-art .hero-svg > ellipse:first-child{display:none;}
+.town-actor-shadow{
+  position:absolute;left:50%;bottom:6px;
+  width:92px;height:18px;margin-left:-46px;
+  border-radius:50%;
+  background:radial-gradient(ellipse,rgba(0,0,0,.55),rgba(0,0,0,0) 70%);
+}
+
+
+/* 悬浮顶栏：无底板，按钮直接浮在场景上 */
+.town-screen .town-top{
+  position:absolute;left:18px;right:18px;top:16px;z-index:3;
+  padding:14px 18px;
+}
+
+
+/* ==== css/combat-bar.css ==== */
+/* 主城 / 副本共用的底部战斗条、功能图标反馈与图标特效。 */
+
+/* ---------- 底部战斗条（主城 / 副本共用） ---------- */
+.combat-bar{
+  position:relative;
+  height:220px;
+  display:flex;align-items:center;justify-content:center;
+}
+.combat-medal{
+  position:absolute;
+  /* 圆心对齐技能图标的水平中线（技能框含下方序号，几何中心略低） */
+  top:calc(50% - 9px);
+  width:200px;height:200px;
+  transform:translateY(-50%);
+  padding:0;border:0;background:none;cursor:pointer;
+  pointer-events:auto;
+  z-index:2;
+  transition:transform .14s, filter .16s;
+}
+.combat-medal:first-of-type{left:-31px;}
+.combat-medal:last-of-type{right:-31px;}
+.combat-medal img{
+  display:block;width:100%;height:100%;object-fit:contain;
+  filter:drop-shadow(0 6px 14px rgba(0,0,0,.55));
+}
+/* 尚未配置专属图标的职业：黑金圆盘 + 金色篆字，占位与图标位一致 */
+.combat-medal:not(.quest-medal) .medal-glyph{
+  display:flex;align-items:center;justify-content:center;
+  width:70%;height:70%;margin:15%;
+  border-radius:50%;
+  border:3px solid var(--gold-dim);
+  background:
+    radial-gradient(circle at 38% 30%, rgba(201,162,95,.28), rgba(16,13,8,.96) 68%),
+    #16120b;
+  box-shadow:0 8px 20px rgba(0,0,0,.62), inset 0 0 16px rgba(201,162,95,.18);
+  font-size:58px;transform:none;
+}
+/* 白色文字 + 深色描边，保证在背景上清晰可读 */
+.medal-label{
+  position:absolute;left:50%;bottom:12px;
+  transform:translateX(-50%);
+  white-space:nowrap;
+  font-size:25px;font-weight:700;letter-spacing:2px;
+  color:#fff;line-height:1;
+  pointer-events:none;
+  z-index:3;
+}
+.medal-label::before{
+  content:attr(data-label);
+  position:absolute;left:0;top:0;
+  color:#191008;
+  -webkit-text-stroke:5px #191008;
+  z-index:-1;
+}
+.combat-medal:hover{transform:translateY(calc(-50% - 2px));filter:brightness(1.08);}
+.combat-medal:active{transform:translateY(-50%);}
+.combat-medal:focus-visible{outline:2px solid var(--gold-2);outline-offset:2px;border-radius:50%;}
+
+/* ---------- 功能图标点击反馈：按下缩放 + 金色闪光（主城与副本共用） ---------- */
+@keyframes tap-press{
+  0%{scale:1;filter:brightness(1);}
+  30%{scale:.95;filter:brightness(1.3) saturate(1.1);}
+  100%{scale:1;filter:brightness(1);}
+}
+@keyframes tap-glow{
+  0%{opacity:0;}
+  35%{opacity:.9;}
+  100%{opacity:0;}
+}
+.combat-medal,.town-portal,.town-corner-btn,.strip-slot{
+  -webkit-tap-highlight-color:transparent;
+}
+.combat-medal .medal-label,.town-portal .tp-label{
+  transition:scale .18s ease-out;
+}
+.tap-on{animation:tap-press .34s ease-out;}
+.tap-on .medal-label,.tap-on .tp-label{scale:1.08;}
+.tap-on::after{
+  content:"";position:absolute;inset:0;border-radius:inherit;
+  background:radial-gradient(circle at 50% 50%,
+    rgba(255,238,196,.5), rgba(255,214,138,.18) 46%, rgba(255,214,138,0) 68%);
+  pointer-events:none;
+  z-index:3;
+  animation:tap-glow .34s ease-out;
+}
+/* 顶栏设置键是方钮，闪光按圆角矩形裁切 */
+.town-corner-btn{position:relative;}
+.town-corner-btn.tap-on::after{border-radius:6px;}
+
+/* ---------- 装备 / 技能图标：火星升腾特效（仅 transform / opacity，随图标尺寸自适应） ---------- */
+.medal-fire{
+  position:absolute;inset:0;z-index:1;
+  pointer-events:none;overflow:hidden;border-radius:50%;
+  /* 火星限制在图标圆盘内，向外自然淡出，不超出图标外圈 */
+  -webkit-mask-image:radial-gradient(circle closest-side at 50% 50%,#000 84%,rgba(0,0,0,0) 100%);
+  mask-image:radial-gradient(circle closest-side at 50% 50%,#000 84%,rgba(0,0,0,0) 100%);
+}
+/* 底部暖光只是点缀，保持小范围、始终收在按钮圆圈内 */
+.medal-fire::before{
+  content:"";position:absolute;left:50%;bottom:6%;
+  width:52%;height:34%;transform:translateX(-50%);
+  background:radial-gradient(ellipse at 50% 100%,
+    rgba(255,150,44,.34), rgba(255,104,20,.14) 52%, rgba(255,96,18,0) 74%);
+  animation:ember-heat 3.4s ease-in-out infinite;
+}
+/* 火星粒子本身放大加亮，强化的是粒子表现而不是底层光晕 */
+.medal-fire i{
+  position:absolute;bottom:16%;
+  width:18px;height:18px;border-radius:50%;
+  background:radial-gradient(circle,
+    #ffffff 0%, #ffe7a0 30%, #ffab35 58%, rgba(255,104,18,0) 82%);
+  opacity:0;
+  animation:ember-rise 2.8s linear infinite;
+}
+.medal-fire i:nth-child(1){left:24%;width:24px;height:24px;animation-delay:-.15s;animation-duration:2.5s;--dx:-20px;}
+.medal-fire i:nth-child(2){left:40%;width:16px;height:16px;animation-delay:-1.3s;animation-duration:3.1s;--dx:12px;}
+.medal-fire i:nth-child(3){left:55%;width:24px;height:24px;animation-delay:-2.1s;animation-duration:2.7s;--dx:24px;}
+.medal-fire i:nth-child(4){left:68%;width:16px;height:16px;animation-delay:-.8s;animation-duration:3.3s;--dx:16px;}
+.medal-fire i:nth-child(5){left:33%;width:20px;height:20px;animation-delay:-2.6s;animation-duration:2.9s;--dx:-12px;}
+.medal-fire i:nth-child(6){left:49%;width:20px;height:20px;animation-delay:-1.8s;animation-duration:2.6s;--dx:-26px;}
+.medal-fire i:nth-child(7){left:29%;width:16px;height:16px;animation-delay:-.45s;animation-duration:2.8s;--dx:-16px;}
+.medal-fire i:nth-child(8){left:45%;width:26px;height:26px;animation-delay:-2.4s;animation-duration:3.4s;--dx:8px;}
+.medal-fire i:nth-child(9){left:61%;width:19px;height:19px;animation-delay:-1.05s;animation-duration:2.6s;--dx:20px;}
+.medal-fire i:nth-child(10){left:71%;width:16px;height:16px;animation-delay:-3s;animation-duration:3.2s;--dx:26px;}
+.medal-fire i:nth-child(11){left:35%;width:19px;height:19px;animation-delay:-1.65s;animation-duration:2.4s;--dx:-8px;}
+.medal-fire i:nth-child(12){left:53%;width:22px;height:22px;animation-delay:-.95s;animation-duration:3s;--dx:-18px;}
+@keyframes ember-rise{
+  0%{opacity:0;transform:translate3d(0,10px,0) scale(.45);}
+  10%{opacity:1;}
+  55%{opacity:.9;}
+  100%{opacity:0;transform:translate3d(var(--dx,-12px),-112px,0) scale(.14);}
+}
+@keyframes ember-heat{
+  0%,100%{opacity:.3;}
+  50%{opacity:.55;}
+}
+
+/* ---------- 秘境副本按钮：强化火星 + 闪电特效（全部收在图标圆盘内） ---------- */
+.portal-fx{
+  position:absolute;left:0;top:0;width:100%;
+  aspect-ratio:145 / 158;
+  z-index:2;pointer-events:none;
+  overflow:hidden;
+  -webkit-mask-image:radial-gradient(circle closest-side at 50% 50%,#000 86%,rgba(0,0,0,0) 100%);
+  mask-image:radial-gradient(circle closest-side at 50% 50%,#000 86%,rgba(0,0,0,0) 100%);
+}
+/* 比普通功能图标更旺的底部火光 */
+.portal-fire{position:absolute;inset:0;z-index:1;pointer-events:none;}
+.portal-fire::before{
+  content:"";position:absolute;left:50%;bottom:4%;
+  width:66%;height:46%;transform:translateX(-50%);
+  background:radial-gradient(ellipse at 50% 100%,
+    rgba(255,170,60,.55), rgba(255,104,20,.22) 52%, rgba(255,96,18,0) 76%);
+  animation:ember-heat 3.2s ease-in-out infinite;
+}
+.portal-fire i{
+  position:absolute;bottom:12%;
+  width:16px;height:16px;border-radius:50%;
+  background:radial-gradient(circle,
+    #ffffff 0%, #ffe7a0 30%, #ffab35 58%, rgba(255,104,18,0) 82%);
+  opacity:0;
+  animation:portal-ember-rise 2.6s linear infinite;
+}
+.portal-fire i:nth-child(1){left:22%;width:19px;height:19px;animation-delay:-.1s;animation-duration:2.4s;--dx:-14px;}
+.portal-fire i:nth-child(2){left:35%;width:14px;height:14px;animation-delay:-1.05s;animation-duration:2.9s;--dx:8px;}
+.portal-fire i:nth-child(3){left:47%;width:22px;height:22px;animation-delay:-1.9s;animation-duration:2.5s;--dx:14px;}
+.portal-fire i:nth-child(4){left:58%;width:14px;height:14px;animation-delay:-.55s;animation-duration:3s;--dx:10px;}
+.portal-fire i:nth-child(5){left:68%;width:19px;height:19px;animation-delay:-2.35s;animation-duration:2.7s;--dx:16px;}
+.portal-fire i:nth-child(6){left:30%;width:16px;height:16px;animation-delay:-1.6s;animation-duration:2.6s;--dx:-10px;}
+.portal-fire i:nth-child(7){left:52%;width:16px;height:16px;animation-delay:-2.7s;animation-duration:2.8s;--dx:-16px;}
+.portal-fire i:nth-child(8){left:41%;width:20px;height:20px;animation-delay:-.35s;animation-duration:2.3s;--dx:-6px;}
+.portal-fire i:nth-child(9){left:63%;width:15px;height:15px;animation-delay:-1.35s;animation-duration:3.1s;--dx:12px;}
+.portal-fire i:nth-child(10){left:26%;width:14px;height:14px;animation-delay:-2.05s;animation-duration:2.5s;--dx:-16px;}
+.portal-fire i:nth-child(11){left:38%;width:18px;height:18px;animation-delay:-.8s;animation-duration:2.7s;--dx:-4px;}
+.portal-fire i:nth-child(12){left:55%;width:19px;height:19px;animation-delay:-2.5s;animation-duration:2.9s;--dx:10px;}
+.portal-fire i:nth-child(13){left:45%;width:15px;height:15px;animation-delay:-1.75s;animation-duration:2.4s;--dx:4px;}
+.portal-fire i:nth-child(14){left:72%;width:14px;height:14px;animation-delay:-.25s;animation-duration:2.8s;--dx:18px;}
+@keyframes portal-ember-rise{
+  0%{opacity:0;transform:translate3d(0,8px,0) scale(.45);}
+  10%{opacity:1;}
+  55%{opacity:.9;}
+  100%{opacity:0;transform:translate3d(var(--dx,-8px),-72px,0) scale(.15);}
+}
+/* 闪电：外扩冷光 + 白色电弧芯，分段闪烁，只在爆发瞬间点亮 */
+.portal-bolt{position:absolute;inset:0;width:100%;height:100%;z-index:2;}
+.portal-bolt path{fill:none;stroke-linecap:round;stroke-linejoin:round;}
+.portal-bolt .pb-glow{stroke:rgba(86,186,255,.6);stroke-width:8;}
+.portal-bolt .pb-core{stroke:#f2fdff;stroke-width:2.6;}
+.portal-bolt .pb{animation:portal-bolt-flicker 2.8s linear infinite;}
+.portal-bolt .pb-a{animation-delay:.15s;}
+.portal-bolt .pb-b{animation-delay:1.05s;}
+.portal-bolt .pb-c{animation-delay:1.85s;}
+@keyframes portal-bolt-flicker{
+  0%{opacity:.45;}
+  6%{opacity:.55;}
+  8%{opacity:1;}
+  10%{opacity:.2;}
+  12%{opacity:.9;}
+  16%{opacity:.4;}
+  40%{opacity:.5;}
+  42%{opacity:.85;}
+  44%{opacity:.35;}
+  100%{opacity:.45;}
+}
+/* 主城功能按钮：装备在左、技能在右；任务为独立小圆钮，浮在装备上方 */
+.town-screen [data-act="equipment"]{left:-31px;}
+.town-screen [data-act="skills"]{right:-31px;}
+.town-screen .quest-medal{
+  top:260px;bottom:auto;left:auto;right:54px;z-index:22;
+  width:96px;height:96px;transform:none;
+  display:flex;align-items:center;justify-content:center;
+  border-radius:50%;
+  border:2px solid var(--gold-dim);
+  background:
+    radial-gradient(circle at 38% 30%, rgba(201,162,95,.28), rgba(16,13,8,.96) 68%),
+    #16120b;
+  box-shadow:0 8px 20px rgba(0,0,0,.62), inset 0 0 16px rgba(201,162,95,.18);
+}
+.town-screen .quest-medal:hover{transform:translateY(-2px);filter:brightness(1.08);}
+.town-screen .quest-medal:active{transform:translateY(0);}
+.medal-glyph{
+  font-size:40px;font-weight:700;line-height:1;
+  color:var(--gold-2);
+  text-shadow:0 2px 6px rgba(0,0,0,.8), 0 0 14px rgba(201,162,95,.35);
+  transform:translateY(-8px);
+}
+.quest-medal .medal-label{font-size:15px;bottom:12px;letter-spacing:1px;}
+/* 装备图标左下的角色等级标牌：底板素材 + 数字（32px / #a7520e），点击查看角色信息 */
+.lvl-badge{
+  position:absolute;left:-13px;top:108px;z-index:3;
+  width:74px;height:40px;
+  border:0;padding:0 0 2px;margin:0;
+  background:url("../assets/ui/common/level-badge.png") center/100% 100% no-repeat;
+  display:flex;align-items:center;justify-content:center;
+  font-family:inherit;
+  font-size:32px;font-weight:700;line-height:1;color:#a7520e;
+  pointer-events:auto;
+  cursor:pointer;
+}
+.medal-dot{
+  position:absolute;top:6px;right:8px;
+  width:14px;height:14px;border-radius:50%;
+  background:radial-gradient(circle at 36% 30%, #ff8a7d, #c33a2e 70%);
+  border:1px solid #2a0b08;
+  box-shadow:0 0 8px rgba(220,70,55,.7);
+}
+.medal-dot.hidden{display:none;}
+/* 经验条：收窄后放在序号下方，压在技能框下沿 */
+.combat-bar .combat-exp{
+  position:absolute;left:50%;bottom:25px;
+  width:396px;
+  transform:translateX(-50%);
+}
+.combat-exp .exp-text{
+  justify-content:center;padding:0 8px;
+  font-size:16px;letter-spacing:1px;
+}
+.combat-strip{
+  position:relative;flex:0 0 536px;width:536px;margin:0;
+  aspect-ratio:548 / 126;
+  background:url("../assets/ui/skill-frame.png") center/100% 100% no-repeat;
+  filter:drop-shadow(0 8px 18px rgba(0,0,0,.5));
+}
+.strip-slots{position:absolute;inset:0;}
+.strip-slot{
+  position:absolute;top:11.29%;height:auto;aspect-ratio:1;width:13.0597%;
+  padding:0;border:0;background:none;cursor:default;
+  font-family:var(--font);
+}
+.strip-slot:nth-child(1){left:15.146%;}
+.strip-slot:nth-child(2){left:29.197%;}
+.strip-slot:nth-child(3){left:43.431%;}
+.strip-slot:nth-child(4){left:57.664%;}
+.strip-slot:nth-child(5){left:71.898%;}
+.strip-slot img{
+  display:block;width:100%;height:100%;object-fit:cover;
+  border-radius:4px;
+  transition:filter .15s, transform .15s;
+}
+.strip-slot:hover img{filter:brightness(1.12);}
+.strip-glyph{
+  display:flex;align-items:center;justify-content:center;
+  width:100%;height:100%;border-radius:4px;
+  font-size:24px;font-weight:700;color:#cdbb8e;
+  background:linear-gradient(160deg,#262a32,#111318);
+  box-shadow:inset 0 0 12px rgba(0,0,0,.6);
+}
+.strip-slot .cd{
+  position:absolute;inset:0;border-radius:4px;
+  background:rgba(0,0,0,.66);
+  transform-origin:bottom;transform:scaleY(0);
+  pointer-events:none;
+}
+.strip-slot .cdtext{
+  position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:30px;color:#fff;font-weight:800;line-height:1;
+  -webkit-text-stroke:2px #000;
+  text-shadow:0 0 4px rgba(0,0,0,.95), 0 2px 0 #000, 0 -2px 0 #000, 2px 0 0 #000, -2px 0 0 #000;
+}
+/* 经验条：底图 + 填充图 */
+.exp-bar{
+  position:relative;width:100%;
+  aspect-ratio:517 / 26;
+  background:url("../assets/ui/exp-track.png") center/100% 100% no-repeat;
+}
+.exp-bar .exp-fill{
+  position:absolute;left:1.16%;top:50%;transform:translateY(-50%);
+  height:54%;width:0;max-width:97.68%;
+  background-image:
+    url("../assets/ui/exp-fill.png"),
+    repeating-linear-gradient(115deg,
+      rgba(255,226,170,0) 0 8px,
+      rgba(255,226,170,.2) 8px 12px,
+      rgba(255,226,170,0) 12px 20px);
+  background-size:100% 100%, 26px 100%;
+  background-repeat:no-repeat, repeat;
+  background-position:center, 0 0;
+  border-radius:999px;overflow:hidden;
+  transition:width .25s;
+  animation:xpFillGlow 2.4s ease-in-out infinite, xpStripes 1.3s linear infinite;
+}
+/* 经验条流光：与进度条同款 */
+.exp-bar .exp-fill::after{
+  content:'';position:absolute;top:-4px;bottom:-4px;left:-12%;width:38px;
+  background:linear-gradient(100deg,transparent,rgba(255,250,225,.9),transparent);
+  transform:skewX(-18deg);
+  animation:xpSweep 2s linear infinite;
+  pointer-events:none;
+}
+/* 经验条前缘高光 */
+.exp-bar .exp-fill::before{
+  content:'';position:absolute;top:-2px;bottom:-2px;right:0;width:6px;
+  background:linear-gradient(90deg,rgba(255,190,80,0),rgba(255,238,180,.95));
+  filter:blur(1px);
+  pointer-events:none;
+}
+@keyframes xpFillGlow{
+  0%,100%{filter:drop-shadow(0 0 1.5px rgba(255,170,70,.35));}
+  50%{filter:drop-shadow(0 0 5px rgba(255,190,90,.75));}
+}
+@keyframes xpStripes{
+  0%{background-position:center,0 0;}
+  100%{background-position:center,26px 0;}
+}
+@keyframes xpSweep{
+  0%{left:-12%;}
+  100%{left:112%;}
+}
+.exp-text{
+  position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 14px;
+  font-size:10.5px;color:#f2e6c9;letter-spacing:.5px;
+  text-shadow:0 1px 2px rgba(0,0,0,.9);
+  pointer-events:none;
+}
+
+/* 主城底部：圆钮压在技能栏两端，经验条在序号下方 */
+.town-screen .town-combat{
+  position:absolute;left:18px;right:18px;bottom:45px;z-index:3;
+}
+
+/* 主城右下：秘境副本入口 */
+.town-screen .town-portal{
+  position:absolute;right:45px;bottom:292px;z-index:22;
+  display:flex;flex-direction:column;align-items:center;
+  width:113px;padding:0;border:0;background:none;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+  transition:transform .14s, filter .16s;
+}
+.town-portal img{
+  display:block;width:100%;height:auto;
+  filter:drop-shadow(0 8px 16px rgba(0,0,0,.6));
+}
+.tp-label{
+  position:relative;
+  z-index:3;
+  margin-top:2px;
+  transform:translateY(-10px);
+  font-size:22px;font-weight:700;letter-spacing:1px;line-height:1;
+  color:#fff;white-space:nowrap;pointer-events:none;
+}
+.tp-label::before{
+  content:attr(data-label);
+  position:absolute;left:0;top:0;
+  color:#000;
+  -webkit-text-stroke:4px #000;
+  z-index:-1;
+}
+.town-portal:hover{transform:translateY(-2px);filter:brightness(1.06);}
+.town-portal:active{transform:translateY(0);}
+.town-portal:focus-visible{outline:2px solid var(--gold-2);outline-offset:4px;border-radius:8px;}
+
+/* 浮动摇杆（主城 / 战斗共用一套资源）：固定在屏幕中间靠下，点击屏幕后才出现 */
+.town-screen,.dungeon-ui{touch-action:none;}
+.touch-ui{
+  position:absolute;inset:auto;left:50%;top:calc(62.5% + 150px);
+  width:0;height:0;pointer-events:none;z-index:var(--z-touch);
+}
+.touch-ui .stick-base{
+  position:absolute;left:0;top:0;width:200px;height:200px;margin:-100px 0 0 -100px;
+  border-radius:50%;
+  border:1px solid rgba(201,162,95,.30);
+  background:radial-gradient(circle at 46% 40%, rgba(30,34,42,.42), rgba(8,10,13,.30));
+  box-shadow:inset 0 0 26px rgba(0,0,0,.40);
+  opacity:0;transition:opacity .12s;
+}
+.touch-ui .stick-knob{
+  position:absolute;left:0;top:0;width:84px;height:84px;margin:-42px 0 0 -42px;
+  border-radius:50%;
+  border:1px solid rgba(201,162,95,.62);
+  background:radial-gradient(circle at 40% 32%, rgba(227,200,142,.34), rgba(74,60,36,.46));
+  box-shadow:0 4px 14px rgba(0,0,0,.45);
+  opacity:0;transition:opacity .12s;
+}
+.touch-ui.on .stick-base,
+.touch-ui.on .stick-knob{opacity:.6;}
+
+
+/* ==== css/panels.css ==== */
+/* ---------- 弹窗：统一使用公用二级弹框（dialog-frame 九宫纸面） ---------- */
+.modal-mask{
+  position:absolute;
+  inset:0;
+  background:rgba(0,0,0,.8);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px 18px;
+  overflow:auto;
+  z-index:var(--z-modal);
+  pointer-events:auto;
+  animation:fadeIn .14s ease-out;
+}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal{
+  /* 公用关闭按钮定位：所有二级弹框共用这两个变量（相对弹框 padding box 右上角）
+     --close-right 越大按钮越靠左；--close-top 越负按钮越靠上 */
+  --close-right:4px;
+  --close-top:-25px;
+  position:relative;
+  width:min(636px, 100%);
+  max-width:100%;
+  max-height:calc(100% - 80px);
+  margin:auto;
+  flex:0 0 auto;
+  border-style:solid;
+  border-width:55px 12px 8px 12px;
+  border-image:url("../assets/ui/public/dialog-frame.png") 55 12 8 12 fill stretch;
+  border-radius:0;
+  background:none;
+  box-shadow:0 40px 110px rgba(0,0,0,.88);
+  display:flex;
+  flex-direction:column;
+  color:#33291d;
+  animation:popIn .16s ease-out;
+}
+@keyframes popIn{from{transform:translateY(12px) scale(.99);opacity:.4}to{transform:none;opacity:1}}
+.modal-head{
+  position:relative;
+  flex:0 0 auto;
+  height:36px;
+  padding:0;
+  border:0;
+  background:none;
+}
+/* 缎带标题：位于弹框顶部 xi 带内，白字黑描边保证任何背景都清晰 */
+.modal-head h3{
+  position:absolute;
+  left:-12px;
+  right:-12px;
+  top:-46px;
+  height:38px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin:0;
+  font-family:var(--font);
+  font-size:30px;
+  font-weight:800;
+  line-height:1;
+  letter-spacing:2px;
+  color:#fff;
+  -webkit-text-stroke:3px #000;
+  paint-order:stroke fill;
+  text-shadow:none;
+  pointer-events:none;
+}
+.modal-head .sub{
+  position:absolute;
+  left:0;
+  /* 跟随关闭按钮定位，始终与其保持 12px 间距 */
+  right:calc(var(--close-right) + 66.9px);
+  top:2px;
+  margin:0;
+  text-align:center;
+  font-size:18px;
+  line-height:1.4;
+  letter-spacing:1px;
+  color:#5c4a33;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+/* 公用关闭按钮：dialog-close.png 按原图等比缩小 10%（54.9×53.1），固定弹框右上角，所有二级弹框共用同一坐标 */
+.modal-close{
+  position:absolute;
+  top:var(--close-top);
+  right:var(--close-right);
+  z-index:3;
+  width:54.9px;
+  height:53.1px;
+  padding:0;
+  border:0;
+  border-radius:0;
+  background:url("../assets/ui/public/dialog-close.png") center / 100% 100% no-repeat;
+  font-size:0;
+  line-height:0;
+  color:transparent;
+  cursor:pointer;
+  -webkit-appearance:none;
+  appearance:none;
+  -webkit-tap-highlight-color:transparent;
+  transition:filter .15s, transform .08s;
+}
+.modal-close:hover{filter:brightness(1.12);}
+.modal-close:active{transform:scale(.92);filter:brightness(.86);}
+.modal-body{padding:2px 26px 18px;overflow:auto;flex:1;min-height:0;}
+.modal-foot{
+  position:relative;
+  padding:14px 26px 18px;
+  border-top:1px solid rgba(90,60,30,.18);
+  display:flex;justify-content:flex-end;gap:12px;
+  background:none;
+  flex:0 0 auto;
+}
+.confirm-text{
+  font-size:22px;color:#4a3a28;line-height:1.8;
+  text-align:center;padding:10px 6px 16px;letter-spacing:.5px;
+}
+.confirm-actions{display:flex;gap:12px;width:100%;}
+.confirm-actions .btn{flex:1;}
+.settle-btn{min-width:180px;}
+.compare-note{font-size:17px;color:#7b6850;margin-top:4px;}
+.detail-empty-glyph{
+  width:44px;height:44px;
+  margin:0 auto 12px;
+  display:flex;align-items:center;justify-content:center;
+  border:1px dashed #a98f66;border-radius:50%;
+  color:#7b6850;font-size:18px;font-weight:700;
+}
+
+/* ---------- 分组块 ---------- */
+.sheet{
+  border:1px solid #3a3428;
+  border-radius:2px;
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(201,162,95,.05), transparent 52%),
+    linear-gradient(180deg,rgba(255,255,255,.022),rgba(0,0,0,.18));
+  box-shadow:
+    inset 0 1px 0 rgba(239,217,168,.06),
+    inset 0 -2px 0 rgba(0,0,0,.35);
+  padding:14px 16px;
+}
+
+/* ---------- 物品 ---------- */
+.item-cell{
+  position:relative;
+  width:60px;height:60px;
+  border:1px solid #3f382a;
+  border-radius:2px;
+  background:linear-gradient(160deg,#1c2027,#0d1014);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.04),
+    inset 0 -2px 0 rgba(0,0,0,.4);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  transition:transform .1s, box-shadow .12s, border-color .12s;
+}
+.item-cell:hover{
+  transform:translateY(-1px);
+  box-shadow:0 8px 18px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.06), inset 0 -2px 0 rgba(0,0,0,.4);
+  border-color:#7a6642;
+}
+.item-cell .glyph{
+  font-size:24px;
+  font-weight:700;
+  color:#c6c0b2;
+  text-shadow:0 1px 3px #000;
+}
+.item-cell .lvl{
+  position:absolute;right:3px;bottom:2px;
+  font-size:10px;color:#b1aa9b;
+  background:rgba(0,0,0,.55);
+  padding:0 3px;border-radius:2px;
+  line-height:1.4;
+}
+.item-cell .equipped-mark{
+  position:absolute;left:4px;top:3px;
+  font-size:10px;color:var(--gold-2);
+}
+.item-cell.r-normal{border-color:#5f5c54;}
+.item-cell.r-magic{border-color:#4370a8;background:linear-gradient(160deg,#1b2433,#10141c);box-shadow:inset 0 0 16px rgba(109,155,223,.16);}
+.item-cell.r-rare{border-color:#b8932f;background:linear-gradient(160deg,#2b2516,#14120c);box-shadow:inset 0 0 16px rgba(224,184,79,.18);}
+.item-cell.r-set{border-color:#3f7d3a;background:linear-gradient(160deg,#16240f,#0c130a);box-shadow:inset 0 0 16px rgba(95,174,90,.18);}
+.item-cell.r-legend{border-color:#b86426;background:linear-gradient(160deg,#301e12,#150e0a);box-shadow:inset 0 0 18px rgba(232,133,60,.22);}
+.item-cell.empty{
+  border-style:dashed;
+  border-color:#33353c;
+  background:rgba(255,255,255,.012);
+  cursor:default;
+}
+.item-cell.empty .glyph{color:#6a675e;font-size:12px;font-weight:400;}
+.item-cell.empty:hover{transform:none;box-shadow:none;border-color:#33353c;}
+.item-cell.selected{
+  border-color:var(--gold-2);
+  box-shadow:
+    0 0 0 1px rgba(201,162,95,.5),
+    0 0 20px rgba(201,162,95,.25),
+    inset 0 0 16px rgba(201,162,95,.18);
+}
+
+/* 装备面板：角色摘要 + 装备/属性双栏 + 背包 + 详情 */
+.equip-layout{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+/* 角色摘要条 */
+.equip-hero{
+  position:relative;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:13px 18px;
+  border:1px solid var(--sk-line);
+  border-radius:2px;
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(201,162,95,.12), transparent 58%),
+    linear-gradient(180deg,#1b1f26,#0d1014);
+  box-shadow:
+    inset 0 1px 0 var(--sk-hi),
+    inset 0 -2px 0 var(--sk-lo),
+    0 4px 14px rgba(0,0,0,.3);
+}
+.equip-hero::after{
+  content:"";
+  position:absolute;
+  top:6px;right:6px;
+  width:18px;height:18px;
+  border-top:1px solid rgba(201,162,95,.35);
+  border-right:1px solid rgba(201,162,95,.35);
+  pointer-events:none;
+}
+.equip-hero-emblem{
+  width:52px;height:52px;
+  flex:0 0 auto;
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;font-weight:700;
+  border:1px solid rgba(201,162,95,.45);
+  background:radial-gradient(circle at 40% 30%, rgba(201,162,95,.22), rgba(8,9,12,.92) 72%);
+  box-shadow:0 0 0 3px rgba(0,0,0,.3), inset 0 0 16px rgba(0,0,0,.65);
+}
+.equip-hero-id{flex:1;min-width:0;}
+.equip-hero-name{
+  font-size:20px;letter-spacing:2px;color:var(--text);font-weight:600;line-height:1.25;
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+}
+.equip-hero-lv{
+  font-size:12px;color:#231a0d;letter-spacing:.5px;
+  background:linear-gradient(180deg,#e3c88e,#bf9b58);
+  border-radius:2px;padding:1px 8px;
+}
+.equip-hero-sub{
+  font-size:11.5px;color:var(--gold-dim);letter-spacing:1.5px;margin-top:4px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.equip-hero-power{text-align:right;line-height:1;flex:0 0 auto;}
+.equip-hero-power span{display:block;font-size:10px;letter-spacing:3px;color:var(--dim);margin-bottom:5px;}
+.equip-hero-power b{
+  font-size:26px;color:var(--gold);font-weight:700;letter-spacing:1px;
+  text-shadow:0 0 16px rgba(201,162,95,.25);
+}
+/* 段落标题：菱形符号 + 右侧信息 */
+.section-label{
+  font-size:12px;color:var(--gold-dim);letter-spacing:2.5px;
+  margin-bottom:12px;display:flex;align-items:baseline;justify-content:space-between;gap:14px;
+}
+.section-label > span:first-child{display:inline-flex;align-items:center;gap:8px;}
+.section-label > span:first-child::before{
+  content:"◆";
+  font-size:7px;color:rgba(201,162,95,.62);line-height:1;
+}
+.section-label .meta{font-size:12px;color:var(--text-2);letter-spacing:.5px;}
+.section-label .meta b{color:var(--gold-2);font-weight:600;}
+/* 装备 / 属性双栏 */
+.equip-top{
+  display:grid;
+  grid-template-columns:minmax(0,1.22fr) minmax(0,.92fr);
+  gap:12px;
+  align-items:stretch;
+}
+.equip-doll .equip-slots{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:10px;
+}
+/* 主体装备与饰物之间的分隔：◆ 两侧渐隐金线 */
+.equip-divider{
+  display:flex;align-items:center;gap:10px;
+  margin:12px 0 10px;
+  font-size:10px;letter-spacing:3px;color:rgba(201,162,95,.62);
+}
+.equip-divider::before,.equip-divider::after{
+  content:"";flex:1;height:1px;
+}
+.equip-divider::before{background:linear-gradient(90deg,transparent,rgba(201,162,95,.28));}
+.equip-divider::after{background:linear-gradient(90deg,rgba(201,162,95,.28),transparent);}
+.equip-doll .equip-trinkets{grid-template-columns:repeat(3,1fr);gap:8px;}
+.equip-doll .equip-trinkets .equip-slot{padding:8px 6px;gap:5px;align-items:center;}
+.equip-doll .equip-trinkets .slot-label{text-align:center;font-size:9.5px;letter-spacing:1px;}
+.equip-doll .equip-trinkets .slot-cell,
+.equip-doll .equip-trinkets .slot-cell .item-cell{width:44px;height:44px;}
+.equip-doll .equip-trinkets .slot-name{font-size:9.5px;}
+.equip-slot{
+  display:flex;flex-direction:column;align-items:flex-start;gap:6px;
+  padding:9px 10px 10px;
+  border:1px solid #3a3428;
+  border-radius:2px;
+  background:linear-gradient(180deg,rgba(255,255,255,.025),rgba(0,0,0,.22));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04), inset 0 -2px 0 rgba(0,0,0,.38);
+  min-width:0;
+}
+.equip-slot .slot-label{font-size:10.5px;color:var(--gold-dim);width:100%;letter-spacing:2px;}
+.equip-slot .slot-cell{width:56px;height:56px;align-self:center;flex:0 0 auto;}
+.equip-slot .slot-cell .item-cell{width:56px;height:56px;}
+.slot-name{
+  font-size:11px;color:var(--text-2);width:100%;text-align:center;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.equip-stats{display:flex;flex-direction:column;}
+.equip-stats .stat-list{
+  grid-template-columns:1fr;
+  gap:0;
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-around;
+}
+.equip-stats .stat-list li{
+  padding:7px 0;
+  border-bottom:1px solid rgba(201,162,95,.08);
+}
+.equip-stats .stat-list li:last-child{border-bottom:0;padding-bottom:0;}
+/* 背包容量 */
+.equip-bag .section-label{margin-bottom:8px;}
+.bag-cap{
+  height:3px;
+  background:rgba(255,255,255,.06);
+  border-radius:2px;
+  overflow:hidden;
+  margin-bottom:10px;
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.5);
+}
+.bag-cap i{
+  display:block;height:100%;
+  background:linear-gradient(90deg,#8a7448,#e3c88e);
+  transition:width .2s;
+}
+.stat-list{
+  list-style:none;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:9px 30px;
+}
+.stat-list li{
+  display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+  font-size:12.5px;color:var(--text-2);
+  padding-bottom:5px;
+  border-bottom:1px dashed rgba(255,255,255,.055);
+}
+.stat-list li b{color:#f2ecdf;font-weight:600;font-size:14.5px;white-space:nowrap;}
+.stat-list li b em{
+  font-style:normal;font-size:11.5px;color:var(--muted);font-weight:400;margin-left:4px;
+}
+.stat-list li b.gold{color:var(--gold);}
+.stat-list.compact{gap:7px 30px;}
+.bag-grid{
+  display:grid;
+  grid-template-columns:repeat(6,1fr);
+  gap:8px;
+  align-content:start;
+}
+.bag-grid .item-cell{
+  width:100%;
+  height:auto;
+  aspect-ratio:1;
+  align-self:start;
+}
+.detail-box{
+  border:1px solid #3a3428;
+  border-radius:2px;
+  padding:16px 18px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(201,162,95,.06), transparent 58%),
+    linear-gradient(180deg,rgba(255,255,255,.02),rgba(0,0,0,.16));
+  box-shadow:inset 0 1px 0 rgba(239,217,168,.06), inset 0 -2px 0 rgba(0,0,0,.35);
+  min-height:150px;
+}
+.detail-empty{color:var(--dim);font-size:13px;line-height:2;padding:24px 0;text-align:center;}
+.item-name{font-size:18px;font-weight:600;letter-spacing:1px;}
+.item-name.r-normal{color:var(--rar-normal);}
+.item-name.r-magic{color:var(--rar-magic);}
+.item-name.r-rare{color:var(--rar-rare);}
+.item-name.r-set{color:var(--rar-set);}
+.item-name.r-legend{color:var(--rar-legend);}
+.item-type{font-size:12.5px;color:var(--muted);margin:4px 0 12px;letter-spacing:.5px;}
+.item-stat{
+  font-size:13px;color:#aab6c6;line-height:1.95;
+  display:flex;justify-content:space-between;gap:20px;
+}
+.item-stat span:last-child{color:#e6eef8;font-weight:600;}
+.compare{
+  margin-top:12px;padding-top:10px;border-top:1px dashed #2c2e34;
+  font-size:12.5px;
+}
+.compare .up{color:var(--ok);}
+.compare .down{color:var(--danger);}
+.compare .same{color:var(--muted);}
+.rarity-tag{
+  display:inline-block;font-size:10.5px;padding:1px 6px;border-radius:2px;
+  border:1px solid currentColor;margin-left:8px;vertical-align:2px;letter-spacing:1px;
+}
+.detail-actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;justify-content:flex-end;}
+
+/* ---------- 技能 ---------- */
+.skill-list{display:flex;flex-direction:column;gap:12px;}
+.skill-row{
+  display:grid;
+  grid-template-columns:60px 1fr auto;
+  gap:16px;
+  align-items:center;
+  padding:16px;
+  border:1px solid #2d3038;
+  border-radius:5px;
+  background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,0));
+}
+.skill-icon{
+  width:60px;height:60px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;font-weight:700;
+  border:1px solid #3d4048;border-radius:5px;
+  background:linear-gradient(160deg,#1e2128,#121419);
+  color:#cfc7b4;
+}
+.skill-icon.basic{color:#c3d3ea;}
+.skill-name{font-size:16px;color:var(--text);letter-spacing:1px;display:flex;align-items:center;flex-wrap:wrap;gap:8px;}
+.skill-name .lv{
+  font-size:11.5px;color:var(--gold-2);margin-left:0;letter-spacing:.5px;
+  background:rgba(201,162,95,.1);
+  border:1px solid rgba(201,162,95,.28);
+  padding:1px 8px;border-radius:20px;
+}
+.skill-name .key-tip{font-size:11.5px;color:var(--dim);letter-spacing:1px;}
+.skill-desc{font-size:13px;color:#c4bdae;margin-top:7px;line-height:1.75;}
+.skill-desc em{color:#eadcba;font-style:normal;}
+.skill-next{font-size:12px;color:var(--dim);margin-top:5px;}
+.skill-plus{display:flex;flex-direction:column;align-items:center;gap:6px;}
+.skill-plus .btn{width:74px;height:38px;font-size:15px;border-width:12px 18px;padding:0;}
+.skill-plus .cost{font-size:11px;color:#8f897c;}
+.point-badge{
+  display:inline-block;font-size:12.5px;color:#1d170c;background:var(--gold);
+  padding:1px 9px;border-radius:10px;margin-left:6px;font-weight:700;
+}
+.modal-body .note{
+  font-size:12px;color:var(--dim);margin-top:16px;line-height:1.9;
+}
+
+/* ---------- 结算 ---------- */
+.result-banner{
+  text-align:center;
+  padding:10px 0 20px;
+}
+.result-banner h2{
+  font-size:34px;letter-spacing:12px;color:var(--gold);font-weight:700;
+  text-shadow:0 0 26px rgba(201,162,95,.25);
+}
+.result-banner.fail h2{color:var(--danger);text-shadow:0 0 26px rgba(208,101,93,.2);}
+.result-banner p{font-size:12.5px;color:var(--muted);margin-top:8px;letter-spacing:2px;}
+.result-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;
+}
+.result-cell{
+  border:1px solid #2d3038;border-radius:5px;padding:14px 14px;
+  background:rgba(255,255,255,.016);
+}
+.result-cell .k{font-size:11.5px;color:var(--muted);letter-spacing:1px;}
+.result-cell .v{font-size:21px;color:var(--text);font-weight:600;margin-top:3px;line-height:1.2;}
+.result-cell .v.gold{color:var(--gold-2);}
+.result-cell .v.ok{color:var(--ok);}
+.loot-area{
+  border:1px solid #2d3038;border-radius:5px;padding:16px 18px;
+  background:rgba(255,255,255,.012);
+  min-height:96px;
+}
+.loot-title{font-size:12px;color:var(--gold-dim);letter-spacing:2px;margin-bottom:14px;display:flex;justify-content:space-between;}
+.loot-title span:last-child{color:var(--dim);letter-spacing:.5px;}
+.loot-grid{display:flex;flex-wrap:wrap;gap:10px;}
+.loot-empty{font-size:12.5px;color:var(--dim);padding:8px 0;}
+.loot-cell{
+  width:86px;height:92px;border-radius:4px;
+  border:0;background:none;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+  font-size:22px;font-weight:700;color:#c6c0b2;
+  position:relative;
+  padding:0 8px;
+}
+/* 公用道具框铺满格面，文字叠在上层 */
+.loot-frame{
+  position:absolute;inset:0;width:100%;height:100%;
+  pointer-events:none;border-radius:4px;
+}
+.loot-cell > :not(.loot-frame){position:relative;z-index:1;}
+.loot-cell .loot-name{
+  font-size:11.5px;font-weight:400;color:var(--text-2);
+  max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  text-shadow:0 1px 2px rgba(0,0,0,.85);
+}
+.loot-cell.r-magic{color:#a8c6f0;}
+.loot-cell.r-rare{color:#f0d27a;}
+.loot-cell.r-set{color:#a8e0a0;}
+.loot-cell.r-legend{color:#f5b07a;}
+.loot-cell .qty{
+  position:absolute;right:7px;top:5px;font-size:10px;color:var(--muted);
+  text-shadow:0 1px 2px rgba(0,0,0,.85);
+}
+.levelup-note{
+  font-size:12.5px;color:var(--gold-2);margin-top:6px;letter-spacing:.5px;
+}
+.skillup-note{font-size:12.5px;color:#a9c6ec;margin-top:6px;letter-spacing:.5px;}
+
+/* ---------- 提示：菜单位于底部安全区，战斗中右上角，弹窗时置顶 ---------- */
+.toast-wrap{
+  position:absolute;
+  left:50%;
+  bottom:30px;
+  transform:translateX(-50%);
+  width:min(440px, calc(100% - 48px));
+  display:flex;flex-direction:column;gap:8px;
+  z-index:var(--z-toast);
+  pointer-events:none;
+  align-items:stretch;
+}
+/* 打开弹窗时移到画面最上方，避免遮挡弹窗标题与关闭按钮 */
+.toast-wrap.over-modal{top:24px;bottom:auto;}
+/* 主城：提示居中展示，避免与底部图标、场景角色挤在一角 */
+#ui:has(.town-screen) + .toast-wrap:not(.over-modal){
+  top:50%;bottom:auto;
+  transform:translate(-50%,-50%);
+}
+/* 战斗中放到右下角技能栏上方，避开顶部进度 / 小地图 / 首领血条 */
+.toast-wrap.in-battle{
+  top:auto;bottom:320px;
+  left:auto;right:22px;
+  transform:none;
+  width:360px;
+}
+.toast{
+  font-size:13px;
+  line-height:1.5;
+  color:var(--text);
+  background:rgba(12,14,18,.95);
+  border:1px solid #3b3f47;
+  border-left:3px solid var(--gold-dim);
+  padding:10px 14px;
+  border-radius:3px;
+  letter-spacing:.5px;
+  box-shadow:0 10px 30px rgba(0,0,0,.6);
+  animation:toastIn .2s ease-out;
+  word-break:break-word;
+}
+.toast.gold{border-left-color:var(--gold);color:var(--gold-2);}
+.toast.blue{border-left-color:var(--blue);color:#b3ccef;}
+.toast.danger{border-left-color:var(--danger);color:#f0aca5;}
+.toast.fade{opacity:0;transition:opacity .35s, transform .35s;transform:translateX(12px);}
+@keyframes toastIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+
+
+/* ============ 技能 / 天赋 页签 ============ */
+.tab-bar{display:flex;gap:8px;margin-bottom:16px;}
+.tab-btn{
+  height:38px;padding:0 24px;border:1px solid var(--line-mid);border-radius:8px;
+  background:rgba(255,255,255,.02);color:var(--muted);font-family:var(--font);
+  font-size:14px;letter-spacing:2px;cursor:pointer;
+  transition:color .15s,border-color .15s,background .15s;
+}
+.tab-btn:hover{color:var(--text);border-color:var(--gold-dim);}
+.tab-btn.sel{color:#1d170c;background:var(--gold);border-color:var(--gold);font-weight:600;}
+.tab-content{min-height:320px;}
+
+/* ============ 秘境副本：整屏关卡选择（按 PSD 切图还原） ============ */
+.secret-screen{
+  position:absolute;inset:0;z-index:var(--z-modal);overflow:hidden;
+  /* #ui 默认 pointer-events:none，整屏层必须单独开启，否则页签/关卡/按钮全部点不到 */
+  pointer-events:auto;
+  /* 中段纯色取自 bg.png，上下美术由伪元素按效果图锚点拼接 */
+  background:#381c18;
+  animation:secret-in .18s ease-out;
+}
+@keyframes secret-in{from{opacity:0}to{opacity:1}}
+/* 顶部传送门 + 红色标题带：bg.png 整体上移 69px，让标题带落在 338-391，与效果图一致。
+   原图 0-69px 为纯黑，裁切无可见损失；411 以下本身也是纯色，接缝不可见。 */
+.secret-screen::before{
+  content:"";position:absolute;left:0;top:0;width:100%;height:411px;z-index:0;
+  background:url("../assets/ui/secret/bg.png") center -69px/100% auto no-repeat;
+  pointer-events:none;
+}
+/* 底部石带：bg.png 下移 37px，石带落在 1264-1275，按钮上沿压在石带上，与效果图一致 */
+.secret-screen::after{
+  content:"";position:absolute;left:0;bottom:0;width:100%;height:195px;z-index:0;
+  background:url("../assets/ui/secret/bg.png") center -1208px/100% auto no-repeat;
+  pointer-events:none;
+}
+
+/* 公用关闭按钮：沿用二级弹框的 61×59 公用切图，按 PSD 固定在右上 */
+.secret-close{
+  position:absolute;top:138px;right:29px;z-index:4;
+  width:61px;height:59px;border:0;padding:0;
+  background:url("../assets/ui/public/dialog-close.png") center/100% 100% no-repeat;
+  font-size:0;color:transparent;cursor:pointer;
+}
+.secret-close:active{transform:scale(.92);filter:brightness(.86);}
+
+/* 章节页签：底边对齐标题带，选中页签更高并染成绯红 */
+.secret-tabs{
+  position:absolute;left:0;right:0;top:213px;height:115px;
+  display:flex;align-items:flex-end;justify-content:center;gap:46px;
+  z-index:2;
+}
+.secret-tab{
+  position:relative;width:97px;height:95px;padding:8px 6px 12px;
+  border:0;display:flex;align-items:center;justify-content:center;
+  background:url("../assets/ui/secret/tab.png") center bottom/100% 100% no-repeat;
+  font-family:var(--font);color:#efe3d2;cursor:pointer;
+  transition:transform .08s ease,filter .14s ease;
+}
+.secret-tab b{
+  position:relative;z-index:1;
+  font-size:40px;line-height:1;font-weight:800;letter-spacing:1px;
+  text-shadow:0 2px 4px rgba(0,0,0,.66);
+}
+.secret-tab .st-label{display:none;}
+.secret-tab:hover{filter:brightness(1.1);}
+.secret-tab:active{transform:translateY(1px) scale(.97);}
+.secret-tab.on{
+  height:115px;flex-direction:column;gap:7px;padding-bottom:17px;
+  background-image:url("../assets/ui/secret/tab-on.png");
+}
+.secret-tab.on .st-label{
+  display:block;font-size:26px;line-height:1;font-weight:700;
+  letter-spacing:2px;color:#fff4e6;text-shadow:0 2px 4px rgba(60,0,12,.7);
+}
+/* 未解锁章节：黑色遮罩压暗页签，锁图标压在页签顶部 */
+.secret-tab.locked{cursor:not-allowed;}
+.secret-tab.locked:hover{filter:none;}
+.secret-tab.locked:active{transform:none;}
+.secret-tab.locked b{opacity:.5;}
+.secret-tab .s-mask{
+  position:absolute;inset:0;pointer-events:none;
+  background:url("../assets/ui/secret/tab-mask.png") center/100% 100% no-repeat;
+}
+.secret-tab .s-lock{
+  position:absolute;left:50%;top:-23px;z-index:3;
+  width:44px;height:51px;transform:translateX(-50%);pointer-events:none;
+  background:url("../assets/ui/public/lock.png") center/contain no-repeat;
+  filter:drop-shadow(0 3px 6px rgba(0,0,0,.8));
+}
+
+/* 标题带文字（底图已含裂纹石板） */
+.secret-title{
+  position:absolute;left:0;right:0;top:319px;height:87px;margin:0;z-index:2;
+  display:flex;align-items:center;justify-content:center;
+  font-size:40px;font-weight:800;letter-spacing:12px;text-indent:12px;
+  color:#fff;
+  -webkit-text-stroke:3px #000;paint-order:stroke fill;
+  text-shadow:none;
+  pointer-events:none;
+}
+
+/* 关卡列表：按 PSD 绝对坐标排列，首行紧贴标题带（429），行距 16，不随关卡数量上下浮动 */
+.secret-list{
+  position:absolute;left:82px;top:429px;width:559px;height:836px;
+  padding:12px 12px 8px;box-sizing:border-box;
+  display:flex;flex-direction:column;gap:16px;
+  overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:thin;scrollbar-color:rgba(196,120,74,.55) transparent;
+  z-index:2;
+}
+.secret-list::-webkit-scrollbar{width:6px;}
+.secret-list::-webkit-scrollbar-track{background:rgba(0,0,0,.25);border-radius:3px;}
+.secret-list::-webkit-scrollbar-thumb{background:rgba(196,120,74,.55);border-radius:3px;}
+.secret-row{
+  position:relative;flex:0 0 92px;width:535px;height:92px;padding:0;border:0;
+  background:url("../assets/ui/secret/row.png") center/100% 100% no-repeat;
+  font-family:var(--font);text-align:left;cursor:pointer;
+  transition:filter .14s ease,transform .08s ease;
+}
+.secret-row:hover{filter:brightness(1.07);}
+.secret-row:active{transform:scale(.99);}
+.secret-row.sel::before{
+  content:"";position:absolute;left:50%;top:50%;width:555px;height:114px;
+  transform:translate(-50%,-50%);
+  background:url("../assets/ui/secret/row-sel.png") center/100% 100% no-repeat;
+  pointer-events:none;
+}
+.secret-row .s-num,
+.secret-row .s-name,
+.secret-row .s-meta{position:absolute;top:50%;transform:translateY(-50%);z-index:1;}
+.secret-row .s-num{
+  left:16px;width:61px;height:61px;display:flex;align-items:center;justify-content:center;
+  background:url("../assets/ui/secret/num.png") center/100% 100% no-repeat;
+  font-size:34px;font-weight:800;line-height:1;color:#ffefd8;
+  text-shadow:0 2px 4px rgba(0,0,0,.7);
+}
+.secret-row .s-name{
+  left:101px;max-width:196px;white-space:nowrap;
+  font-size:32px;font-weight:700;letter-spacing:2px;color:#fff;
+  text-shadow:0 2px 5px rgba(0,0,0,.72);
+}
+.secret-row .s-meta{
+  left:303px;display:flex;flex-direction:column;gap:4px;
+  font-size:24px;line-height:1.25;letter-spacing:1px;font-weight:600;
+  color:#e9a468;font-style:normal;white-space:nowrap;
+  text-shadow:0 1px 3px rgba(0,0,0,.65);
+}
+.secret-row .s-meta em{font-style:normal;}
+.secret-row.locked{cursor:not-allowed;}
+.secret-row.locked:hover{filter:none;}
+/* 未解锁：纯黑半透明遮罩压暗底图，右侧锁图标 */
+.secret-row .s-mask{
+  position:absolute;inset:0;z-index:0;pointer-events:none;
+  background:url("../assets/ui/secret/row-mask.png") center/100% 100% no-repeat;
+}
+.secret-row .s-lock{
+  position:absolute;right:22px;top:50%;z-index:2;
+  width:42px;height:48px;transform:translateY(-50%);pointer-events:none;
+  background:url("../assets/ui/public/lock.png") center/contain no-repeat;
+  filter:drop-shadow(0 2px 5px rgba(0,0,0,.75));
+}
+.secret-row.locked .s-num,
+.secret-row.locked .s-name,
+.secret-row.locked .s-meta{opacity:.55;}
+
+/* 底部进入副本：公用红底按钮，按 PSD 尺寸放宽中间平色区（高度保持 98 不压板） */
+.secret-foot{
+  position:absolute;left:0;right:0;top:1286px;z-index:2;
+  display:flex;justify-content:center;
+}
+.secret-foot .btn{
+  width:253px;min-width:253px;height:98px;padding:0 12px;
+  font-size:30px;letter-spacing:6px;
+}
+.secret-foot .btn.off{filter:grayscale(.55) brightness(.62);}
+
+/* ============ 技能树 ============ */
+.tree-list{display:flex;flex-direction:column;gap:14px;}
+.tree-block{
+  border:1px solid var(--line-soft);border-radius:8px;
+  padding:12px 14px 14px;background:rgba(255,255,255,.012);
+}
+.tree-head{
+  display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+  margin-bottom:11px;padding-bottom:9px;border-bottom:1px dashed rgba(255,255,255,.07);
+}
+.tree-head b{font-size:15px;color:var(--gold-2);letter-spacing:2px;font-weight:600;}
+.tree-head .meta{font-size:11.5px;color:var(--dim);letter-spacing:.5px;}
+.tree-nodes{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;}
+.tree-node{
+  position:relative;display:flex;flex-direction:column;gap:4px;width:100%;
+  padding:10px 10px 9px;border:1px solid var(--line-mid);border-radius:6px;
+  background:linear-gradient(160deg,#1e2128,#121419);
+  color:var(--text-2);font-family:var(--font);text-align:left;cursor:pointer;
+  transition:border-color .15s,background .15s,opacity .15s;
+}
+.tree-node b{font-size:12.5px;font-weight:600;color:var(--text-2);letter-spacing:.5px;}
+.tree-node p{font-size:11px;color:var(--dim);line-height:1.55;min-height:34px;}
+.tree-node em{font-style:normal;font-size:10.5px;color:#b1655f;line-height:1.4;}
+.tn-idx{
+  position:absolute;right:7px;top:6px;
+  font-size:10px;font-weight:700;color:var(--muted);
+  border:1px solid var(--line-mid);border-radius:3px;padding:0 4px;
+}
+.tree-node.can{border-color:var(--gold-dim);box-shadow:0 0 0 0 rgba(201,162,95,0);}
+.tree-node.can b{color:var(--gold-2);}
+.tree-node.can:hover{transform:translateY(-1px);border-color:var(--gold);}
+.tree-node.on{
+  border-color:var(--gold);
+  background:linear-gradient(160deg,#2c2517,#17130b);
+  box-shadow:inset 0 0 12px rgba(210,171,104,.14);
+}
+.tree-node.on b{color:var(--gold-2);}
+.tree-node.on .tn-idx{color:#1d170c;background:var(--gold);border-color:var(--gold-2);}
+.tree-node.locked{opacity:.56;cursor:not-allowed;}
+.tree-node[disabled]{cursor:not-allowed;}
+.tree-node.on[disabled]{cursor:default;opacity:1;}
+.tree-head .meta .btn{margin-left:10px;}
+
+/* ============================================================
+   公用二级弹框 · 纸面主题
+   ------------------------------------------------------------
+   弹框框体统一使用 assets/ui/public/dialog-frame.png，
+   内部文字统一为深墨色、卡片统一为浅纸色，
+   避免原来深色卡片 + 浅色文字在纸面上看不清。
+   ============================================================ */
+.modal{
+  --text:#33291d;
+  --text-2:#4d3e2c;
+  --muted:#6a5840;
+  --dim:#7b6850;
+  --faint:#8a775e;
+  --gold:#7d4c12;
+  --gold-2:#8f5a17;
+  --gold-dim:#96713c;
+  --danger:#a33a2c;
+  --danger-2:#8f2f22;
+  --ok:#4d7938;
+  --blue:#3c6396;
+  --line:#c2a97f;
+  --line-mid:#cbb58f;
+  --line-soft:#d3bf9a;
+  --rar-normal:#5f574b;
+  --rar-magic:#2f5f9e;
+  --rar-rare:#7a3ba8;
+  --rar-set:#2f7a3a;
+  --rar-legend:#a84e12;
+  --sk-line:#c2a97f;
+  --sk-line-soft:rgba(90,60,30,.18);
+  --sk-hi:rgba(255,250,238,.6);
+  --sk-lo:rgba(90,60,30,.14);
+  --sk-ink-0:#f2e7d2;
+  --sk-ink-1:#ecdfc7;
+  --sk-ink-2:#e4d5b9;
+}
+.modal-body{line-height:1.6;}
+
+/* 覆盖 adapt.css 中旧的弹窗内边距与标题字号（否则缎带标题会被缩小） */
+.modal .modal-head{height:36px;padding:0;}
+.modal .modal-head h3{font-size:30px;letter-spacing:2px;}
+.modal .modal-head .sub{font-size:20px;}
+.modal .modal-body{padding:2px 26px 18px;}
+.modal .modal-foot{padding:14px 26px 18px;}
+.modal .confirm-text{font-size:24px;line-height:1.8;}
+
+/* ---------- 浅纸卡片 ---------- */
+.modal .sheet,
+.modal .detail-box,
+.modal .skill-row,
+.modal .result-cell,
+.modal .loot-area,
+.modal .tree-block,
+.modal .equip-hero,
+.modal .equip-slot{
+  background:linear-gradient(180deg,rgba(255,250,238,.56),rgba(214,194,158,.34));
+  border-color:#c2a97f;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.45), inset 0 -1px 0 rgba(90,60,30,.10);
+}
+.modal .equip-slot{padding:10px;}
+
+/* ---------- 深色凹槽：物品格 / 技能图标 / 阶级徽章保持深底浅字 ---------- */
+.modal .item-cell .equipped-mark{color:#f0d9a8;}
+.modal .item-cell.selected{
+  border-color:#f0d9a8;
+  box-shadow:0 0 0 1px rgba(240,217,168,.65), 0 0 18px rgba(240,217,168,.35), inset 0 0 14px rgba(240,217,168,.18);
+}
+.modal .loot-cell .loot-name{color:#ded4c0;}
+.modal .loot-cell .qty{color:#c8bfae;}
+
+/* ---------- 文字对比度修正 ---------- */
+.modal .stat-list li b{color:#2e2418;}
+.modal .stat-list li b em{color:#6a5840;}
+.modal .item-stat{color:#4a3c2c;}
+.modal .item-stat span:last-child{color:#2e2418;}
+.modal .skill-desc{color:#463728;}
+.modal .skill-desc em{color:#8f5a17;}
+.modal .skillup-note{color:#3c6396;}
+/* 点数徽章：数字必须清晰可读（此前被 .meta b 的深色覆盖成「深底深字」） */
+.modal .point-badge{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:36px;height:36px;padding:0 10px;margin:0 2px;
+  font-size:19px;font-weight:700;line-height:1;
+  color:#fff8ea;background:#8f5a17;border-radius:18px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18);
+}
+.modal .section-label .meta b.point-badge{color:#fff8ea;font-size:19px;}
+.modal .section-label{color:#8f5a17;}
+.modal .section-label > span:first-child::before{color:#96713c;}
+.modal .section-label .meta{color:#5c4a33;}
+.modal .section-label .meta b{color:#7d4c12;}
+.modal .equip-divider{color:#7d5a2a;font-size:20px;letter-spacing:2px;}
+.modal .equip-hero-lv{font-size:20px;padding:2px 10px;}
+.modal .hero-lv{font-size:20px;padding:2px 9px;}
+.modal .tn-idx{font-size:20px;padding:0 6px;}
+.modal .rarity-tag{font-size:20px;}
+.modal .item-cell.empty .glyph{font-size:20px;}
+.modal .tab-bar{gap:10px;margin-bottom:14px;}
+.modal .tab-btn{height:48px;padding:0 26px;font-size:21px;letter-spacing:1.5px;border-radius:6px;}
+.modal .equip-divider::before{background:linear-gradient(90deg,transparent,rgba(150,113,60,.5));}
+.modal .equip-divider::after{background:linear-gradient(90deg,rgba(150,113,60,.5),transparent);}
+.modal .detail-empty{color:#7b6850;}
+.modal .item-type{color:#6a5840;}
+.modal .compare{border-top-color:#bda57e;}
+.modal .compare .same{color:#7b6850;}
+.modal .bag-cap{background:rgba(90,60,30,.18);box-shadow:inset 0 1px 2px rgba(90,60,30,.2);}
+.modal .bag-cap i{background:linear-gradient(90deg,#a97c2e,#e2c078);}
+.modal .bag-grid{grid-template-columns:repeat(8,1fr);gap:8px;}
+.modal .item-cell .glyph{font-size:26px;}
+.modal .item-cell .lvl{font-size:20px;color:#5c4a33;}
+.modal .item-cell .equipped-mark{font-size:20px;}
+.modal .equip-slot .slot-label{font-size:20px;}
+.modal .equip-slot .slot-name{font-size:20px;}
+.modal .equip-doll .equip-trinkets .slot-label,
+.modal .equip-doll .equip-trinkets .slot-name{font-size:20px;}
+.modal .tree-head{border-bottom-color:rgba(90,60,30,.18);}
+
+/* ---------- 页签 / 分段选择：纸面浅底 + 深褐选中 ---------- */
+.modal .tab-btn{
+  background:rgba(255,250,238,.45);
+  border-color:#c2a97f;
+  color:#5c4a33;
+}
+.modal .tab-btn:hover{color:#7d4c12;border-color:#96713c;}
+.modal .tab-btn.sel{
+  background:#8f5a17;border-color:#6f4510;color:#fff8ea;
+}
+.modal .seg-btn{
+  background:rgba(255,250,238,.45);
+  border-color:#c2a97f;
+  color:#5c4a33;
+}
+.modal .seg-btn:hover{color:#7d4c12;border-color:#96713c;}
+.modal .seg-btn.sel{
+  background:linear-gradient(180deg,#a0681c,#7d4c12);
+  border-color:#6f4510;color:#fff8ea;
+}
+.modal .setting-row{border-bottom-color:rgba(90,60,30,.18);}
+
+/* ---------- 技能树节点：纸面浅卡，不再深底浅字 ---------- */
+.modal .tree-node{
+  background:linear-gradient(180deg,#f8efdd,#e7d6b8);
+  border-color:#c2a97f;
+  color:#4d3e2c;
+}
+.modal .tree-node b{color:#4d3e2c;}
+.modal .tree-node p{color:#6a5840;}
+.modal .tree-node em{color:#a33a2c;}
+.modal .tn-idx{color:#7b6850;border-color:#c2a97f;}
+.modal .tree-node.can b{color:#7d4c12;}
+.modal .tree-node.on{
+  background:linear-gradient(180deg,#f4e2bc,#e6cd9b);
+  border-color:#a97c2e;
+  box-shadow:inset 0 0 12px rgba(169,124,46,.18);
+}
+.modal .tree-node.on b{color:#7d4c12;}
+.modal .tree-node.on .tn-idx{background:#8f5a17;border-color:#6f4510;color:#fff8ea;}
+.modal .tree-node.locked{opacity:.62;}
+
+/* ---------- 技能升级标签 ---------- */
+.modal .skill-name .lv{
+  color:#7d4c12;
+  background:rgba(143,90,23,.12);
+  border-color:rgba(143,90,23,.4);
+}
+
+/* ---------- 字号：按 720 设计宽放大，手机缩放后仍清晰 ---------- */
+.modal .section-label{font-size:20px;letter-spacing:1.5px;margin-bottom:12px;}
+.modal .section-label{font-size:21px;color:#7d5a2a;}
+.modal .section-label .meta{font-size:20px;}
+.modal .stat-list li{font-size:20px;color:#4a3a28;}
+.modal .stat-list li b{font-size:22px;color:#2f2418;}
+.modal .stat-list li b em{font-size:20px;color:#5c4a33;}
+.modal .equip-stats .stat-list{justify-content:flex-start;}
+.modal .equip-stats .stat-list li{padding:9px 0;}
+.modal .item-name{font-size:27px;}
+.modal .item-type{font-size:20px;margin:5px 0 12px;}
+.modal .item-stat{font-size:20px;line-height:1.85;}
+.modal .compare{font-size:20px;}
+.modal .compare-note{font-size:20px;color:#5c4a33;}
+.modal .detail-empty{font-size:20px;line-height:1.9;}
+.modal .detail-actions .btn{min-width:150px;height:98px;padding:0 12px;font-size:36px;}
+.modal .skill-row{grid-template-columns:70px 1fr auto;gap:18px;padding:17px;}
+.modal .skill-icon{width:70px;height:70px;font-size:27px;}
+.modal .skill-name{font-size:24px;}
+.modal .skill-name .lv{font-size:20px;}
+.modal .skill-name .key-tip{font-size:20px;color:#5c4a33;}
+.modal .skill-desc{font-size:20px;line-height:1.72;}
+.modal .skill-next{font-size:20px;letter-spacing:0;color:#5c4a33;}
+.modal .skill-plus .cost{font-size:20px;}
+.modal .skill-plus .btn{width:auto;min-width:238px;height:98px;padding:0 18px;font-size:36px;}
+.modal .modal-body .note{font-size:20px;line-height:1.85;}
+.modal .tree-head b{font-size:21px;}
+.modal .tree-head .meta{font-size:20px;}
+.modal .tree-nodes{grid-template-columns:repeat(2,1fr);gap:10px;}
+.modal .tree-node{padding:12px;}
+.modal .tree-node b{font-size:20px;}
+.modal .tree-node p{font-size:20px;line-height:1.55;min-height:0;}
+.modal .tree-node em{font-size:20px;}
+.modal .result-banner h2{font-size:42px;letter-spacing:10px;}
+.modal .result-banner p{font-size:20px;}
+.modal .result-cell{padding:16px;}
+.modal .result-cell .k{font-size:20px;color:#5c4a33;}
+.modal .result-cell .v{font-size:28px;}
+.modal .loot-title{font-size:20px;}
+.modal .loot-empty{font-size:20px;}
+.modal .levelup-note,.modal .skillup-note{font-size:20px;}
+.modal .loot-cell{width:100px;height:110px;font-size:26px;}
+.modal .loot-cell .loot-name{font-size:20px;}
+.modal .setting-title{font-size:21px;}
+.modal .setting-desc{font-size:20px;line-height:1.7;color:#5c4a33;}
+.modal .seg-btn{height:52px;font-size:20px;padding:0 22px;}
+.modal .settings-note{font-size:20px;line-height:1.9;color:#5c4a33;}
+.modal .setting-range .range-val{min-width:64px;font-size:20px;color:#7d4c12;}
+.modal .modal-body .note{font-size:20px;}
+.modal .pick-glyph{font-size:36px;}
+.modal .pick-name{font-size:20px;}
+.modal .pick-title{font-size:20px;color:#4a3a28;}
+.modal .cls-desc{font-size:20px;color:#3f3223;}
+.modal .cls-base{font-size:20px;color:#4a3a28;}
+.modal input[type=text],
+.modal input[type=password]{
+  width:100%;
+  height:72px;
+  padding:0 22px 2px;
+  border-style:solid;
+  border-width:6px;
+  border-image:url("../assets/ui/public/input-field.png") 6 6 8 6 fill stretch;
+  border-radius:0;
+  background:none;
+  color:#fff;
+  font-size:24px;
+  font-weight:700;
+  line-height:1;
+  letter-spacing:1px;
+  box-shadow:none;
+  outline:none;
+  text-shadow:0 1px 1px rgba(0,0,0,.4);
+}
+.modal input::placeholder{color:#fff;opacity:1;font-weight:700;}
+.modal .ci-sub{font-size:20px;}
+.modal .ci-desc{font-size:20px;line-height:1.7;color:#3f3223;}
+.modal .hero-xp-meta{font-size:20px;}
+.modal .hero-xp-bar{height:14px;}
+.modal .ci-power span{font-size:20px;color:#5c4a33;}
+.modal .ci-power b{font-size:30px;}
+.modal .equip-hero-name{font-size:24px;}
+.modal .equip-hero-sub{font-size:20px;color:#5c4a33;}
+.modal .equip-hero-power span{font-size:20px;color:#5c4a33;}
+.modal .equip-hero-power b{font-size:30px;}
+.modal .hero-mini-stats span{font-size:20px;color:#5c4a33;}
+.modal .hero-mini-stats b{font-size:20px;color:#2f2418;}
+
+/* ---------- 弹框内按钮：统一公用九宫按钮 ----------
+   高度固定 98，装饰角按资源原像素 1:1 渲染；宽度只压缩中间平色区，
+   因此行内次要操作可以使用更窄的按钮，既不放大也不变形。 */
+.modal .btn{font-size:36px;letter-spacing:1px;}
+.modal .btn-sm{font-size:32px;padding:0 20px;letter-spacing:.5px;}
+.modal .confirm-actions .btn{height:98px;font-size:36px;}
+.modal .settle-btn{min-width:238px;height:98px;font-size:36px;}
+
+/* 技能行：图标 | 说明 | 紧凑升级按钮，按钮不再独占一整行 */
+.modal .skill-row{
+  grid-template-columns:70px minmax(0,1fr) 158px;
+  grid-template-areas:"icon main plus";
+  align-items:center;
+  gap:10px 14px;
+  padding:14px 16px;
+}
+.modal .skill-icon{grid-area:icon;}
+.modal .skill-row > div:nth-child(2){grid-area:main;}
+.modal .skill-plus{
+  grid-area:plus;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:8px;
+}
+.modal .skill-plus .btn{min-width:150px;width:auto;height:98px;padding:0 10px;font-size:36px;}
+.modal .skill-plus .cost{order:0;margin:0;font-size:16px;color:#6a5840;}
+
+/* 标题行右侧的次要按钮（重置等）：紧凑宽度，与点数徽章保持同一行 */
+.modal .section-label{flex-wrap:wrap;row-gap:8px;}
+.modal .section-label .meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;}
+.modal .section-label .meta .btn{min-width:150px;height:98px;padding:0 12px;font-size:36px;}
+
+.modal .section-label > span:first-child{white-space:nowrap;}
+.modal .section-label{align-items:center;}
+
+/* 纸面次级文字：统一深褐，清除深色主题遗留的浅灰，保证纸底上可读 */
+.modal .skill-name .key-tip,
+.modal .skill-next,
+.modal .skill-plus .cost,
+.modal .modal-body .note,
+.modal .settings-note,
+.modal .compare-note,
+.modal .detail-empty{color:#6a5840;}
+.modal .skill-name .lv{background:rgba(255,246,225,.9);border-color:#b8934f;padding:2px 9px;}
+
+/* ---------- 弹框内按钮：统一按压反馈 ---------- */
+.modal .btn:active,
+.pause-card .btn:active{
+  transform:translateY(2px) scale(.92);
+  filter:brightness(.9);
+}
+.modal .tab-btn,
+.modal .seg-btn{transition:transform .06s ease, filter .14s ease, color .15s, border-color .15s, background .15s;}
+.modal .tab-btn:active,
+.modal .seg-btn:active{
+  transform:translateY(1px) scale(.92);
+  filter:brightness(.92);
+}
+.modal .modal-close:active,
+.pause-card .modal-close:active{transform:scale(.92);filter:brightness(.86);}
+
+/* ---------- 弹框内滚动条：纸面配色 ---------- */
+.modal-body::-webkit-scrollbar-track{background:rgba(120,90,50,.12);}
+.modal-body::-webkit-scrollbar-thumb{background:#a98f66;border-color:#d8c6a6;}
+.modal-body::-webkit-scrollbar-thumb:hover{background:#8f7550;}
+
+
+/* ================= 装备界面（PSD 810×1680 原生尺寸铺满屏幕） ================= */
+.eq-screen{
+  position:absolute;inset:0;z-index:56;overflow:hidden;
+  background:#b0a086;pointer-events:auto;
+  -webkit-tap-highlight-color:transparent;
+}
+.eq-canvas{
+  position:absolute;left:0;top:0;width:810px;height:1680px;
+  transform-origin:left top;will-change:transform;
+}
+.eq-bg{
+  position:absolute;left:0;top:0;width:810px;height:365px;
+  background:url("../assets/ui/equip/bg.png") 0 0/100% 100% no-repeat;
+}
+.eq-title{
+  position:absolute;left:0;right:0;top:150px;height:48px;line-height:48px;
+  text-align:center;font-size:38px;font-weight:800;letter-spacing:4px;color:#fff;
+  -webkit-text-stroke:3px #000;paint-order:stroke fill;
+  text-shadow:none;
+}
+.eq-close{
+  position:absolute;left:auto;right:calc(20px + var(--eq-crop,0px));top:141px;width:55px;height:53px;padding:0;border:0;
+  background:url("../assets/ui/public/dialog-close.png") center/100% 100% no-repeat;
+  cursor:pointer;
+}
+.eq-close:active{transform:scale(.92);filter:brightness(.86);}
+
+/* ---------- 头像区 ---------- */
+.eq-hero{
+  position:absolute;left:63px;top:238px;width:683px;height:153px;
+  border-radius:13px;background:#ded4bd;
+}
+.eq-hero-frame{
+  position:absolute;left:9px;top:1px;width:148px;height:155px;
+  background:url("../assets/ui/equip/avatar-frame.png") 0 0/100% 100% no-repeat;
+}
+.eq-portrait{
+  position:absolute;left:28px;top:26px;width:103px;height:103px;border-radius:50%;
+  overflow:hidden;background:#241a12;
+}
+.eq-portrait img{display:block;width:100%;height:100%;object-fit:cover;}
+.eq-hero-name{
+  position:absolute;left:163px;top:18px;font-size:32px;font-weight:800;
+  color:#2f261c;letter-spacing:1px;
+}
+.eq-hero-name .lv{font-size:26px;margin-left:10px;color:#4a3b28;}
+.eq-hero-sub{position:absolute;left:163px;top:88px;font-size:24px;color:#b8781f;}
+.eq-power{position:absolute;right:32px;top:26px;text-align:right;}
+.eq-power span{display:block;font-size:22px;letter-spacing:2px;color:#5a482f;}
+.eq-power b{display:block;margin-top:14px;font-size:36px;line-height:1;color:#a8741a;
+  text-shadow:0 1px 0 #f2e3c4;}
+
+/* ---------- 装备栏 ---------- */
+.eq-page{position:absolute;}
+.eq-equip-page{
+  left:65px;top:400px;width:438px;height:601px;
+  background:url("../assets/ui/equip/equip-page.png") 0 0/100% 100% no-repeat;
+}
+.eq-page-title{
+  position:absolute;left:0;right:0;top:14px;height:32px;line-height:32px;text-align:center;
+  font-size:24px;font-weight:700;letter-spacing:6px;color:#efdfb8;
+  text-shadow:0 1px 2px #4a2a10;
+}
+
+/* ---------- 通用道具格 ---------- */
+.eq-cell{
+  width:93px;height:92px;padding:0;border:0;cursor:pointer;
+  background:url("../assets/ui/equip/cell.png") 0 0/100% 100% no-repeat;
+}
+.eq-cell:active{transform:scale(.96);}
+.eq-cell.empty{pointer-events:none;}
+.eq-cell-label{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:24px;letter-spacing:1px;color:#654a30;
+}
+.eq-frame{position:absolute;left:-3px;top:-2px;width:98px;height:96px;pointer-events:none;}
+.eq-glyph{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:34px;font-weight:700;color:#f2e6cb;text-shadow:0 2px 4px rgba(0,0,0,.8);
+}
+.eq-ilvl{
+  position:absolute;right:5px;bottom:3px;font-size:20px;color:#f0e2c8;
+  text-shadow:0 1px 2px #000;
+}
+.eq-ancient{
+  position:absolute;left:3px;top:2px;font-size:15px;color:#ffe0a0;
+  text-shadow:0 0 5px #e88a2a;
+}
+.eq-slot{position:absolute;}
+
+/* ---------- 角色属性 ---------- */
+.eq-stats{
+  position:absolute;left:511px;top:398px;width:235px;height:603px;
+  border-radius:13px;background:#ded4bd;
+}
+.eq-stats-title{
+  position:absolute;left:0;right:0;top:14px;height:34px;line-height:34px;text-align:center;
+  font-size:26px;font-weight:700;letter-spacing:4px;color:#6b5330;
+}
+.eq-stat-list{
+  position:absolute;left:16px;right:16px;top:68px;margin:0;padding:0;list-style:none;
+}
+.eq-stat-list li{
+  display:flex;align-items:center;justify-content:space-between;height:55px;font-size:22px;
+}
+.eq-stat-list .k{color:#4a3a28;}
+.eq-stat-list .v{color:#2f2418;font-weight:700;}
+.eq-stat-list .v em{
+  font-style:normal;font-weight:400;font-size:20px;margin-left:6px;color:#5c4a33;
+}
+
+/* ---------- 临时装备库 ---------- */
+.eq-bag-page{
+  position:absolute;left:65px;top:1020px;width:678px;height:519px;
+  background:url("../assets/ui/equip/bag-page.png") 0 0/100% 100% no-repeat;
+}
+.eq-tabs{
+  position:absolute;left:14px;top:14px;width:368px;height:69px;
+  background:url("../assets/ui/equip/tab-bar.png") 0 0/100% 100% no-repeat;
+}
+.eq-tab-pill{
+  position:absolute;top:0;width:118px;height:69px;transition:left .16s ease;
+  background:url("../assets/ui/equip/tab-on.png") 0 0/100% 100% no-repeat;
+}
+.eq-tab{
+  /* 三个页签按 125 间距排布，宽度收 2px，最后一个正好落在 368 的页签底框内 */
+  position:absolute;top:0;width:118px;height:69px;padding:0;border:0;background:none;
+  font-size:24px;font-weight:700;letter-spacing:2px;color:#6b4a26;cursor:pointer;
+}
+.eq-tab.on{color:#fff4dd;text-shadow:0 1px 2px #7a3610;}
+.eq-btn{
+  position:absolute;top:14px;width:124px;height:69px;padding:0;border:0;cursor:pointer;
+  background:center/100% 100% no-repeat;font-size:24px;font-weight:700;
+  color:#f6e6c6;text-shadow:0 1px 2px rgba(0,0,0,.6);
+}
+.eq-btn:active{transform:scale(.96);filter:brightness(.94);}
+.eq-btn.stash{left:398px;background-image:url("../assets/ui/public/btn-primary-red.png");}
+.eq-btn.dismantle{left:536px;background-image:url("../assets/ui/public/btn-primary-brown.png");}
+.eq-cap{
+  position:absolute;left:0;right:0;top:94px;height:34px;line-height:34px;text-align:center;
+  font-size:20px;color:#7a5a35;
+}
+.eq-cap b{color:#2f2418;}
+.eq-grid-wrap{
+  /* 高度 = 3 整行 + 第 4 行露出半格（46px），提示列表还能上下滑动 */
+  position:absolute;left:36px;top:137px;width:603px;height:382px;
+  overflow-y:auto;overflow-x:hidden;touch-action:pan-y;scrollbar-width:none;
+}
+/* 背包页行距略收，让半格提示正好落在底框内；装备库仍用原来的行距 */
+.eq-bag-page .eq-grid{row-gap:20px;}
+.eq-grid-wrap::-webkit-scrollbar,.eq-stash-grid-wrap::-webkit-scrollbar{display:none;}
+.eq-grid{
+  display:grid;grid-template-columns:repeat(5,93px);column-gap:34px;row-gap:24px;
+  padding-bottom:8px;
+}
+.eq-grid .eq-cell{position:relative;}
+.eq-empty{
+  position:absolute;left:36px;right:36px;top:180px;text-align:center;
+  font-size:24px;color:rgba(240,225,196,.5);pointer-events:none;
+}
+
+/* ---------- 大装备仓库 ---------- */
+.eq-stash-page{
+  position:absolute;left:63px;top:238px;width:683px;height:1367px;
+  border-radius:16px;background:#e3d3b4;
+}
+.eq-stash-title{
+  position:absolute;left:0;right:0;top:22px;height:44px;line-height:44px;text-align:center;
+  font-size:30px;font-weight:800;letter-spacing:6px;color:#7a5a35;
+}
+.eq-stash-count{
+  position:absolute;left:26px;top:44px;font-size:20px;color:#8a6a44;
+}
+.eq-btn.stash-back{
+  left:auto;right:18px;top:16px;width:112px;height:60px;font-size:24px;
+  background-image:url("../assets/ui/public/btn-primary-brown.png");
+}
+.eq-stash-inner{
+  position:absolute;left:14px;right:14px;top:92px;bottom:16px;border-radius:18px;
+  overflow:hidden;background:linear-gradient(#3a2410,#241608);
+}
+.eq-stash-grid-wrap{
+  position:absolute;left:27px;top:24px;right:27px;bottom:18px;
+  overflow-y:auto;touch-action:pan-y;scrollbar-width:none;
+}
+.eq-stash-inner .eq-empty{left:0;right:0;top:46%;}
+
+/* ---------- 装备详情弹框 ---------- */
+.eq-detail-actions{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;}
+.eq-dbtn{
+  min-width:150px;height:66px;padding:0 18px;border:0;cursor:pointer;
+  background:url("../assets/ui/public/btn-primary-brown.png") center/100% 100% no-repeat;
+  font-size:24px;font-weight:700;color:#f6e6c6;text-shadow:0 1px 2px rgba(0,0,0,.6);
+}
+.eq-dbtn.red{background-image:url("../assets/ui/public/btn-primary-red.png");}
+.eq-dbtn:active{transform:scale(.95);filter:brightness(.94);}
+
+/* ============================================================
+   任务面板（主线 / 悬赏）
+   ------------------------------------------------------------
+   只出现在公用纸面弹框内：外壳、页签与按钮全部复用
+   .modal / .tab-btn / .btn，不新增图片资源。
+   状态色：进行中=褐、可领取=金、已完成=绿、待推进=虚线灰。
+   弹框固定 636×1000，内部页签、卡片与操作区高度固定，
+   切换页签或任务状态不会改变整体结构尺寸。
+   ============================================================ */
+.modal.quest-modal{height:1000px;}
+.modal.quest-modal .modal-body{
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
+.modal.quest-modal .quest-body{
+  flex:1 1 auto;min-height:0;
+  display:flex;flex-direction:column;
+}
+.quest-panel{
+  flex:1 1 auto;min-height:0;
+  display:flex;flex-direction:column;gap:14px;
+}
+.quest-panel .tab-bar{gap:10px;margin-bottom:0;}
+.quest-panel .tab-btn{
+  flex:1 1 0;justify-content:center;
+  display:inline-flex;align-items:center;gap:8px;
+  padding:0 12px;font-size:23px;
+}
+.qp-tab-num{
+  font-style:normal;font-size:20px;font-weight:700;letter-spacing:.5px;
+  padding:1px 8px;border-radius:10px;
+  color:#5c4a33;background:rgba(143,90,23,.14);
+  border:1px solid rgba(150,113,60,.45);
+}
+.tab-btn.sel .qp-tab-num{
+  color:#fff8ea;background:rgba(255,248,234,.16);
+  border-color:rgba(255,248,234,.4);
+}
+.qp-tab-dot{
+  width:11px;height:11px;border-radius:50%;
+  background:#c8442f;box-shadow:0 0 0 3px rgba(200,68,47,.16);
+  animation:qp-pulse 1.6s ease-in-out infinite;
+}
+@keyframes qp-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.25);opacity:.7}}
+
+.qp-view{
+  flex:1 1 auto;min-height:0;
+  display:flex;flex-direction:column;gap:10px;
+}
+/* 副标题位于纸面顶部，任务面板内加深一档 */
+.modal.quest-modal .modal-head .sub{font-size:20px;color:#4a3a28;}
+
+/* ---------- 主线：当前任务 ---------- */
+.qp-hero{
+  position:relative;
+  flex:1 1 auto;min-height:0;
+  display:flex;flex-direction:column;
+  padding:16px 18px 18px;
+  border:1px solid #b8934f;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(169,124,46,.14), transparent 58%),
+    linear-gradient(180deg,rgba(255,250,238,.9),rgba(233,216,183,.62));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.6), inset 0 -1px 0 rgba(90,60,30,.12);
+}
+.qp-hero.ready{
+  border-color:#a97c2e;
+  box-shadow:inset 0 0 26px rgba(169,124,46,.16), inset 0 1px 0 rgba(255,255,255,.6);
+}
+.qp-hero.done{
+  justify-content:center;
+  border-color:#8faa74;
+  background:linear-gradient(180deg,rgba(250,250,240,.86),rgba(216,222,198,.6));
+}
+.qp-hero-head{display:flex;align-items:center;gap:14px;}
+.qp-step{
+  flex:0 0 auto;width:64px;height:64px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  border-radius:50%;border:1px solid #b8934f;
+  background:radial-gradient(circle at 40% 30%,#fff8ea,#e2c892 72%);
+  box-shadow:inset 0 0 0 3px rgba(255,255,255,.35), 0 2px 6px rgba(120,85,35,.18);
+}
+.qp-step b{font-size:27px;line-height:1;color:#7d4c12;}
+.qp-step span{font-size:20px;line-height:1;color:#8f7550;letter-spacing:0;}
+.qp-hero-id{flex:1;min-width:0;}
+.qp-kicker{font-size:20px;line-height:1;letter-spacing:3px;color:#7d4c12;font-weight:600;}
+.qp-hero-id h4{
+  margin:7px 0 0;
+  font-size:30px;line-height:1.2;font-weight:800;letter-spacing:1px;color:#2b2117;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+
+/* ---------- 状态签 ---------- */
+.qp-tag{
+  flex:0 0 auto;
+  display:inline-flex;align-items:center;gap:6px;
+  padding:7px 15px;border-radius:20px;
+  border:1px solid #b8934f;background:rgba(255,250,238,.7);
+  font-size:22px;line-height:1;letter-spacing:1px;color:#5c4a33;
+  white-space:nowrap;
+}
+.qp-tag.ready{
+  color:#7a3d0c;border-color:#a97c2e;font-weight:700;
+  background:linear-gradient(180deg,#f6e2b6,#e4c88f);
+  box-shadow:0 0 12px rgba(169,124,46,.22);
+}
+.qp-tag.ready::before{
+  content:"";width:8px;height:8px;border-radius:50%;
+  background:#b5651c;box-shadow:0 0 8px rgba(181,101,28,.85);
+}
+.qp-tag.done{color:#3f6b30;border-color:#8faa74;background:rgba(143,170,116,.16);}
+.qp-tag.todo{color:#5c4a33;border-color:#b8934f;border-style:dashed;background:rgba(255,250,238,.42);}
+
+/* ---------- 任务文案 ---------- */
+.qp-lore{margin:14px 0 0;font-size:22px;line-height:1.7;font-style:italic;color:#5c4a33;}
+.qp-desc{margin:10px 0 0;font-size:24px;line-height:1.65;color:#33291d;}
+.qp-objective{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  margin-top:14px;padding:10px 14px;
+  border:1px dashed rgba(150,113,60,.5);
+  background:rgba(255,250,238,.5);
+}
+.qp-objective > span{font-size:20px;letter-spacing:2px;color:#5c4a33;}
+.qp-objective b{font-size:24px;color:#3a2d20;}
+.qp-objective em{margin-left:auto;font-style:normal;font-size:20px;color:#5c4a33;}
+.qp-objective em.ok{color:#3f6b30;font-weight:700;}
+
+/* ---------- 进度 ---------- */
+.qp-progress-row{
+  display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+  margin-top:14px;font-size:20px;color:#4a3a28;
+}
+.qp-progress-row b{font-size:22px;color:#7d4c12;}
+.qp-bar{
+  height:14px;margin-top:8px;border-radius:7px;overflow:hidden;
+  background:rgba(90,60,30,.16);
+  box-shadow:inset 0 2px 4px rgba(90,60,30,.22);
+}
+.qp-bar i{
+  display:block;height:100%;border-radius:7px;
+  background:linear-gradient(90deg,#a97c2e,#e6c98b);
+  box-shadow:0 0 8px rgba(169,124,46,.35);
+  transition:width .3s ease-out;
+}
+.qp-bounty.ready .qp-bar i{background:linear-gradient(90deg,#7fae63,#c0dd9a);}
+
+/* ---------- 奖励徽记 ---------- */
+/* 奖励固定在卡片底部，进度条与说明留在上方，拉长后仍然稳定 */
+.qp-rewards{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:14px;}
+.qp-hero .qp-rewards{margin-top:auto;padding-top:14px;}
+.qp-chip{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:4px 10px 4px 4px;border-radius:4px;
+  border:1px solid rgba(150,113,60,.45);
+  background:rgba(255,250,238,.72);
+  font-size:20px;font-weight:700;line-height:1.35;color:#3a2d20;
+}
+.qp-chip i{
+  width:30px;height:30px;border-radius:3px;
+  display:inline-flex;align-items:center;justify-content:center;
+  font-style:normal;font-size:20px;font-weight:700;line-height:1;
+  color:#fff8ea;background:#8f5a17;
+}
+.qp-chip.gold i{background:#a97c2e;}
+.qp-chip.xp i{background:#4a6f9e;}
+.qp-chip.tree i{background:#5d7f47;}
+.qp-chip.skill i{background:#6b4a9a;}
+
+/* ---------- 操作区 ---------- */
+/* 按钮按公用资源 238×98 等比缩到 70%（167×69），不横向拉长 */
+.quest-panel .btn{
+  min-width:167px;width:167px;height:69px;
+  padding:0 6px;
+  border-width:21px 28px;
+  font-size:25px;
+  letter-spacing:.5px;
+}
+.qp-actions{display:flex;justify-content:flex-end;gap:12px;margin-top:16px;}
+.qp-actions .btn{flex:0 0 auto;}
+.qp-go{flex:0 0 auto;align-self:flex-end;margin-top:2px;}
+
+/* ---------- 后续主线 ---------- */
+.qp-section{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  margin-top:2px;font-size:22px;font-weight:600;letter-spacing:2px;color:#7d4c12;
+}
+.qp-section em{font-style:normal;font-size:20px;font-weight:400;letter-spacing:.5px;color:#5c4a33;}
+.qp-next-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;}
+.qp-next{
+  display:flex;align-items:center;gap:12px;
+  flex:0 0 auto;height:64px;
+  padding:0 14px;border:1px solid #c2a97f;
+  background:rgba(255,250,238,.42);
+}
+.qp-next b{
+  flex:0 0 auto;width:36px;height:36px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  border:1px solid #c2a97f;background:rgba(255,250,238,.7);
+  font-size:20px;color:#5c4a33;line-height:1;
+}
+.qp-next-name{
+  flex:1 1 auto;min-width:0;font-size:23px;color:#3a2d20;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.qp-next-stage{
+  flex:0 0 auto;max-width:170px;font-size:20px;color:#5c4a33;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.qp-next .qp-tag{padding:5px 10px;font-size:20px;}
+
+/* ---------- 悬赏 ---------- */
+.qp-sum{flex:0 0 auto;display:flex;gap:10px;}
+.qp-sum span{
+  flex:1 1 0;
+  display:flex;align-items:baseline;justify-content:center;gap:8px;
+  height:46px;padding:0 10px;border:1px solid #c2a97f;
+  background:rgba(255,250,238,.55);
+  font-size:20px;color:#4a3a28;
+}
+.qp-sum b{font-size:28px;line-height:1;color:#7d4c12;}
+.qp-hint{
+  flex:0 0 auto;
+  display:flex;align-items:center;
+  height:46px;padding:0 14px;
+  border-left:3px solid #b8934f;
+  background:rgba(255,250,238,.55);
+  font-size:20px;line-height:1.4;color:#4a3a28;
+}
+.qp-bounty-list{
+  flex:1 1 auto;min-height:0;
+  display:flex;flex-direction:column;gap:8px;
+}
+.qp-bounty{
+  display:flex;align-items:center;gap:14px;
+  flex:1 1 0;min-height:0;
+  padding:10px 16px 12px;
+  border:1px solid #c2a97f;
+  background:linear-gradient(180deg,rgba(255,250,238,.62),rgba(228,210,176,.42));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.5);
+}
+.qp-bounty.ready{
+  border-color:#a97c2e;
+  box-shadow:inset 0 0 20px rgba(169,124,46,.14), inset 0 1px 0 rgba(255,255,255,.5);
+}
+.qp-bounty-icon{
+  flex:0 0 auto;width:58px;height:58px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  border:1px solid #b8934f;
+  background:radial-gradient(circle at 38% 30%,#fff8ea,#ddc391 74%);
+  box-shadow:inset 0 0 0 3px rgba(255,255,255,.32);
+  font-size:28px;font-weight:800;line-height:1;color:#7d4c12;
+}
+.qp-bounty.ready .qp-bounty-icon{
+  box-shadow:inset 0 0 0 3px rgba(255,255,255,.32), 0 0 14px rgba(169,124,46,.4);
+}
+.qp-bounty-main{flex:1;min-width:0;overflow:hidden;}
+.qp-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;}
+.qp-head b{font-size:24px;font-weight:700;letter-spacing:.5px;color:#2b2117;}
+.qp-progress{flex:0 0 auto;font-size:20px;letter-spacing:.5px;color:#5c4a33;}
+.qp-bounty.ready .qp-progress{color:#7d4c12;font-weight:700;}
+.qp-bounty .qp-desc{margin-top:6px;font-size:21px;line-height:1.6;color:#33291d;}
+.qp-bounty .qp-bar{height:12px;margin-top:8px;}
+.qp-bounty .qp-foot{display:flex;align-items:center;gap:12px;margin-top:10px;flex-wrap:nowrap;}
+.qp-bounty .qp-rewards{flex:1 1 auto;min-width:0;margin-top:0;gap:6px;}
+.qp-bounty .qp-rewards .qp-chip{padding:3px 8px 3px 3px;font-size:20px;}
+.qp-bounty .qp-rewards .qp-chip i{width:30px;height:30px;font-size:20px;}
+.qp-bounty .qp-foot .btn{flex:0 0 auto;margin-left:auto;}
+
+
+
+/* ==== css/skill.css ==== */
+/* ================= 技能界面（野蛮人 · PSD 720×1440 原生坐标） ================= */
+.sk-screen{
+  position:absolute;inset:0;z-index:56;overflow:hidden;
+  background:#b0a086;pointer-events:auto;
+  -webkit-tap-highlight-color:transparent;
+}
+.sk-canvas{
+  position:absolute;left:0;top:0;width:720px;height:1440px;
+  transform-origin:left top;will-change:transform;
+  background:#b0a086;
+  font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+}
+.sk-bg{
+  position:absolute;left:-45px;top:-120px;width:810px;height:416px;
+  background:url("../assets/ui/skill/bg.png") 0 0/100% 100% no-repeat;
+  pointer-events:none;
+}
+
+/* 标题与资源角标 */
+.sk-title{
+  position:absolute;left:0;right:0;top:24px;height:58px;line-height:58px;
+  text-align:center;font-size:46px;font-weight:800;letter-spacing:4px;
+  color:#fff;-webkit-text-stroke:3px #000;paint-order:stroke fill;
+  text-shadow:none;
+  pointer-events:none;
+}
+.sk-close{
+  position:absolute;right:18px;top:24px;width:55px;height:53px;padding:0;border:0;
+  background:url("../assets/ui/public/dialog-close.png") center/100% 100% no-repeat;
+  cursor:pointer;z-index:5;
+}
+.sk-close:active{transform:scale(.92);filter:brightness(.86);}
+.sk-points{
+  position:absolute;left:18px;top:30px;height:48px;z-index:5;
+  display:flex;align-items:center;gap:8px;padding:0 16px;border-radius:24px;
+  background:rgba(46,10,12,.55);border:2px solid rgba(255,149,53,.55);
+  color:#ffcf8a;font-size:20px;font-weight:700;letter-spacing:1px;
+  box-shadow:0 2px 8px rgba(0,0,0,.35);
+}
+.sk-points b{font-size:28px;line-height:1;color:#ff9535;}
+
+/* 分组标题条 */
+.sk-band{
+  position:absolute;left:50px;width:620px;height:51px;
+  background:url("../assets/ui/skill/title-band.png") 0 0/100% 100% no-repeat;
+  pointer-events:none;
+}
+.sk-band-name{
+  position:absolute;left:17px;top:10px;font-size:28px;line-height:1;
+  color:#412c1c;font-weight:800;letter-spacing:1px;
+}
+.sk-band-num{
+  position:absolute;right:25px;top:8px;font-size:24px;line-height:1;
+  color:#ff9535;font-weight:800;letter-spacing:1px;
+}
+.sk-band-num b{font-size:30px;margin-left:4px;letter-spacing:0;}
+
+/* 技能树容器 */
+.sk-tree{position:absolute;inset:0;pointer-events:none;}
+.sk-lines{position:absolute;inset:0;z-index:1;}
+.sk-line{
+  position:absolute;transform-origin:top center;pointer-events:none;
+  background:url("../assets/ui/skill/line.png") 0 0/100% 100% no-repeat;
+}
+/* 已激活 / 可激活的线路：黄色内芯嵌进黑色线路，左右各留 1px 黑边 */
+.sk-line.lit::before{
+  content:'';position:absolute;left:1px;right:1px;top:0;bottom:0;
+  background:url("../assets/ui/skill/line-active.png") 0 0/100% 100% no-repeat;
+  filter:drop-shadow(0 0 4px rgba(255,183,42,.7));
+}
+
+/* 节点 */
+.sk-node{
+  position:absolute;padding:0;border:0;background:none;cursor:pointer;
+  pointer-events:auto;z-index:2;-webkit-tap-highlight-color:transparent;
+}
+.sk-frame{position:absolute;left:0;top:0;width:100%;height:100%;display:block;}
+.sk-icon{position:absolute;display:block;}
+.sk-root .sk-frame{filter:drop-shadow(0 5px 7px rgba(0,0,0,.4));}
+
+/* 未解锁 / 未激活 / 可激活 三态 */
+.sk-tree.locked .sk-root .sk-frame,
+.sk-tree.locked .sk-root .sk-icon{filter:grayscale(1) brightness(.5);}
+.sk-tree.locked .sk-aux .sk-icon{filter:grayscale(1) brightness(.48);}
+.sk-node.sk-aux.off .sk-icon{filter:grayscale(.85) brightness(.58);}
+/* 可激活：图标置灰，叠上待激活选中框（86×86，居中于 67×65 节点） */
+.sk-node.sk-aux.can .sk-icon{filter:grayscale(1) brightness(.72);}
+.sk-node.sk-aux.can::before{
+  content:'';position:absolute;left:-9.5px;top:-10.5px;width:86px;height:86px;
+  background:url("../assets/ui/skill/select-frame.png") 0 0/100% 100% no-repeat;
+  pointer-events:none;
+  animation:sk-select 1.4s ease-in-out infinite;
+}
+
+.sk-node.sk-aux.on::after{
+  content:'';position:absolute;inset:-4px;border-radius:9px;pointer-events:none;
+  box-shadow:0 0 14px var(--tc);opacity:.55;
+}
+@keyframes sk-select{
+  0%,100%{opacity:.62;transform:scale(.985);}
+  50%{opacity:1;transform:scale(1.015);}
+}
+
+/* 名称标签：白色字 + 深色描边 */
+.sk-label{
+  position:absolute;text-align:center;font-size:23px;line-height:1;
+  color:#fff;font-weight:800;letter-spacing:0;
+  -webkit-text-stroke:3px #1c0e07;paint-order:stroke fill;
+  text-shadow:0 2px 2px rgba(0,0,0,.55);
+  z-index:3;pointer-events:auto;cursor:pointer;
+}
+.sk-label.off{color:#ded5c6;}
+
+/* 主技能未解锁等级提示（压在灰色图标下沿，避开名称标签） */
+.sk-lock{
+  position:absolute;left:0;right:0;bottom:26px;text-align:center;z-index:4;
+  font-size:20px;font-weight:800;color:#ffe4b8;letter-spacing:1px;
+  text-shadow:0 2px 3px rgba(0,0,0,.9),0 0 8px rgba(0,0,0,.8);
+}
+.sk-tree.locked .sk-aux::after{display:none;}
+
+
+/* ==== css/battle.css ==== */
+/* ---------- 战斗 HUD（竖版纵向） ---------- */
+.dungeon-ui{position:absolute;inset:0;pointer-events:none;z-index:var(--z-hud);}
+.dungeon-ui::before{
+  content:"";
+  position:absolute;top:0;left:0;right:0;height:200px;
+  background:linear-gradient(180deg,rgba(3,5,6,.78),rgba(3,5,6,0));
+  pointer-events:none;
+  z-index:-1;
+}
+.dungeon-ui::after{
+  content:"";
+  position:absolute;left:0;right:0;bottom:0;height:300px;
+  background:linear-gradient(0deg,rgba(3,5,6,.88),rgba(3,5,6,0));
+  pointer-events:none;
+  z-index:-1;
+}
+.dungeon-ui .clickable{pointer-events:auto;}
+/* 顶部（PSD 720×1440 绝对坐标）：关卡进度 / 小地图 / 暂停 */
+.dg-top{position:absolute;inset:0;pointer-events:none;}
+
+/* 第 1 块：关卡进度，底盘 340×94 @(18,38) */
+.dg-progress{position:absolute;left:18px;top:38px;width:340px;height:94px;}
+.dg-progress .dp-plate{position:absolute;inset:0;width:100%;height:100%;display:block;}
+/* 红色底盘（.dp-plate）静止；光晕放在外层，旋转由 JS 帧循环驱动内层沙漏，两层互不影响 */
+.dg-progress .dp-hourglass-glow{
+  position:absolute;left:26.5px;top:26px;width:50px;height:51px;
+  animation:hgGlow 3.2s ease-in-out infinite;
+  pointer-events:none;
+}
+.dg-progress .dp-hourglass{
+  width:100%;height:100%;display:block;
+  transform-origin:50% 50%;
+  will-change:transform;
+}
+.dp-track{position:absolute;left:97px;top:44px;width:228px;height:24px;}
+.dp-track i{
+  position:relative;display:block;height:100%;width:0;overflow:hidden;
+  background-image:
+    url("../assets/ui/battle/progress-fill.png"),
+    repeating-linear-gradient(115deg,
+      rgba(255,236,180,0) 0 9px,
+      rgba(255,236,180,.2) 9px 13px,
+      rgba(255,236,180,0) 13px 22px);
+  background-size:228px 24px, 30px 24px;
+  background-repeat:no-repeat, repeat;
+  background-position:left center, 0 0;
+  transition:width .25s ease;
+  animation:dpFillGlow 2.4s ease-in-out infinite, dpStripes 1.3s linear infinite;
+}
+/* 进度条流光：沿橙色填充循环扫过 */
+.dp-track i::after{
+  content:'';position:absolute;top:-4px;bottom:-4px;left:-46px;width:44px;
+  background:linear-gradient(100deg,transparent,rgba(255,250,225,.9),transparent);
+  transform:skewX(-18deg);
+  animation:dpSweep 2s linear infinite;
+  pointer-events:none;
+}
+/* 填充前缘：随进度推进的高光端点 */
+.dp-track i::before{
+  content:'';position:absolute;top:-2px;bottom:-2px;right:0;width:7px;
+  background:linear-gradient(90deg,rgba(255,190,80,0),rgba(255,238,180,.95));
+  filter:blur(1px);
+  pointer-events:none;
+}
+.dp-text{
+  /* 文案居中压在进度槽 228px 范围内，超长也不会越出进度条 */
+  position:absolute;left:97px;top:11px;width:228px;height:21px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:19px;letter-spacing:.5px;color:#fff8f5;
+  text-shadow:0 2px 4px #000;white-space:nowrap;overflow:hidden;
+}
+
+/* 第 2 块：小地图，固定外框 225×194 @(32,149) */
+.dg-map{position:absolute;left:32px;top:149px;width:225px;height:194px;}
+.dm-frame{
+  position:absolute;inset:0;box-sizing:border-box;
+  border:4px solid transparent;
+  border-image:url("../assets/ui/battle/map-frame.png") 4 stretch;
+}
+.dm-name{
+  position:absolute;left:21px;top:-14px;width:183px;height:34px;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  background:url("../assets/ui/battle/map-name.png") center / 100% 100% no-repeat;
+  font-size:18px;letter-spacing:1px;white-space:nowrap;
+}
+.dm-name span{color:#ed9446;font-size:16px;font-weight:600;text-shadow:0 1px 2px #000;}
+.dm-name b{color:#ffde76;font-weight:600;}
+.dm-explore{
+  position:absolute;left:78px;top:197px;
+  font-size:19px;letter-spacing:1px;color:#59eb9e;
+  text-shadow:0 2px 4px #000;white-space:nowrap;
+}
+
+/* 暂停：常驻，124×64 @(585,50) */
+.pause-btn{
+  position:absolute;left:585px;top:50px;width:124px;height:64px;
+  padding:0;border:0;pointer-events:auto;
+  background:url("../assets/ui/common/btn-logout.png") center / 100% 100% no-repeat;
+  font-family:inherit;font-size:30px;font-weight:700;line-height:1;
+  color:#fff;letter-spacing:4px;
+  text-shadow:0 2px 3px rgba(0,0,0,.7);
+  cursor:pointer;
+  transition:filter .16s, transform .12s;
+}
+.pause-btn:hover{filter:brightness(1.08);}
+.pause-btn:active{transform:translateY(1px) scale(.98);}
+
+/* 第 3 块：首领头像 + 血条，整组 476×133 @(134,127) */
+.boss-wrap{
+  position:absolute;left:134px;top:127px;width:476px;height:133px;
+  pointer-events:none;
+}
+.boss-wrap.hidden{display:none;}
+/* 头像背后的血色光晕，呼吸式明暗 */
+.boss-wrap::before{
+  content:'';position:absolute;left:-4px;top:-6px;width:133px;height:145px;
+  border-radius:24px;
+  background:radial-gradient(circle at 50% 47%,rgba(255,84,54,.62),rgba(255,84,54,0) 68%);
+  opacity:.42;z-index:2;pointer-events:none;
+  animation:bossAuraPulse 2.8s ease-in-out infinite;
+}
+.boss-frame{
+  position:absolute;left:0;top:0;width:125px;height:133px;z-index:3;
+  animation:bossFrameGlow 3s ease-in-out infinite;
+}
+.boss-head{
+  position:absolute;left:17px;top:14px;width:93px;height:111px;z-index:4;
+  animation:bossHeadGlow 3s ease-in-out infinite;
+}
+.boss-name{
+  position:absolute;left:112px;top:21px;height:25px;line-height:25px;
+  font-size:24px;letter-spacing:3px;color:#ffa89d;font-weight:600;
+  text-shadow:0 2px 6px #000;white-space:nowrap;z-index:5;
+}
+.boss-bar{position:absolute;left:87px;top:48px;width:389px;height:45px;z-index:1;}
+.boss-bar-bg{
+  position:absolute;inset:0;width:100%;height:100%;display:block;
+  animation:bossBarGlow 3s ease-in-out infinite;
+}
+.boss-bar-track{
+  position:absolute;left:10px;top:9px;width:362px;height:27px;
+  display:block;overflow:hidden;
+}
+.boss-bar-track i{
+  position:relative;display:block;height:100%;width:100%;overflow:hidden;
+  background-image:
+    url("../assets/ui/battle/boss-bar-fill.png"),
+    repeating-linear-gradient(115deg,
+      rgba(255,206,166,0) 0 8px,
+      rgba(255,206,166,.18) 8px 12px,
+      rgba(255,206,166,0) 12px 20px);
+  background-size:362px 27px, 30px 27px;
+  background-repeat:no-repeat, repeat;
+  background-position:left center, 0 0;
+  transition:width .18s;
+  animation:bossFillPulse 2.4s ease-in-out infinite, bossStripes 1.1s linear infinite;
+}
+/* 血条流光：与进度条同款但更偏血色 */
+.boss-bar-track i::after{
+  content:'';position:absolute;top:-4px;bottom:-4px;left:-52px;width:52px;
+  background:linear-gradient(100deg,transparent,rgba(255,236,206,.72),transparent);
+  transform:skewX(-18deg);
+  animation:bossSweep 2.2s linear infinite;
+  pointer-events:none;
+}
+/* 血条前缘：残血推进时的高光端点 */
+.boss-bar-track i::before{
+  content:'';position:absolute;top:-2px;bottom:-2px;right:0;width:11px;
+  background:linear-gradient(90deg,rgba(255,110,70,0),rgba(255,214,170,.95));
+  filter:blur(1px);
+  pointer-events:none;
+}
+.boss-hp{
+  position:absolute;left:0;top:0;width:100%;height:100%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;letter-spacing:1px;color:#fff;
+  text-shadow:0 1px 3px #000;z-index:2;
+}
+.boss-wrap.enraged .boss-name{color:#ffd0b0;text-shadow:0 0 12px rgba(255,106,94,.55),0 2px 6px #000;}
+.boss-wrap.enraged .boss-bar-track i{animation-duration:1.1s;}
+.boss-wrap.enraged::before{
+  background:radial-gradient(circle at 50% 46%,rgba(255,60,40,.72),rgba(255,60,40,0) 70%);
+  animation-duration:1.6s;
+}
+.boss-wrap.enraged .boss-head{animation-duration:1.5s;}
+.boss-wrap.enraged .boss-frame{animation-duration:1.6s;}
+.boss-wrap.enraged .boss-bar-bg{animation-duration:1.6s;}
+/* 残血：血条与头像光晕加速脉动 */
+.boss-wrap.low .boss-bar-track i{animation-duration:.85s;}
+.boss-wrap.low .boss-head{animation-duration:1.1s;}
+.boss-wrap.low .boss-frame{animation-duration:1.1s;}
+.boss-wrap.low .boss-bar-bg{animation-duration:1.1s;}
+.boss-wrap.low .boss-name{color:#ff8a7a;}
+
+@keyframes hgGlow{
+  0%,100%{filter:drop-shadow(0 0 3px rgba(255,186,90,.3));}
+  50%{filter:drop-shadow(0 0 9px rgba(255,206,120,.7));}
+}
+@keyframes dpFillGlow{
+  0%,100%{filter:drop-shadow(0 0 2px rgba(255,150,50,.35));}
+  50%{filter:drop-shadow(0 0 7px rgba(255,180,70,.8));}
+}
+@keyframes dpSweep{
+  0%{left:-46px;}
+  100%{left:240px;}
+}
+@keyframes dpStripes{
+  0%{background-position:left center,0 0;}
+  100%{background-position:left center,30px 0;}
+}
+@keyframes hgSpin{
+  0%{transform:rotate(0deg);}
+  100%{transform:rotate(360deg);}
+}
+@keyframes bossAuraPulse{
+  0%,100%{opacity:.3;transform:scale(.94);}
+  50%{opacity:.62;transform:scale(1.06);}
+}
+@keyframes bossFrameGlow{
+  0%,100%{filter:drop-shadow(0 0 5px rgba(255,130,70,.35)) drop-shadow(0 0 14px rgba(255,60,40,.18));}
+  50%{filter:drop-shadow(0 0 12px rgba(255,150,90,.85)) drop-shadow(0 0 26px rgba(255,70,50,.45));}
+}
+@keyframes bossHeadGlow{
+  0%,100%{filter:drop-shadow(0 0 5px rgba(255,90,60,.4)) brightness(1);}
+  50%{filter:drop-shadow(0 0 16px rgba(255,130,80,.95)) drop-shadow(0 0 6px rgba(255,225,180,.55)) brightness(1.1);}
+}
+@keyframes bossBarGlow{
+  0%,100%{filter:drop-shadow(0 0 4px rgba(255,70,45,.35));}
+  50%{filter:drop-shadow(0 0 14px rgba(255,95,60,.82));}
+}
+@keyframes bossFillPulse{
+  0%,100%{filter:drop-shadow(0 0 3px rgba(255,70,50,.5));}
+  50%{filter:drop-shadow(0 0 13px rgba(255,100,70,.95));}
+}
+@keyframes bossSweep{
+  0%{left:-52px;}
+  100%{left:372px;}
+}
+@keyframes bossStripes{
+  0%{background-position:left center,0 0;}
+  100%{background-position:left center,30px 0;}
+}
+
+/* 首领血条出现时屏蔽关卡进度与小地图 */
+.dungeon-ui.boss-mode .dg-progress,
+.dungeon-ui.boss-mode .dg-map{display:none;}
+
+/* 首领方向指引 */
+.boss-compass{
+  position:absolute;
+  top:268px;left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;gap:8px;
+  padding:5px 14px;
+  background:rgba(10,7,8,.84);
+  border:1px solid rgba(192,75,69,.42);
+  border-radius:20px;
+  color:#f0b8ac;
+  font-size:12.5px;letter-spacing:1px;
+  white-space:nowrap;
+  pointer-events:none;
+  box-shadow:0 4px 16px rgba(0,0,0,.4);
+  backdrop-filter:blur(2px);
+}
+.boss-compass.hidden{display:none;}
+.boss-compass .bc-arrow{
+  display:inline-flex;
+  width:12px;height:12px;
+  color:#e8897d;
+  transform-origin:50% 50%;
+}
+.boss-compass .bc-arrow svg{
+  display:block;width:100%;height:100%;
+  fill:currentColor;
+}
+.dungeon-announce{
+  position:absolute;
+  top:27%;left:0;right:0;
+  text-align:center;
+  font-size:30px;
+  letter-spacing:10px;
+  color:var(--gold-2);
+  text-shadow:0 0 26px rgba(201,162,95,.4), 0 2px 10px #000;
+  opacity:0;
+  transform:translateY(8px);
+  transition:opacity .25s, transform .25s;
+  pointer-events:none;
+}
+.dungeon-announce.show{opacity:1;transform:none;}
+.auto-battle-btn{
+  position:absolute;left:42px;bottom:280px;z-index:calc(var(--z-touch) + 1);
+  width:70px;height:70px;padding:0;border:0;background:none;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;pointer-events:auto;
+  transition:transform .14s ease,filter .18s ease;
+}
+.auto-battle-btn img{display:block;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 5px 10px rgba(0,0,0,.6));}
+.auto-battle-btn span{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-51%);
+  color:#fff;font-size:20px;font-weight:700;line-height:1;letter-spacing:-1px;white-space:nowrap;
+  text-shadow:-2px -2px 0 #21130e,2px -2px 0 #21130e,-2px 2px 0 #21130e,2px 2px 0 #21130e,0 3px 4px rgba(0,0,0,.75);
+  pointer-events:none;
+}
+.auto-battle-btn:hover{transform:translateY(-2px);filter:brightness(1.1);}
+.auto-battle-btn:active{transform:scale(.95);}
+.auto-battle-btn.active{animation:auto-battle-pulse 1.1s ease-in-out infinite;}
+.auto-battle-btn.active img{filter:drop-shadow(0 0 5px rgba(104,255,134,.95)) drop-shadow(0 0 15px rgba(38,212,83,.8)) drop-shadow(0 5px 10px rgba(0,0,0,.5));}
+.auto-battle-btn.active::before{
+  content:"";position:absolute;inset:-9px;border-radius:50%;
+  border:2px solid rgba(104,255,134,.78);box-shadow:0 0 14px rgba(56,230,91,.72),inset 0 0 12px rgba(56,230,91,.28);
+  animation:auto-battle-ring 1.1s ease-out infinite;pointer-events:none;
+}
+@keyframes auto-battle-pulse{50%{transform:scale(1.05);}}
+@keyframes auto-battle-ring{0%{opacity:.85;scale:.8;}100%{opacity:0;scale:1.22;}}
+
+/* 底部 HUD：血条整行 + 下方左右两栏 */
+/* 底部：血条 + 统一战斗条（装备 / 技能 / 经验） */
+.dg-bottom{
+  position:absolute;
+  left:20px;right:20px;bottom:18px;
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  gap:10px;
+}
+/* 角色生命 / 精力条改由 Canvas 绘制在头顶，底部不再保留大血条 */
+/* 战斗内技能格可点击（打开技能面板），冷却层不拦截鼠标 */
+.strip-slot{cursor:pointer;pointer-events:auto;}
+.strip-slot.ready img,
+.strip-slot.ready .strip-glyph{
+  box-shadow:0 0 0 1px rgba(201,162,95,.4), 0 0 16px rgba(201,162,95,.28);
+}
+.pause-mask{
+  position:absolute;inset:0;
+  background:rgba(3,4,6,.74);
+  display:flex;align-items:center;justify-content:center;
+  padding:24px;
+  pointer-events:auto;
+  z-index:var(--z-pause);
+}
+.pause-card{
+  /* 与二级弹框共用公用框体与关闭按钮坐标 */
+  --close-right:4px;
+  --close-top:-25px;
+  position:relative;
+  width:460px;max-width:100%;
+  max-height:calc(100% - 48px);
+  margin:auto;
+  display:flex;flex-direction:column;
+  border-style:solid;
+  border-width:55px 12px 8px 12px;
+  border-image:url("../assets/ui/public/dialog-frame.png") 55 12 8 12 fill stretch;
+  background:none;border-radius:0;
+  padding:0;
+  text-align:center;
+  color:#33291d;
+  box-shadow:0 30px 90px rgba(0,0,0,.8);
+  animation:popIn .16s ease-out;
+}
+.pause-card .modal-head h3{font-size:30px;}
+.pause-card .modal-head .sub{font-size:20px;}
+.pause-card .modal-body{
+  display:flex;flex-direction:column;gap:14px;
+  padding:8px 26px 22px;
+  text-align:center;
+}
+.pause-card .btn{display:flex;width:100%;margin:0;justify-content:center;}
+.pause-card .hint{font-size:20px;color:#5c4a33;margin:0;letter-spacing:.5px;}
+
+/* ---------- 触屏操作层（摇杆样式与主城共用，见 combat-bar.css） ---------- */
+
+/* ---------- 技能图标状态 ---------- */
+.skill-slot.ready .glyph{color:#efd9a8;}
+
+/* ---------- 操作设置面板 ---------- */
+.setting-row{
+  display:flex;flex-direction:column;gap:10px;
+  padding:16px 0;
+  border-bottom:1px dashed #2c2e34;
+}
+.setting-row:first-child{padding-top:2px;}
+.setting-row:last-of-type{border-bottom:none;}
+.setting-title{font-size:15px;color:var(--text);letter-spacing:1px;font-weight:600;}
+.setting-desc{font-size:12.5px;color:var(--dim);line-height:1.75;}
+.seg{display:flex;gap:9px;flex-wrap:wrap;}
+.seg-btn{
+  appearance:none;
+  height:42px;
+  border:1px solid #3a3d44;
+  background:linear-gradient(180deg,#22262d,#171a20);
+  color:var(--text-2);
+  font-family:var(--font);
+  font-size:13.5px;
+  padding:0 20px;
+  border-radius:4px;
+  cursor:pointer;
+  letter-spacing:1px;
+  transition:border-color .15s, color .15s, background .15s;
+}
+.seg-btn:hover{border-color:var(--gold-dim);color:var(--gold-2);}
+.seg-btn.sel{
+  border-color:var(--gold);
+  color:var(--gold-2);
+  background:linear-gradient(180deg,rgba(201,162,95,.24),rgba(201,162,95,.08));
+  box-shadow:inset 0 0 16px rgba(201,162,95,.08);
+}
+/* 天气音量滑块 */
+.setting-range{display:flex;align-items:center;gap:14px;margin-top:6px;}
+.setting-range input[type=range]{
+  flex:1;height:32px;
+  background:transparent;
+  accent-color:var(--gold);
+  cursor:pointer;
+}
+.setting-range .range-val{
+  min-width:58px;text-align:right;
+  font-size:14px;letter-spacing:1px;color:var(--gold-2);
+}
+.setting-range.disabled{opacity:.45;pointer-events:none;}
+.settings-note{
+  margin-top:18px;padding-top:16px;
+  border-top:1px solid var(--line-soft);
+  font-size:12.5px;color:var(--muted);line-height:2;
+}
+
+/* 舞台固定 720×1440 等比缩放，因此不使用视口媒体查询改变内部布局 */
+
+
+/* ==== css/adapt.css ==== */
+/* ============================================================
+   移动端可读性：手机上 720 逻辑宽会被等比缩小，
+   这里统一放大字号与触控尺寸，保证文字与按钮在窄屏上依然清晰好点。
+   ============================================================ */
+
+/* 通用控件 */
+body{font-size:16px;}
+.btn{height:98px;font-size:36px;padding:0 36px;}
+.btn-sm{height:88px;min-width:214px;padding:0 30px;border-width:27px 36px;font-size:32px;}
+input[type=text],input[type=password]{height:56px;font-size:17px;padding:0 18px;}
+input::placeholder{color:#8b857a;}
+
+/* 登录（尺寸由 ui-kit.css 按设计稿固定，此处不再放大） */
+
+/* 开始界面 */
+.entry-start{height:60px;font-size:20px;}
+.entry-switch{height:52px;font-size:17px;}
+
+/* 选角（文字最小 24；按钮保持公用资源 238×98 原比例） */
+.screen-head h2{font-size:32px;letter-spacing:7px;}
+.head-sub{font-size:24px;line-height:1.5;}
+.preview-name{font-size:34px;}
+.preview-lv{font-size:24px;}
+.preview-meta{font-size:24px;}
+.pstat{min-width:150px;padding:9px 14px;}
+.pstat i{font-size:24px;}
+.pstat b{font-size:26px;}
+.pxp-text{font-size:24px;}
+.preview-actions .btn{width:238px;height:98px;font-size:36px;padding:0;letter-spacing:.5px;}
+.char-slot{height:96px;}
+.slot-emblem{width:58px;height:58px;font-size:26px;}
+.char-slot .slot-name{font-size:24px;}
+.char-slot .slot-lv{font-size:24px;}
+.char-slot .slot-empty{font-size:24px;}
+.char-slot .slot-plus{font-size:28px;}
+.preview-empty .btn{width:238px;height:98px;font-size:36px;padding:0;letter-spacing:.5px;}
+.preview-empty-text{font-size:26px;}
+.preview-empty-hint{font-size:24px;}
+.char-foot{font-size:24px;letter-spacing:0;line-height:1.5;}
+.pick-glyph{font-size:34px;}
+.pick-name{font-size:20px;}
+.pick-title{font-size:20px;}
+.cls-desc{font-size:20px;}
+.class-pick{padding:22px 12px;}
+
+/* 主城 */
+.town-top{padding:16px 18px;}
+.town-zone{gap:12px;}
+.town-corner-btn{width:70px;height:70px;}
+.town-tools{gap:14px;}
+.hero-name{font-size:29px;}
+.hero-lv{font-size:13.5px;padding:3px 12px;}
+.hero-sub{font-size:14.5px;}
+.hero-power span{font-size:12.5px;}
+.hero-power b{font-size:31px;}
+.hero-xp-meta{font-size:14px;}
+.hero-mini-stats span{font-size:13px;}
+.hero-mini-stats b{font-size:18px;}
+.strip-glyph{font-size:26px;}
+.exp-text{font-size:11.5px;}
+#ui:has(.town-screen) + .toast-wrap:not(.over-modal){top:50%;bottom:auto;}
+
+/* 弹窗通用 */
+.modal-head{padding:20px 24px;}
+.modal-head h3{font-size:21px;letter-spacing:2px;}
+.modal-head .sub{font-size:13.5px;}
+/* 关闭按钮为公用图片资源，固定 61×59 原尺寸，不随断点缩放 */
+.modal-body{padding:22px 24px;}
+.modal-foot{padding:18px 24px;}
+.confirm-text{font-size:15.5px;line-height:1.85;}
+.sheet{padding:16px 18px;}
+.section-label{font-size:13.5px;letter-spacing:2px;}
+.section-label .meta{font-size:13px;}
+
+/* 装备与背包 */
+.equip-doll .equip-slots{gap:12px;}
+.equip-slot{padding:10px 8px;gap:7px;}
+.equip-slot .slot-label{font-size:11.5px;}
+.equip-slot .slot-cell,
+.equip-slot .slot-cell .item-cell{width:62px;height:62px;}
+.equip-doll .equip-trinkets .slot-cell,
+.equip-doll .equip-trinkets .slot-cell .item-cell{width:52px;height:52px;}
+.equip-doll .equip-trinkets .slot-label,
+.equip-doll .equip-trinkets .slot-name{font-size:10.5px;}
+.slot-name{font-size:11.5px;}
+.section-label > span:first-child::before{font-size:8px;}
+.equip-hero{padding:14px 18px;}
+.equip-hero-emblem{width:54px;height:54px;font-size:23px;}
+.equip-hero-name{font-size:21px;}
+.equip-hero-sub{font-size:12px;}
+.equip-hero-power b{font-size:27px;}
+.bag-grid{grid-template-columns:repeat(6,1fr);gap:10px;}
+.bag-grid .item-cell{height:auto;aspect-ratio:1;}
+.stat-list{gap:11px 28px;}
+.stat-list li{font-size:15px;padding-bottom:6px;}
+.stat-list li b{font-size:17px;}
+.stat-list li b em{font-size:12.5px;}
+.item-cell .glyph{font-size:27px;}
+.item-cell .lvl{font-size:11.5px;}
+.item-cell .equipped-mark{font-size:11.5px;}
+.item-cell.empty .glyph{font-size:13px;}
+.detail-box{padding:18px 20px;}
+.detail-empty{font-size:14px;}
+.item-name{font-size:21px;}
+.item-type{font-size:13.5px;}
+.item-stat{font-size:14.5px;}
+.compare{font-size:13.5px;}
+.compare-note{font-size:12.5px;}
+.rarity-tag{font-size:11.5px;}
+.detail-actions .btn{height:48px;font-size:18px;}
+
+/* 技能 */
+.skill-row{grid-template-columns:68px 1fr auto;gap:18px;padding:18px;}
+.skill-icon{width:68px;height:68px;font-size:25px;}
+.skill-name{font-size:17.5px;}
+.skill-name .lv{font-size:13px;padding:2px 10px;}
+.skill-name .key-tip{font-size:13px;}
+.skill-desc{font-size:16px;color:#cfc8b8;line-height:1.75;}
+.skill-next{font-size:14px;}
+.skill-plus .btn{width:84px;height:46px;font-size:18px;border-width:14px 20px;padding:0;}
+.skill-plus .cost{font-size:12.5px;}
+.point-badge{font-size:13.5px;}
+.modal-body .note{font-size:13.5px;}
+
+/* 技能树 */
+.tree-block{padding:14px;}
+.tree-head b{font-size:17px;}
+.tree-node b{font-size:14px;}
+.tree-node p{font-size:12.5px;}
+.tree-node em{font-size:12px;}
+
+/* 结算 */
+.result-banner h2{font-size:36px;letter-spacing:10px;}
+.result-banner p{font-size:14px;}
+.result-cell{padding:16px;}
+.result-cell .k{font-size:13px;}
+.result-cell .v{font-size:24px;}
+.loot-area{padding:18px 20px;}
+.loot-title{font-size:13px;}
+.loot-cell{width:96px;height:104px;font-size:25px;}
+.loot-cell .loot-name{font-size:13.5px;}
+.loot-cell .qty{font-size:14px;}
+.loot-empty{font-size:14px;}
+.levelup-note,.skillup-note{font-size:20px;}
+
+/* 提示 */
+.toast-wrap{width:min(560px, calc(100% - 40px));}
+.toast{font-size:20px;padding:12px 16px;}
+.toast-wrap.in-battle{width:420px;top:auto;bottom:320px;}
+
+/* 战斗 HUD（顶部按 PSD 固定坐标，不随视口放大） */
+.boss-compass{font-size:14px;padding:6px 15px;}
+.boss-compass .bc-arrow{width:14px;height:14px;}
+.dg-bottom{bottom:24px;gap:16px;}
+.strip-glyph{font-size:30px;}
+.strip-slot .cdtext{font-size:36px;-webkit-text-stroke:2.5px #000;}
+.exp-text{font-size:13px;}
+.pause-card{width:460px;padding:0;}
+.pause-card .btn{height:54px;margin-bottom:0;}
+.pause-card .hint{font-size:20px;margin-top:4px;color:#5c4a33;}
+
+/* 触屏操作：只保留摇杆 */
+
+/* 操作设置 */
+.setting-title{font-size:20px;}
+.setting-desc{font-size:20px;line-height:1.7;}
+.seg-btn{height:50px;font-size:20px;padding:0 24px;}
+.settings-note{font-size:20px;line-height:1.9;}
+
+@media (pointer:coarse){
+/* ============================================================
+   手机触控显示：文字与控件放大，保证窄屏清晰可点。
+   ============================================================ */
+
+/* 通用控件 */
+body{font-size:20px;}
+.btn{height:98px;font-size:36px;padding:0 36px;}
+.btn-sm{height:88px;min-width:214px;padding:0 30px;border-width:27px 36px;font-size:32px;}
+input[type=text],input[type=password]{height:62px;font-size:21px;padding:0 20px;}
+
+/* 登录（尺寸由 ui-kit.css 按设计稿固定，此处不再放大） */
+
+/* 开始界面 */
+.entry-start{height:66px;font-size:24px;}
+.entry-switch{height:58px;font-size:20px;}
+
+/* 选角 */
+.screen-head h2{font-size:34px;}
+.head-sub{font-size:24px;line-height:1.5;}
+.preview-name{font-size:36px;}
+.preview-lv{font-size:24px;}
+.preview-meta{font-size:24px;}
+.pstat{min-width:150px;padding:10px 16px;}
+.pstat i{font-size:24px;}
+.pstat b{font-size:26px;}
+.pxp-text{font-size:24px;}
+.preview-actions .btn{width:238px;height:98px;font-size:36px;padding:0;letter-spacing:.5px;}
+.char-slot{height:96px;}
+.slot-emblem{width:58px;height:58px;font-size:26px;}
+.char-slot .slot-name{font-size:24px;}
+.char-slot .slot-lv{font-size:24px;}
+.char-slot .slot-empty{font-size:24px;}
+.char-slot .slot-plus{font-size:28px;}
+.preview-empty .btn{width:238px;height:98px;font-size:36px;padding:0;letter-spacing:.5px;}
+.preview-empty-text{font-size:26px;}
+.preview-empty-hint{font-size:24px;}
+.char-foot{font-size:24px;letter-spacing:0;line-height:1.5;}
+.pick-glyph{font-size:38px;}
+.pick-name{font-size:21px;}
+.pick-title{font-size:17px;}
+.cls-desc{font-size:18px;}
+
+/* 主城 */
+.town-top{padding:18px 20px;}
+.town-corner-btn{width:70px;height:70px;}
+.hero-name{font-size:33px;}
+.hero-lv{font-size:17.5px;padding:3px 12px;}
+.hero-sub{font-size:18.5px;}
+.hero-power span{font-size:16.5px;}
+.hero-power b{font-size:35px;}
+.hero-xp-meta{font-size:18px;}
+.hero-mini-stats span{font-size:17px;}
+.hero-mini-stats b{font-size:22px;}
+.strip-glyph{font-size:32px;}
+.exp-text{font-size:14px;}
+
+/* 弹窗通用 */
+.modal-head h3{font-size:25px;}
+.modal-head .sub{font-size:17.5px;}
+.confirm-text{font-size:19.5px;line-height:1.8;}
+.sheet{padding:18px 20px;}
+.section-label{font-size:17.5px;}
+.section-label .meta{font-size:17px;}
+
+/* 装备与背包 */
+.equip-slot{padding:12px 10px;gap:8px;}
+.equip-slot .slot-label{font-size:15px;}
+.equip-slot .slot-cell,
+.equip-slot .slot-cell .item-cell{width:78px;height:78px;}
+.equip-doll .equip-trinkets .slot-cell,
+.equip-doll .equip-trinkets .slot-cell .item-cell{width:60px;height:60px;}
+.equip-doll .equip-trinkets .slot-label,
+.equip-doll .equip-trinkets .slot-name{font-size:13px;}
+.slot-name{font-size:15px;}
+.equip-hero-name{font-size:25px;}
+.equip-hero-lv{font-size:15px;padding:2px 10px;}
+.equip-hero-sub{font-size:15px;}
+.equip-hero-power span{font-size:13px;}
+.equip-hero-power b{font-size:32px;}
+.bag-grid{gap:9px;}
+.bag-grid .item-cell{height:auto;aspect-ratio:1;}
+.stat-list li{font-size:19px;padding-bottom:8px;}
+.stat-list li b{font-size:21px;}
+.stat-list li b em{font-size:16.5px;}
+.item-cell .glyph{font-size:31px;}
+.item-cell .lvl{font-size:15.5px;}
+.item-cell .equipped-mark{font-size:15.5px;}
+.item-cell.empty .glyph{font-size:17px;}
+.detail-empty{font-size:18px;}
+.item-name{font-size:25px;}
+.item-type{font-size:17.5px;}
+.item-stat{font-size:18.5px;}
+.compare{font-size:17.5px;}
+.compare-note{font-size:16.5px;}
+.rarity-tag{font-size:15.5px;}
+.detail-actions .btn{height:54px;font-size:20px;}
+
+/* 技能 */
+.skill-row{grid-template-columns:76px 1fr auto;gap:18px;padding:20px;}
+.skill-icon{width:76px;height:76px;font-size:29px;}
+.skill-name{font-size:21.5px;}
+.skill-name .lv{font-size:17px;padding:3px 11px;}
+.skill-name .key-tip{font-size:17px;}
+.skill-desc{font-size:20px;line-height:1.7;}
+.skill-next{font-size:18px;}
+.skill-plus .btn{width:92px;height:52px;font-size:20px;border-width:16px 22px;padding:0;}
+.skill-plus .cost{font-size:16.5px;}
+.point-badge{font-size:17.5px;}
+.modal-body .note{font-size:17.5px;}
+
+/* 技能树 */
+.tree-block{padding:16px;}
+.tree-head b{font-size:21px;}
+.tree-node{padding:12px;}
+.tree-node b{font-size:17px;}
+.tree-node p{font-size:15px;min-height:40px;}
+.tree-node em{font-size:14px;}
+.tn-idx{font-size:12.5px;}
+
+/* 结算 */
+.result-banner h2{font-size:40px;letter-spacing:8px;}
+.result-banner p{font-size:18px;}
+.result-cell{padding:18px;}
+.result-cell .k{font-size:17px;}
+.result-cell .v{font-size:28px;}
+.loot-title{font-size:17px;}
+.loot-cell{width:118px;height:118px;font-size:30px;}
+.loot-cell .loot-name{font-size:17.5px;}
+.loot-cell .qty{font-size:15.5px;}
+.loot-empty{font-size:18px;}
+.levelup-note,.skillup-note{font-size:18px;}
+
+/* 提示 */
+.toast{font-size:20px;padding:14px 20px;}
+.toast-wrap{width:min(600px, calc(100% - 40px));}
+.toast-wrap.in-battle{top:auto;bottom:330px;}
+
+/* 战斗 HUD（顶部按 PSD 固定坐标，不随视口放大） */
+.boss-compass{font-size:16px;padding:6px 16px;}
+.boss-compass .bc-arrow{width:16px;height:16px;}
+.strip-glyph{font-size:36px;}
+.strip-slot .cdtext{font-size:46px;-webkit-text-stroke:3px #000;}
+.exp-text{font-size:16px;}
+.pause-card{width:480px;padding:0;}
+.pause-card .btn{height:62px;margin-bottom:0;}
+.pause-card .hint{font-size:17.5px;}
+
+/* 触屏操作：只保留摇杆，技能栏统一在底部居中 */
+
+/* 操作设置 */
+.setting-title{font-size:21px;}
+.setting-desc{font-size:18px;line-height:1.7;}
+.seg-btn{height:56px;font-size:19px;padding:0 26px;}
+.setting-range input[type=range]{height:44px;}
+.setting-range .range-val{min-width:66px;font-size:18px;}
+.settings-note{font-size:18px;line-height:1.9;}
+
+/* 摇杆尺寸与位置统一由 combat-bar.css 的 .touch-ui 控制（主城 / 战斗共用） */
+}
+
+/* ============================================================
+   公用九宫按钮：按资源原尺寸 238×98 排版
+   高度固定 98，只允许中间平色区横向拉伸，避免压扁变形
+   ============================================================ */
+.btn{height:98px;font-size:36px;padding:0 36px;}
+.btn-sm{height:88px;min-width:214px;font-size:32px;padding:0 30px;border-width:27px 36px;}
+.entry-start,.entry-switch{height:98px;font-size:30px;}
+.preview-actions .btn{height:98px;}
+.preview-actions .btn.primary{font-size:36px;}
+.pause-card .btn{height:98px;font-size:36px;}
+
+/* 战斗顶栏暂停键：HUD 深色小键，不套用大号公用底板（否则挤爆顶栏） */
+/* 战斗公告：天气规则等长文案在 720 宽下自动换行，避免左右被裁 */
+.dungeon-announce{
+  left:36px;right:36px;
+  font-size:29px;letter-spacing:2px;line-height:1.5;
+  white-space:normal;word-break:break-word;
+}
+
+/* 经验条文字：条高仅 20px，行高压到 1，避免上下被裁 */
+.combat-exp .exp-text{line-height:1;}
+
+/* 暂停弹框：按钮与留白收紧，避免按钮过大撑满弹框 */
+.pause-card .btn{
+  height:72px;
+  min-width:0;
+  font-size:26px;
+  padding:0 22px;
+  border-width:22px 30px;
+}
+.pause-card .modal-body{gap:10px;padding:6px 24px 18px;}
+.pause-card .hint{font-size:20px;color:#5c4a33;}
+
+/* ============================================================
+   移动端渲染优化
+   下面这些呼吸/流光动画逐帧修改 filter:drop-shadow 或 left，
+   手机上每帧都要把整块元素重新栅格化、重排——首领战掉帧的主因。
+   改成静态光晕 + transform 位移动画，观感基本一致，但回到合成层。
+   ============================================================ */
+@keyframes dpSweepX{
+  0%{transform:translateX(0) skewX(-18deg);}
+  100%{transform:translateX(286px) skewX(-18deg);}
+}
+@keyframes bossSweepX{
+  0%{transform:translateX(0) skewX(-18deg);}
+  100%{transform:translateX(424px) skewX(-18deg);}
+}
+
+@media (pointer:coarse){
+  .boss-frame{
+    animation:none;
+    filter:drop-shadow(0 0 10px rgba(255,130,70,.6)) drop-shadow(0 0 20px rgba(255,60,40,.3));
+  }
+  .boss-head{
+    animation:none;
+    filter:drop-shadow(0 0 10px rgba(255,130,80,.75)) drop-shadow(0 0 4px rgba(255,225,180,.45));
+  }
+  .boss-bar-bg{
+    animation:none;
+    filter:drop-shadow(0 0 9px rgba(255,80,50,.6));
+  }
+  /* 填充条只保留纹理滚动，去掉逐帧重算的发光滤镜 */
+  .boss-bar-track i{
+    animation:bossStripes 1.1s linear infinite;
+    filter:none;
+  }
+  .dp-track i{
+    animation:dpStripes 1.3s linear infinite;
+    filter:none;
+  }
+  .exp-bar .exp-fill{
+    animation:xpStripes 1.3s linear infinite;
+    filter:none;
+  }
+  .dg-progress .dp-hourglass-glow{animation:none;opacity:.8;}
+  /* 流光位移改用 transform，避免逐帧触发居中重排 */
+  .dp-track i::after{animation-name:dpSweepX;}
+  .boss-bar-track i::after{animation-name:bossSweepX;}
+}
+

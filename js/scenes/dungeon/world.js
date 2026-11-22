@@ -3,6 +3,11 @@
   const DG = window.DG;
   const U = DG.util;
   const TILE = DG.scenes.dungeon.terrain.TILE;
+  // 已完成拆件重做的首领：投放时优先于普通首领出场
+  const REWORKED_BOSSES = [
+    'goatbrute', 'reaper', 'croc',
+    'mushroomgun', 'golem', 'eyehorror', 'mawflowerking', 'cauldron'
+  ];
 
   Object.assign(DG.scenes.dungeon.prototype, {
   makeDecor() {
@@ -911,7 +916,11 @@
     const pool = (this.def.bossPool && this.def.bossPool.length)
       ? this.def.bossPool
       : [this.def.bossId];
-    const bossId = this.def.bossId && Math.random() < 0.8 ? this.def.bossId : U.pick(pool);
+    // 已拆件重做的首领优先投放：首领池中存在它们时大概率直接选中
+    const reworked = pool.filter((id) => REWORKED_BOSSES.indexOf(id) >= 0);
+    const bossId = (reworked.length && Math.random() < 0.85)
+      ? U.pick(reworked)
+      : (this.def.bossId && Math.random() < 0.8 ? this.def.bossId : U.pick(pool));
     const boss = this.spawnMonster(bossId, pos.x, pos.y, true);
     if (!boss) {
       // 首领配置缺失时直接结算撤离，避免流程卡在 bossIntro

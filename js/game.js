@@ -98,9 +98,10 @@
       const height = doc.clientHeight || window.innerHeight || SCENE_H;
       const fit = Math.max(width / SCENE_W, height / SCENE_H) || 1;
       const dpr = window.devicePixelRatio || 1;
-      // 手机端封顶 1.5 倍，兼顾锐度与填充率；桌面端封顶 2 倍
+      // 手机端封顶 1.25 倍：810×1680 逻辑画布放大后约 1012×2100，
+      // 已高于多数手机的实际显示分辨率，再往上只是白白多画像素、拖低帧率
       const coarse = !!(window.matchMedia && window.matchMedia('(pointer:coarse)').matches);
-      const cap = coarse ? 1.5 : 2;
+      const cap = coarse ? 1.25 : 2;
       return Math.max(1, Math.min(cap, fit * dpr));
     },
 
@@ -345,6 +346,8 @@
           return;
         }
         requestAnimationFrame(() => requestAnimationFrame(() => this.hideAssetMask()));
+        // 首领贴图在副本真正跑起来后再后台下载，不拖慢登录页与进镇
+        if (DG.art && DG.art.preloadBosses) DG.art.preloadBosses();
       };
       if (DG.art && DG.art.assetsReady && !DG.art.assetsReady()) {
         DG.art.onAssetsReady(() => requestAnimationFrame(build));
@@ -396,11 +399,29 @@
       }
     },
 
+    // 自适应降档：战斗中连续 1.5 秒平均帧时超过 24ms（约 42fps 以下），
+    // 就把渲染倍率下调 0.1，最低回到 1.0。只降不升，避免临界点反复切换导致画面忽清忽糊。
+    trackPerf(dt) {
+      this._pfN = (this._pfN || 0) + 1;
+      this._pfSum = (this._pfSum || 0) + dt;
+      if (this._pfN < 90) return;
+      const avg = this._pfSum / this._pfN;
+      this._pfN = 0;
+      this._pfSum = 0;
+      if (avg > 0.024 && this.renderScale > 1.01) {
+        this.setRenderScale(Math.max(1, this.renderScale - 0.1));
+      }
+    },
+
     loop(ts) {
       const dt = Math.min(0.05, this.lastTs ? (ts - this.lastTs) / 1000 : 0);
       this.lastTs = ts;
       if (this.dungeon && !this.dungeon.finished) {
         this.dungeon.frame(dt);
+        this.trackPerf(dt);
+      } else {
+        this._pfN = 0;
+        this._pfSum = 0;
       }
       requestAnimationFrame((t) => this.loop(t));
     }
