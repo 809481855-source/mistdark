@@ -1,4 +1,4 @@
-/* 技能树：加点校验、重置、修正聚合 */
+/* 技能树：技能点分配、前置校验与旧数据兼容 */
 (function () {
   const DG = window.DG;
 
@@ -8,12 +8,22 @@
       return (char && DG.data.skillTrees[char.cls]) || [];
     },
 
+    treeById(char, id) {
+      return ST.treesFor(char).find(t => t.id === id) || null;
+    },
+
     has(char, nodeId) {
       return !!(char && char.skillTree && char.skillTree[nodeId]);
     },
 
+    // 技能点与升级/任务共用同一池：char.skillPoints
     points(char) {
-      return (char && char.treePoints) || 0;
+      return (char && char.skillPoints) || 0;
+    },
+
+    treeUnlocked(char, tree) {
+      if (!char || !tree) return false;
+      return char.level >= (tree.unlock || 1);
     },
 
     // 返回 { ok, reason }
@@ -22,11 +32,14 @@
       const info = DG.data.skillTreeIndex[nodeId];
       if (!info) return { ok: false, reason: '节点不存在' };
       if (info.cls !== char.cls) return { ok: false, reason: '职业不符' };
-      if (ST.has(char, nodeId)) return { ok: false, reason: '已点亮' };
-      if (info.prev && !ST.has(char, info.prev)) return { ok: false, reason: '需要先点亮上一节点' };
-      const lv = (char.skills && char.skills[info.tree.skill]) || 1;
-      if (lv < info.node.reqLv) return { ok: false, reason: `技能等级需达到 ${info.node.reqLv}` };
-      if (ST.points(char) < 1) return { ok: false, reason: '技能树点数不足' };
+      if (ST.has(char, nodeId)) return { ok: false, reason: '已激活' };
+      if (!ST.treeUnlocked(char, info.tree)) {
+        return { ok: false, reason: `${info.tree.name} ${info.tree.unlock} 级解锁` };
+      }
+      if (info.parent && !ST.has(char, info.parent.id)) {
+        return { ok: false, reason: `需要先激活「${info.parent.name}」` };
+      }
+      if (ST.points(char) < 1) return { ok: false, reason: '技能点不足' };
       return { ok: true, reason: '' };
     },
 
@@ -35,62 +48,52 @@
       if (!check.ok) return check;
       char.skillTree = char.skillTree || {};
       char.skillTree[nodeId] = 1;
-      char.treePoints = Math.max(0, (char.treePoints || 0) - 1);
+      char.skillPoints = Math.max(0, (char.skillPoints || 0) - 1);
       return { ok: true, reason: '' };
     },
 
-    reset(char) {
-      if (!char) return 0;
+    // 重置整棵技能树：返还该树已投入的点数（界面未提供入口，保留给调试/后续扩展）
+    resetTree(char, tree) {
+      if (!char || !tree) return 0;
       let refund = 0;
-      const owned = char.skillTree || {};
-      for (const id in owned) if (owned[id]) refund++;
-      char.skillTree = {};
-      char.treePoints = (char.treePoints || 0) + refund;
+      tree.nodes.forEach(node => {
+        if (ST.has(char, node.id)) {
+          delete char.skillTree[node.id];
+          refund++;
+        }
+      });
+      char.skillPoints = (char.skillPoints || 0) + refund;
       return refund;
     },
 
     spent(char) {
       let n = 0;
       const owned = (char && char.skillTree) || {};
-      for (const id in owned) if (owned[id]) n++;
+      for (const id in owned) if (owned[id] && DG.data.skillTreeIndex[id]) n++;
       return n;
     },
 
-    // 聚合为与天赋一致的 { stats, skills } 结构
-    mods(char) {
-      const res = { stats: {}, skills: {} };
-      if (!char) return res;
-      const owned = char.skillTree || {};
-      const add = (obj, k, v) => { obj[k] = (obj[k] || 0) + v; };
-      for (const id in owned) {
-        if (!owned[id]) continue;
-        const info = DG.data.skillTreeIndex[id];
-        if (!info) continue;
-        const m = info.node.mods || {};
-        if (m.stats) for (const k in m.stats) add(res.stats, k, m.stats[k]);
-        if (m.skill) {
-          (m.skill.ids || [info.tree.skill]).forEach(skillId => {
-            const target = res.skills[skillId] || (res.skills[skillId] = {});
-            for (const k in m.skill) {
-              if (k === 'ids') continue;
-              add(target, k, m.skill[k]);
-            }
-          });
-        }
-      }
-      return res;
+    spentInTree(char, tree) {
+      if (!char || !tree) return 0;
+      let n = 0;
+      tree.nodes.forEach(node => { if (ST.has(char, node.id)) n++; });
+      return n;
     },
 
-    // 合并进天赋修正结果（stats / skills 两个桶）
-    mergeInto(res, char) {
-      if (!char || !res) return res;
-      const m = ST.mods(char);
-      const add = (obj, k, v) => { obj[k] = (obj[k] || 0) + v; };
-      for (const k in m.stats) add(res.stats, k, m.stats[k]);
-      for (const id in m.skills) {
-        const target = res.skills[id] || (res.skills[id] = {});
-        for (const k in m.skills[id]) add(target, k, m.skills[id][k]);
-      }
+    spentInGroup(char, group) {
+      if (!char || !group) return 0;
+      return group.trees.reduce((sum, id) => {
+        const tree = ST.treeById(char, id);
+        return sum + (tree ? ST.spentInTree(char, tree) : 0);
+      }, 0);
+    },
+
+    // 辅助节点目前只提供激活状态与效果说明，不注入战斗数值
+    mods() {
+      return { stats: {}, skills: {} };
+    },
+
+    mergeInto(res) {
       return res;
     },
 

@@ -26,9 +26,10 @@
         level: 1,
         xp: 0,
         gold: 0,
-        skillPoints: 1,
-        // 技能树点数：只由主线任务投放（每 4 关 1 点，与 20 个树节点对齐）
-        treePoints: 1,
+        // 技能点：升级（每 3 级 1 点）与主线任务（每 8 关 1 点）共同投放，共 30 点对应 30 个辅助节点
+        skillPoints: 0,
+        // 旧版技能树点数字段，保留读取兼容，新系统统一使用 skillPoints
+        treePoints: 0,
         skills,
         skillTree: {},
         talents: {},
@@ -65,8 +66,8 @@
       while (char.level < maxLevel && char.xp >= character.xpNeed(char.level) && guard++ < 200) {
         char.xp -= character.xpNeed(char.level);
         char.level++;
-        // 升级只给技能点；技能树点改由主线任务投放，避免两套点数同时溢出
-        char.skillPoints++;
+        // 每 3 级投放 1 点技能点：3/6/…/60 级共 20 点
+        if (char.level % 3 === 0) char.skillPoints++;
         gained.push(char.level);
       }
       if (char.level >= maxLevel) char.xp = Math.min(char.xp, character.xpNeed(maxLevel));
@@ -86,6 +87,21 @@
       if (!Number.isFinite(char.skillPoints) || char.skillPoints < 0) char.skillPoints = 0;
       if (!Number.isFinite(char.treePoints) || char.treePoints < 0) char.treePoints = 0;
       if (!char.skillTree || typeof char.skillTree !== 'object') char.skillTree = {};
+      // 旧版技能树节点（id 已不在新索引中）退还为技能点，避免升级后旧投入被吞掉
+      const index = DG.data.skillTreeIndex || {};
+      let refund = 0;
+      for (const id in char.skillTree) {
+        if (char.skillTree[id] && !index[id]) {
+          delete char.skillTree[id];
+          refund++;
+        }
+      }
+      // 旧版树点数统一折算进技能点池
+      if (char.treePoints > 0) {
+        refund += char.treePoints;
+        char.treePoints = 0;
+      }
+      if (refund) char.skillPoints += refund;
       if (!char.cleared || typeof char.cleared !== 'object') char.cleared = {};
 
       if (!char.skills || typeof char.skills !== 'object') char.skills = {};

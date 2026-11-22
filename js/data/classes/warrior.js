@@ -6,6 +6,7 @@
   const skills = {
     cleave: {
       id: 'cleave', name: '挥砍', glyph: '斩', classId: 'warrior', icon: 'assets/ui/warrior/skill-cleave.png',
+      unlock: 1,
       type: 'melee', cooldown: 0, range: 84, arc: Math.PI * 0.62,
       color: '#e2a06a',
       // 劈砍刀光由 barbarian.js 沿右手斧刃轨迹自绘，不再走通用程序化弧线
@@ -15,24 +16,28 @@
     },
     whirlwind: {
       id: 'whirlwind', name: '旋风', glyph: '旋', classId: 'warrior', icon: 'assets/ui/warrior/skill-whirlwind.png',
+      unlock: 4,
       type: 'aoeSelf', cooldown: 8, radius: 150, color: '#e08a56',
       mult: (lv) => 1.7 + 0.25 * (lv - 1),
       desc: (lv) => `旋身 5 秒，期间移速 +30%、不可阻挡，持续对周身 ${150} 码内敌人造成每秒 <em>${pct((1.7 + 0.25 * (lv - 1)) * 0.5)}</em> 攻击力伤害。`
     },
     charge: {
       id: 'charge', name: '冲锋', glyph: '冲', classId: 'warrior', icon: 'assets/ui/warrior/skill-charge.png',
+      unlock: 8,
       type: 'dash', cooldown: 8, dist: 240, damageOnPath: true, trailColor: '#e2a06a',
       mult: (lv) => 2.1 + 0.3 * (lv - 1),
       desc: (lv) => `向前突进并撞开路径上的敌人，造成 <em>${pct(2.1 + 0.3 * (lv - 1))}</em> 攻击力伤害。`
     },
     shockwave: {
       id: 'shockwave', name: '震动波', glyph: '波', classId: 'warrior', icon: 'assets/ui/warrior/skill-shockwave.png',
+      unlock: 12,
       type: 'projectile', cooldown: 7, speed: 520, range: 430, color: '#e8a467',
       mult: (lv) => 1.55 + 0.2 * (lv - 1),
       desc: (lv) => `向前轰出冲击波，对沿途敌人造成 <em>${pct(1.55 + 0.2 * (lv - 1))}</em> 攻击力伤害。`
     },
     warcry: {
       id: 'warcry', name: '战吼', glyph: '吼', classId: 'warrior', icon: 'assets/ui/warrior/skill-warcry.png',
+      unlock: 16,
       type: 'nova', cooldown: 11, radius: 200, slow: 0.4, slowDur: 2.2,
       color: '#f0b981',
       mult: (lv) => 0.9 + 0.12 * (lv - 1),

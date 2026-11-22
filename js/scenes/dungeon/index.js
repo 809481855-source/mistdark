@@ -39,8 +39,10 @@
       // 关卡设计：waves 表示本关期望的怪群规模，越靠后的关卡每群多放 0~2 只
       const wv = this.def.waves || [6, 8];
       this.extraPerPack = Math.max(0, Math.round(((wv[0] + wv[1]) / 2 - 8) * 0.6));
-      // 技能栏固定 5 格：普攻 + 4 个主动技能，全部自动释放
-      this.activeSkills = this.cls.skills.map(id => DG.data.skills[id]);
+      // 技能栏：普攻 + 已解锁的主动技能（主技能按角色等级解锁）
+      this.activeSkills = this.cls.skills
+        .filter(id => DG.data.skillUnlocked(this.char, id))
+        .map(id => DG.data.skills[id]);
       this.skillList = [this.basicSkill, ...this.activeSkills];
 
       // 先生成随机房间走廊地图，玩家出生在首个房间中央

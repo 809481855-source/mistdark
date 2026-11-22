@@ -1,0 +1,118 @@
+/* ================= 技能界面（野蛮人 · PSD 720×1440 原生坐标） ================= */
+.sk-screen{
+  position:absolute;inset:0;z-index:56;overflow:hidden;
+  background:#b0a086;pointer-events:auto;
+  -webkit-tap-highlight-color:transparent;
+}
+.sk-canvas{
+  position:absolute;left:0;top:0;width:720px;height:1440px;
+  transform-origin:left top;will-change:transform;
+  background:#b0a086;
+  font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+}
+.sk-bg{
+  position:absolute;left:-45px;top:-120px;width:810px;height:416px;
+  background:url("../assets/ui/skill/bg.png") 0 0/100% 100% no-repeat;
+  pointer-events:none;
+}
+
+/* 标题与资源角标 */
+.sk-title{
+  position:absolute;left:0;right:0;top:24px;height:58px;line-height:58px;
+  text-align:center;font-size:46px;font-weight:800;letter-spacing:4px;
+  color:#c8b188;-webkit-text-stroke:2px #3a0d0f;paint-order:stroke fill;
+  text-shadow:0 3px 0 #4a1010,0 0 14px rgba(0,0,0,.65);
+  pointer-events:none;
+}
+.sk-close{
+  position:absolute;right:18px;top:24px;width:55px;height:53px;padding:0;border:0;
+  background:url("../assets/ui/public/dialog-close.png") center/100% 100% no-repeat;
+  cursor:pointer;z-index:5;
+}
+.sk-close:active{transform:scale(.92);filter:brightness(.86);}
+.sk-points{
+  position:absolute;left:18px;top:30px;height:48px;z-index:5;
+  display:flex;align-items:center;gap:8px;padding:0 16px;border-radius:24px;
+  background:rgba(46,10,12,.55);border:2px solid rgba(255,149,53,.55);
+  color:#ffcf8a;font-size:19px;font-weight:700;letter-spacing:1px;
+  box-shadow:0 2px 8px rgba(0,0,0,.35);
+}
+.sk-points b{font-size:28px;line-height:1;color:#ff9535;}
+
+/* 分组标题条 */
+.sk-band{
+  position:absolute;left:50px;width:620px;height:51px;
+  background:url("../assets/ui/skill/title-band.png") 0 0/100% 100% no-repeat;
+  pointer-events:none;
+}
+.sk-band-name{
+  position:absolute;left:17px;top:10px;font-size:28px;line-height:1;
+  color:#412c1c;font-weight:800;letter-spacing:1px;
+  text-shadow:0 1px 0 rgba(255,240,214,.28),0 0 6px rgba(255,225,170,.15);
+}
+.sk-band-num{
+  position:absolute;right:25px;top:8px;font-size:24px;line-height:1;
+  color:#ff9535;font-weight:800;letter-spacing:1px;
+  text-shadow:0 1px 0 rgba(255,255,255,.3);
+}
+.sk-band-num b{font-size:30px;margin-left:4px;letter-spacing:0;}
+
+/* 技能树容器 */
+.sk-tree{position:absolute;inset:0;pointer-events:none;}
+.sk-lines{position:absolute;inset:0;z-index:1;}
+.sk-line{
+  position:absolute;height:9px;border-radius:4px;
+  background:linear-gradient(180deg,#1c110a 0%,#3b2617 48%,#1c110a 100%);
+  transform-origin:left center;
+  box-shadow:0 0 0 1px rgba(0,0,0,.25);
+}
+
+/* 节点 */
+.sk-node{
+  position:absolute;padding:0;border:0;background:none;cursor:pointer;
+  pointer-events:auto;z-index:2;-webkit-tap-highlight-color:transparent;
+}
+.sk-frame{position:absolute;left:0;top:0;width:100%;height:100%;display:block;}
+.sk-icon{position:absolute;display:block;}
+.sk-root .sk-frame{filter:drop-shadow(0 5px 7px rgba(0,0,0,.4));}
+
+/* 未解锁 / 未激活 / 可激活 三态 */
+.sk-tree.locked .sk-root .sk-frame,
+.sk-tree.locked .sk-root .sk-icon{filter:grayscale(1) brightness(.5);}
+.sk-tree.locked .sk-aux .sk-icon{filter:grayscale(1) brightness(.48);}
+.sk-node.sk-aux.off .sk-icon{filter:grayscale(.85) brightness(.58);}
+.sk-node.sk-aux.can .sk-icon{filter:brightness(1.08);}
+
+.sk-node.sk-aux.on::after{
+  content:'';position:absolute;inset:-4px;border-radius:9px;pointer-events:none;
+  box-shadow:0 0 14px var(--tc);opacity:.55;
+}
+.sk-node.sk-aux.can::after{
+  content:'';position:absolute;inset:-5px;border-radius:10px;pointer-events:none;
+  border:2px solid var(--tc);
+  box-shadow:0 0 16px var(--tc);
+  animation:sk-pulse 1.5s ease-in-out infinite;
+}
+@keyframes sk-pulse{
+  0%,100%{opacity:.55;transform:scale(.98);}
+  50%{opacity:1;transform:scale(1.02);}
+}
+
+/* 名称标签：白色字 + 深色描边 */
+.sk-label{
+  position:absolute;text-align:center;font-size:23px;line-height:1;
+  color:#fff;font-weight:800;letter-spacing:0;
+  -webkit-text-stroke:3px #1c0e07;paint-order:stroke fill;
+  text-shadow:0 2px 2px rgba(0,0,0,.55);
+  z-index:3;pointer-events:auto;cursor:pointer;
+}
+.sk-label.off{color:#ded5c6;opacity:.9;}
+.sk-tree.locked .sk-label{opacity:.55;}
+
+/* 主技能未解锁等级提示（压在灰色图标下沿，避开名称标签） */
+.sk-lock{
+  position:absolute;left:0;right:0;bottom:26px;text-align:center;
+  font-size:20px;font-weight:800;color:#ffcf8a;letter-spacing:1px;
+  text-shadow:0 2px 3px rgba(0,0,0,.9),0 0 8px rgba(0,0,0,.8);
+}
+.sk-tree.locked .sk-aux::after{display:none;}

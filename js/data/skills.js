@@ -10,6 +10,13 @@
   // 技能描述里统一的百分比格式化
   DG.data.pct = (v) => `${U.round(v * 100, 0)}%`;
 
+  // 主技能按角色等级解锁：未配置 unlock 的技能默认 1 级可用
+  DG.data.skillUnlocked = (char, id) => {
+    const sk = DG.data.skills[id];
+    if (!sk) return false;
+    return !sk.unlock || !char || char.level >= sk.unlock;
+  };
+
   // 依据等级取技能描述；等级为 0 时按 1 级预览
   DG.data.skillDesc = (id, lv) => {
     const sk = DG.data.skills[id];

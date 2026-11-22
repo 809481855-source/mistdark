@@ -148,9 +148,9 @@
       const equipIcon = DG.data.iconFor(cls.id, 'equip');
       const need = DG.character.xpNeed(char.level);
       const xpPct = Math.round(DG.character.levelProgress(char) * 100);
-      // 底部技能条与战斗内一致：普攻 + 4 个主动技能
+      // 底部技能条与战斗内一致：普攻 + 已解锁的主动技能
       const skillList = [DG.data.skills[cls.autoSkill]]
-        .concat(cls.skills.map(id => DG.data.skills[id]));
+        .concat(cls.skills.filter(id => DG.data.skillUnlocked(char, id)).map(id => DG.data.skills[id]));
       const stripSlots = skillList.map((sk, i) =>
         `<button class="strip-slot" data-skill="${i}" title="${U.escapeHtml(sk.name)}">` +
           (sk.icon
