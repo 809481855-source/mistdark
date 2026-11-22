@@ -53,14 +53,15 @@
   const ROOT_H = 133;
   const AUX_W = 67;
   const AUX_H = 65;
-  const LINE_W = 9;
+  // 线路素材为竖版 10×160，按两点距离拉伸后旋转
+  const LINE_W = 10;
 
   function lineStyle(x1, y1, x2, y2) {
     const dx = x2 - x1;
     const dy = y2 - y1;
     const len = Math.hypot(dx, dy);
-    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-    return `left:${x1}px;top:${(y1 - LINE_W / 2)}px;width:${len}px;transform:rotate(${angle}deg)`;
+    const angle = Math.atan2(dy, dx) * 180 / Math.PI - 90;
+    return `left:${(x1 - LINE_W / 2)}px;top:${y1}px;width:${LINE_W}px;height:${len}px;transform:rotate(${angle}deg)`;
   }
 
   function groupTotal(group) {
@@ -338,7 +339,9 @@
                 return { x: px + AUX_W / 2, y: py + AUX_H / 2 };
               })()
             : rc;
-          lines += `<i class="sk-line" style="${lineStyle(parentCenter.x, parentCenter.y, ac.x, ac.y)}"></i>`;
+          // 线路点亮：已激活的节点保持黄色通路，可激活的节点在获得技能点时点亮
+          const lit = DG.skillTree.has(char, node.id) || DG.skillTree.canAllocate(char, node.id).ok;
+          lines += `<i class="sk-line${lit ? ' lit' : ''}" style="${lineStyle(parentCenter.x, parentCenter.y, ac.x, ac.y)}"></i>`;
         });
 
         html += `<div class="sk-tree${unlocked ? '' : ' locked'}" data-tree="${tree.id}" style="--tc:${color}">` +

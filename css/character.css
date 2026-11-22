@@ -148,6 +148,22 @@
   right:36px;
   z-index:3;
 }
+/* 新号无角色：只保留标题与创建区，背景压暗 60%，仅创建按钮与登出可操作 */
+.char-new-mask{display:none;}
+.char-screen.is-new .char-new-mask{
+  display:block;
+  position:absolute;
+  inset:0;
+  background:rgba(0,0,0,.6);
+  z-index:2;
+  pointer-events:auto;
+}
+.char-screen.is-new .screen-head{z-index:4;}
+.char-screen.is-new .char-logout{z-index:5;}
+.char-screen.is-new .char-preview{z-index:4;}
+.char-screen.is-new .preview-nav,
+.char-screen.is-new .char-slots,
+.char-screen.is-new .char-foot{display:none;}
 /* 预览区：立绘按舞台坐标锚定，脚底永远落在石台中心，不随屏幕比例 / 字号档位漂移 */
 .char-preview{
   position:absolute;
@@ -263,10 +279,7 @@
   font-size:12.5px;letter-spacing:.5px;color:#d6c5a7;
   text-shadow:0 1px 3px rgba(0,0,0,.85);
 }
-.preview-actions{display:flex;gap:12px;width:100%;margin-top:10px;}
-.preview-actions .btn{height:58px;}
-.preview-actions .btn.primary{flex:1;font-size:18px;letter-spacing:6px;}
-.preview-actions .btn.ghost{flex:0 0 132px;}
+.preview-actions{display:flex;justify-content:center;gap:12px;width:100%;margin-top:10px;}
 
 /* 空槽预览：以石台中心为基准居中，与立绘同一锚点 */
 .preview-empty{
@@ -287,12 +300,13 @@
   font-size:52px;line-height:1;color:#a99a80;
   border:1px dashed #5d5544;border-radius:50%;
 }
-.preview-empty-text{font-size:19px;letter-spacing:3px;color:var(--text-2);}
+.preview-empty-text{font-size:19px;letter-spacing:2px;color:#ecdfc8;text-shadow:0 1px 3px rgba(0,0,0,.7);}
 .preview-empty-hint{
-  font-size:13px;letter-spacing:1px;color:#c4b499;
+  font-size:13px;letter-spacing:1px;color:#e2d6c0;
   text-shadow:0 1px 3px rgba(0,0,0,.85);
 }
-.preview-empty .btn{height:58px;padding:0 46px;margin-top:6px;}
+/* 空槽创建按钮：使用公用按钮资源原尺寸 238×98，不压缩 */
+.preview-empty .btn{width:238px;height:98px;padding:0;margin-top:6px;font-size:30px;letter-spacing:.5px;}
 
 /* 底部槽位切换（预览层已脱离文档流，这里靠 margin-top 压到底部） */
 .char-slots{

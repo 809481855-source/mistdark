@@ -141,7 +141,7 @@
   appearance:none;
 }
 .ui-kit input.ui-input::placeholder{
-  color:#fff;
+  color:#cfcbc2;
   font-weight:700;
   opacity:1;
 }
@@ -153,7 +153,7 @@
   -webkit-box-shadow:0 0 0 100px #6b5a46 inset;
 }
 
-/* ---------- 勾选框：固定 58×58 + 勾选图标 56×49 ---------- */
+/* ---------- 勾选框：固定 46×46 + 勾选图标 45×39（按原 58 尺寸缩小 20%） ---------- */
 .ui-check{
   position:relative;
   display:inline-flex;
@@ -165,25 +165,25 @@
   position:absolute;
   left:0;
   top:0;
-  width:58px;
-  height:58px;
+  width:46px;
+  height:46px;
   margin:0;
   opacity:0;
   cursor:pointer;
 }
 .ui-check-box{
   flex:0 0 auto;
-  width:58px;
-  height:58px;
+  width:46px;
+  height:46px;
   background:url("../assets/ui/public/checkbox-box.png") center / 100% 100% no-repeat;
   pointer-events:none;
 }
 .ui-check-tick{
   position:absolute;
-  left:11px;
-  top:-6px;
-  width:56px;
-  height:49px;
+  left:9px;
+  top:-5px;
+  width:45px;
+  height:39px;
   background:url("../assets/ui/public/checkbox-tick.png") center / 100% 100% no-repeat;
   opacity:0;
   pointer-events:none;
@@ -194,7 +194,7 @@
 .ui-check-text{
   margin-left:10px;
   font-family:var(--font);
-  font-size:30px;
+  font-size:26px;
   font-weight:700;
   line-height:1;
   letter-spacing:.5px;

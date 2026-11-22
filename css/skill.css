@@ -61,10 +61,13 @@
 .sk-tree{position:absolute;inset:0;pointer-events:none;}
 .sk-lines{position:absolute;inset:0;z-index:1;}
 .sk-line{
-  position:absolute;height:9px;border-radius:4px;
-  background:linear-gradient(180deg,#1c110a 0%,#3b2617 48%,#1c110a 100%);
-  transform-origin:left center;
-  box-shadow:0 0 0 1px rgba(0,0,0,.25);
+  position:absolute;transform-origin:top center;pointer-events:none;
+  background:url("../assets/ui/skill/line.png") 0 0/100% 100% no-repeat;
+}
+/* 已激活 / 可激活的线路：黄色发光 */
+.sk-line.lit{
+  background-image:url("../assets/ui/skill/line-active.png");
+  filter:drop-shadow(0 0 4px rgba(255,183,42,.7));
 }
 
 /* 节点 */
@@ -81,21 +84,22 @@
 .sk-tree.locked .sk-root .sk-icon{filter:grayscale(1) brightness(.5);}
 .sk-tree.locked .sk-aux .sk-icon{filter:grayscale(1) brightness(.48);}
 .sk-node.sk-aux.off .sk-icon{filter:grayscale(.85) brightness(.58);}
-.sk-node.sk-aux.can .sk-icon{filter:brightness(1.08);}
+/* 可激活：图标置灰，叠上待激活选中框（86×86，居中于 67×65 节点） */
+.sk-node.sk-aux.can .sk-icon{filter:grayscale(1) brightness(.72);}
+.sk-node.sk-aux.can::before{
+  content:'';position:absolute;left:-9.5px;top:-10.5px;width:86px;height:86px;
+  background:url("../assets/ui/skill/select-frame.png") 0 0/100% 100% no-repeat;
+  pointer-events:none;
+  animation:sk-select 1.4s ease-in-out infinite;
+}
 
 .sk-node.sk-aux.on::after{
   content:'';position:absolute;inset:-4px;border-radius:9px;pointer-events:none;
   box-shadow:0 0 14px var(--tc);opacity:.55;
 }
-.sk-node.sk-aux.can::after{
-  content:'';position:absolute;inset:-5px;border-radius:10px;pointer-events:none;
-  border:2px solid var(--tc);
-  box-shadow:0 0 16px var(--tc);
-  animation:sk-pulse 1.5s ease-in-out infinite;
-}
-@keyframes sk-pulse{
-  0%,100%{opacity:.55;transform:scale(.98);}
-  50%{opacity:1;transform:scale(1.02);}
+@keyframes sk-select{
+  0%,100%{opacity:.62;transform:scale(.985);}
+  50%{opacity:1;transform:scale(1.015);}
 }
 
 /* 名称标签：白色字 + 深色描边 */

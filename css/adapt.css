@@ -16,27 +16,27 @@ input::placeholder{color:#8b857a;}
 .entry-start{height:60px;font-size:20px;}
 .entry-switch{height:52px;font-size:17px;}
 
-/* 选角 */
-.screen-head h2{font-size:30px;letter-spacing:7px;}
-.head-sub{font-size:16px;}
-.preview-name{font-size:32px;}
-.preview-lv{font-size:16px;}
-.preview-meta{font-size:15px;}
-.pstat{min-width:116px;padding:9px 14px;}
-.pstat i{font-size:15px;}
-.pstat b{font-size:20px;}
-.pxp-text{font-size:15.5px;}
-.preview-actions .btn{height:62px;}
-.preview-actions .btn.primary{font-size:20px;}
-.char-slot{height:84px;}
-.slot-emblem{width:50px;height:50px;font-size:22px;}
-.char-slot .slot-name{font-size:17px;}
-.char-slot .slot-lv{font-size:15px;}
-.char-slot .slot-empty{font-size:16px;}
-.char-slot .slot-plus{font-size:22px;}
-.preview-empty-text{font-size:22px;}
-.preview-empty-hint{font-size:14px;}
-.char-foot{font-size:15.5px;}
+/* 选角（文字最小 24；按钮保持公用资源 238×98 原比例） */
+.screen-head h2{font-size:32px;letter-spacing:7px;}
+.head-sub{font-size:24px;line-height:1.5;}
+.preview-name{font-size:34px;}
+.preview-lv{font-size:24px;}
+.preview-meta{font-size:24px;}
+.pstat{min-width:150px;padding:9px 14px;}
+.pstat i{font-size:24px;}
+.pstat b{font-size:26px;}
+.pxp-text{font-size:24px;}
+.preview-actions .btn{width:238px;height:98px;font-size:30px;padding:0;letter-spacing:.5px;}
+.char-slot{height:96px;}
+.slot-emblem{width:58px;height:58px;font-size:26px;}
+.char-slot .slot-name{font-size:24px;}
+.char-slot .slot-lv{font-size:24px;}
+.char-slot .slot-empty{font-size:24px;}
+.char-slot .slot-plus{font-size:28px;}
+.preview-empty .btn{width:238px;height:98px;font-size:30px;padding:0;letter-spacing:.5px;}
+.preview-empty-text{font-size:26px;}
+.preview-empty-hint{font-size:24px;}
+.char-foot{font-size:24px;letter-spacing:0;line-height:1.5;}
 .pick-glyph{font-size:34px;}
 .pick-name{font-size:17px;}
 .pick-title{font-size:13px;}
@@ -186,25 +186,25 @@ input[type=text],input[type=password]{height:62px;font-size:21px;padding:0 20px;
 
 /* 选角 */
 .screen-head h2{font-size:34px;}
-.head-sub{font-size:19px;}
+.head-sub{font-size:24px;line-height:1.5;}
 .preview-name{font-size:36px;}
-.preview-lv{font-size:18px;}
-.preview-meta{font-size:18px;}
-.pstat{min-width:130px;padding:10px 16px;}
-.pstat i{font-size:16px;}
-.pstat b{font-size:23px;}
-.pxp-text{font-size:17px;}
-.preview-actions .btn{height:68px;}
-.preview-actions .btn.primary{font-size:23px;}
-.char-slot{height:94px;}
-.slot-emblem{width:56px;height:56px;font-size:25px;}
-.char-slot .slot-name{font-size:20px;}
-.char-slot .slot-lv{font-size:17px;}
-.char-slot .slot-empty{font-size:19px;}
-.char-slot .slot-plus{font-size:26px;}
-.preview-empty-text{font-size:25px;}
-.preview-empty-hint{font-size:17px;}
-.char-foot{font-size:18px;}
+.preview-lv{font-size:24px;}
+.preview-meta{font-size:24px;}
+.pstat{min-width:150px;padding:10px 16px;}
+.pstat i{font-size:24px;}
+.pstat b{font-size:26px;}
+.pxp-text{font-size:24px;}
+.preview-actions .btn{width:238px;height:98px;font-size:30px;padding:0;letter-spacing:.5px;}
+.char-slot{height:96px;}
+.slot-emblem{width:58px;height:58px;font-size:26px;}
+.char-slot .slot-name{font-size:24px;}
+.char-slot .slot-lv{font-size:24px;}
+.char-slot .slot-empty{font-size:24px;}
+.char-slot .slot-plus{font-size:28px;}
+.preview-empty .btn{width:238px;height:98px;font-size:30px;padding:0;letter-spacing:.5px;}
+.preview-empty-text{font-size:26px;}
+.preview-empty-hint{font-size:24px;}
+.char-foot{font-size:24px;letter-spacing:0;line-height:1.5;}
 .pick-glyph{font-size:38px;}
 .pick-name{font-size:21px;}
 .pick-title{font-size:17px;}

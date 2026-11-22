@@ -1620,12 +1620,28 @@
     }
     this._minimapDirty = false;
   },
+  // 小地图的屏幕区域：把 DOM 外框的位置换算回画布逻辑坐标。
+  // 画布固定按 810×1680 绘制，再等比缩放（cover）进舞台，
+  // 因此不能直接用 720 舞台里的写死坐标，否则地图会缩一圈并整体偏移。
+  minimapRectNow() {
+    const c = this.canvas.getBoundingClientRect();
+    const f = this.$map && this.$map.getBoundingClientRect();
+    if (!f || !c.width || !c.height) return DG.scenes.dungeon.minimapRect;
+    const kx = W / c.width;
+    const ky = H / c.height;
+    return {
+      x: (f.left - c.left) * kx,
+      y: (f.top - c.top) * ky,
+      w: f.width * kx,
+      h: f.height * ky
+    };
+  },
   // 左上角小地图：只显示已探索区域、玩家位置与首领方位
   drawMinimap(ctx) {
     // 首领血条出现时同步屏蔽小地图（与 DOM 的 boss-mode 保持一致）
     if (this.monsters.some(m => m.boss && !m.dead)) return;
     const T = DG.scenes.dungeon.terrain;
-    const R = DG.scenes.dungeon.minimapRect;
+    const R = this.minimapRectNow();
     const mx = R.x, my = R.y, mw = R.w, mh = R.h;
     const gw = (this.arenaW || T.COLS * T.TILE) / T.TILE;
     const gh = (this.arenaH || T.ROWS * T.TILE) / T.TILE;
@@ -1633,7 +1649,8 @@
     const sy = mh / gh;
     ctx.save();
     if (!this._minimapCanvas || this._minimapDirty) this.buildMinimapCache();
-    ctx.drawImage(this._minimapCanvas, mx, my);
+    // 底图按外框实际大小拉伸绘制，保证与外框严丝合缝
+    ctx.drawImage(this._minimapCanvas, mx, my, mw, mh);
 
     // 当前视野范围
     const z = this.zoom || 1;

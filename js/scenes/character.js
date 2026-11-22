@@ -16,8 +16,12 @@
         : (occupied.length ? occupied[0] : 0);
 
       const screen = U.el('div', 'screen char-screen');
+      // 新号（账号内还没有任何角色）只保留标题与创建区，其余内容隐藏并压暗背景
+      const isNewAccount = occupied.length === 0;
+      screen.classList.toggle('is-new', isNewAccount);
       screen.innerHTML = `
         <div class="char-grade" aria-hidden="true"><i class="g-hue"></i><i class="g-glow"></i><i class="g-mist"></i><i class="g-rim"></i><i class="g-shade"></i><i class="g-grain"></i></div>
+        <div class="char-new-mask" aria-hidden="true"></div>
         <header class="screen-head">
           <div>
             <h2>选 择 角 色</h2>
@@ -46,7 +50,7 @@
           `<span class="slot-emblem" style="color:${cls.color};border-color:${cls.color}55;">${cls.glyph}</span>` +
           `<span class="slot-copy">` +
             `<span class="slot-name">${U.escapeHtml(char.name)}</span>` +
-            `<span class="slot-lv">Lv.${char.level} · ${cls.name}</span>` +
+            `<span class="slot-lv">Lv.${char.level}</span>` +
           `</span>` +
         `</button>`;
       }).join('');

@@ -59,7 +59,7 @@
         this.syncAutoButton();
         // 小地图区域不参与走位；首领阶段小地图已屏蔽，不能再拦截点击
         const bossUp = this.monsters.some(m => m.boss && !m.dead);
-        const R = DG.scenes.dungeon.minimapRect;
+        const R = this.minimapRectNow();
         if (!bossUp && p.x >= R.x && p.x <= R.x + R.w && p.y >= R.y && p.y <= R.y + R.h) return;
         // 左键点地走位：点在墙上或道具上时吸附到最近的可站立地面
         const w = this.screenToWorld(p);

@@ -96,6 +96,9 @@
       toastWrap.classList.add('in-battle');
     }
     this.hud = el;
+    // 小地图的实际外框：画布按 810×1680 绘制后再缩放进舞台，
+    // 绘制与点击拦截都要以这个 DOM 外框为准，否则会出现地图和外框错位
+    this.$map = el.querySelector('.dg-map');
     this.$wave = el.querySelector('[data-wave]');
     this.$explore = el.querySelector('[data-explore]');
     this.$compass = el.querySelector('[data-boss-compass]');
