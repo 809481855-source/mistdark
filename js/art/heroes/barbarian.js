@@ -251,19 +251,24 @@
       }
       ctx.closePath();
     };
-    // 1 外缘薄柔光：只比主体宽一点，避免大范围暗红光雾把画面拖糊
+    // 1 红色辉光：多层极淡的加色月牙由内到外叠出连续衰减，
+    // 单层很薄所以看不出硬边/色阶，同时能向外打出明显的红光
+    const GLOW_N = 12;
     ctx.save();
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = alpha * 0.16;
-    ctx.fillStyle = 'rgb(214,52,22)';
-    crescent(1.5, 0.58, 0, 1);
-    ctx.fill();
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < GLOW_N; i++) {
+      const t = i / (GLOW_N - 1);
+      ctx.globalAlpha = alpha * 0.05 * (1 - 0.55 * t);
+      ctx.fillStyle = t < 0.5 ? 'rgb(255,56,24)' : 'rgb(198,18,10)';
+      crescent(1.3 + 2.6 * t, 0.5 + 0.22 * t, 0, 1);
+      ctx.fill();
+    }
     ctx.restore();
     // 2 主体：沿弧切成色块，暗红 → 亮橙红；块与块严格贴合、不做半透明叠加
     const CH = 18;
     ctx.save();
     ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = alpha * 0.92;
+    ctx.globalAlpha = alpha;
     for (let c = 0; c < CH; c++) {
       const k0 = c / CH, k1 = (c + 1) / CH;
       const t = Math.min(1, (k0 + k1) * 0.5 / 0.85);
@@ -278,11 +283,11 @@
     // 3 刃口：亮橙内芯 + 近白细边，贴着外缘走，保持锐利白热
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = alpha * 0.42;
+    ctx.globalAlpha = alpha * 0.55;
     ctx.fillStyle = 'rgb(255,150,70)';
     crescent(0.34, 0.62, 0, 1);
     ctx.fill();
-    ctx.globalAlpha = alpha * 0.85;
+    ctx.globalAlpha = alpha * 0.95;
     ctx.fillStyle = 'rgb(255,248,238)';
     crescent(0.13, 0.62, 0, 1);
     ctx.fill();

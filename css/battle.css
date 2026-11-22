@@ -357,14 +357,14 @@
   animation:popIn .16s ease-out;
 }
 .pause-card .modal-head h3{font-size:30px;}
-.pause-card .modal-head .sub{font-size:18px;}
+.pause-card .modal-head .sub{font-size:20px;}
 .pause-card .modal-body{
   display:flex;flex-direction:column;gap:14px;
   padding:8px 26px 22px;
   text-align:center;
 }
 .pause-card .btn{display:flex;width:100%;margin:0;justify-content:center;}
-.pause-card .hint{font-size:15px;color:#6a5840;margin:0;letter-spacing:.5px;}
+.pause-card .hint{font-size:20px;color:#5c4a33;margin:0;letter-spacing:.5px;}
 
 /* ---------- 触屏操作层（摇杆样式与主城共用，见 combat-bar.css） ---------- */
 

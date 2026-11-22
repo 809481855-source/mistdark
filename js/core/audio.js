@@ -663,6 +663,9 @@
 
   function resumeBgm() {
     if (!bgmKey || !enabled || !musicOn) return;
+    // 未解锁（还没有任何用户手势）时不下载音频：单曲 2MB+，提前拉会抢占登录页带宽，
+    // 而浏览器在解锁前本来也不允许出声
+    if (!unlocked) return;
     ensureRunning();
     if (bgmNodes.src) {
       fadeGain(bgmNodes.gain.gain, BGM_LEVEL, 400);
@@ -710,7 +713,7 @@
       resumeBgm();
       return;
     }
-    if (!unlocked) { loadBgm(key); return; }   // 等首次手势解锁后由 resumeBgm 起播
+    if (!unlocked) return;   // 等首次手势解锁后再由 resumeBgm 下载并起播，避免首屏抢带宽
 
     if (bgmBuffers[key]) { startBgmNode(key, BGM_FADE); return; }
     if (bgmFailed[key]) { playBgmHtml(key); return; }

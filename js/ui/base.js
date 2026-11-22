@@ -137,6 +137,25 @@
       `</div>`;
   };
 
+  // 公用道具框：白 / 蓝 / 紫 / 套装 / 暗金，套装与暗金另有远古框
+  const FRAME_DIR = 'assets/ui/items/frames/';
+  const FRAMES = {
+    normal: 'frame-normal.png',
+    magic: 'frame-magic.png',
+    rare: 'frame-rare.png',
+    set: 'frame-set.png',
+    legend: 'frame-legend.png'
+  };
+  const FRAMES_ANCIENT = {
+    set: 'frame-set-ancient.png',
+    legend: 'frame-legend-ancient.png'
+  };
+  ui.itemFrameSrc = function (item) {
+    const rarity = item && item.rarity;
+    const ancient = item && item.ancient && FRAMES_ANCIENT[rarity];
+    return FRAME_DIR + (ancient || FRAMES[rarity] || FRAMES.normal);
+  };
+
   ui.itemCell = function (item, opts) {
     opts = opts || {};
     const cell = U.el('div', 'item-cell');

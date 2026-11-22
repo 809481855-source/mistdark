@@ -136,6 +136,7 @@ input,textarea{-webkit-user-select:text;user-select:text;}
   background:
     linear-gradient(rgba(5,7,11,.82), rgba(5,7,11,.92)),
     url("../assets/login-bg.jpg") center/cover no-repeat,
+    url("data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABUOEBIQDRUSERIYFhUZHzQiHx0dH0AuMCY0TENQT0tDSUhUXnlmVFlyWkhJaY9qcnyAh4iHUWWUn5ODnXmEh4L/2wBDARYYGB8cHz4iIj6CVklWgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoL/wAARCABDACQDASIAAhEBAxEB/8QAGgAAAwEBAQEAAAAAAAAAAAAAAAIDBAEFBv/EACQQAAICAQMEAwEBAAAAAAAAAAECABEDEiFBBDFRYRMioQUU/8QAFgEBAQEAAAAAAAAAAAAAAAAAAAEC/8QAGREBAQEBAQEAAAAAAAAAAAAAAAERAjFB/9oADAMBAAIRAxEAPwD5qhyagBqHj3DTa3Yj4cbZGKodxwYxXVG1VHCEiaMPTMt6tvAuS6t1RdCN9uam/jJCghIfO42sQk0Oh+Mn6g7dzwZ6fSZMOldaqHPc1MWLCGTWxrmXxspIAWh5klxqq/1WCqgxH0SJ5hUi73uelnwrkUHxM79MumwbqOtJjAQL7fkJU0pINQkDgsVAUtQ4lFViVq9u/uRxPU24coHEzdbmV1v9GNFBSlI2mfVkUMs35utfIiK7AhBQ2AmDNmJMnN6vq2czxnJaza/sIrZW1GE2w7jIHapUZJjv3GXJKy1lweYjab2uQOQGLdcwqpO/aElrMIRIGMO0ISDsUmEIHLMIQgf/2Q==") center/cover no-repeat,
     radial-gradient(ellipse at 50% 40%, #232a36 0%, #0d1118 58%, #06080c 100%);
   pointer-events:auto;
   z-index:var(--z-toast);
@@ -182,7 +183,7 @@ input,textarea{-webkit-user-select:text;user-select:text;}
   background:none;
   color:#fff;
   font-family:var(--font);
-  font-size:30px;
+  font-size:36px;
   font-weight:800;
   line-height:1;
   letter-spacing:1px;
@@ -202,7 +203,8 @@ input,textarea{-webkit-user-select:text;user-select:text;}
 .btn.ghost:hover{filter:saturate(.9) brightness(1.02);}
 .btn:disabled{filter:grayscale(.4) brightness(.72);cursor:not-allowed;}
 .btn:disabled:hover{filter:grayscale(.4) brightness(.72);}
-.btn-sm{height:98px;min-width:238px;padding:0 26px;font-size:26px;letter-spacing:.5px;}
+/* 小号按钮：整体等比缩到 90%，按钮与文字同步缩放 */
+.btn-sm{height:88px;min-width:214px;padding:0 30px;border-width:27px 36px;font-size:32px;letter-spacing:.5px;}
 
 input[type=text],input[type=password]{
   width:100%;

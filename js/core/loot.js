@@ -13,7 +13,7 @@
         res.items.push(DG.items.generate(ilvl, Object.assign({ minRarity: 'magic' }, opts)));
         res.items.push(DG.items.generate(ilvl + 1, opts));
         if (U.chance(0.65)) res.items.push(DG.items.generate(ilvl + 1, Object.assign({ minRarity: 'rare' }, opts)));
-        res.orb = U.chance(0.5);
+        res.orb = U.chance(0.8);
         res.rune = U.chance(0.55);
         return res;
       }
@@ -22,7 +22,7 @@
       if (U.chance(itemChance)) {
         res.items.push(DG.items.generate(ilvl + (monster.elite ? 1 : 0), opts));
       }
-      res.orb = U.chance(0.12);
+      res.orb = U.chance(monster.elite ? 0.4 : 0.18);
       res.rune = U.chance(monster.elite ? 0.12 : 0.025);
       return res;
     }

@@ -449,7 +449,7 @@
 .skill-desc em{color:#eadcba;font-style:normal;}
 .skill-next{font-size:12px;color:var(--dim);margin-top:5px;}
 .skill-plus{display:flex;flex-direction:column;align-items:center;gap:6px;}
-.skill-plus .btn{width:74px;height:38px;font-size:13px;}
+.skill-plus .btn{width:74px;height:38px;font-size:15px;border-width:12px 18px;padding:0;}
 .skill-plus .cost{font-size:11px;color:#8f897c;}
 .point-badge{
   display:inline-block;font-size:12.5px;color:#1d170c;background:var(--gold);
@@ -492,23 +492,30 @@
 .loot-empty{font-size:12.5px;color:var(--dim);padding:8px 0;}
 .loot-cell{
   width:86px;height:92px;border-radius:4px;
-  border:1px solid #3d4048;
-  background:linear-gradient(160deg,#1e2128,#121419);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;
+  border:0;background:none;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
   font-size:22px;font-weight:700;color:#c6c0b2;
   position:relative;
-  padding:0 6px;
+  padding:0 8px;
 }
+/* 公用道具框铺满格面，文字叠在上层 */
+.loot-frame{
+  position:absolute;inset:0;width:100%;height:100%;
+  pointer-events:none;border-radius:4px;
+}
+.loot-cell > :not(.loot-frame){position:relative;z-index:1;}
 .loot-cell .loot-name{
   font-size:11.5px;font-weight:400;color:var(--text-2);
   max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  text-shadow:0 1px 2px rgba(0,0,0,.85);
 }
-.loot-cell.r-magic{border-color:#4370a8;color:#a8c6f0;box-shadow:inset 0 0 16px rgba(109,155,223,.16);}
-.loot-cell.r-rare{border-color:#b8932f;color:#f0d27a;box-shadow:inset 0 0 16px rgba(224,184,79,.18);}
-.loot-cell.r-set{border-color:#3f7d3a;color:#a8e0a0;box-shadow:inset 0 0 16px rgba(95,174,90,.2);}
-.loot-cell.r-legend{border-color:#b86426;color:#f5b07a;box-shadow:inset 0 0 20px rgba(232,133,60,.24);}
+.loot-cell.r-magic{color:#a8c6f0;}
+.loot-cell.r-rare{color:#f0d27a;}
+.loot-cell.r-set{color:#a8e0a0;}
+.loot-cell.r-legend{color:#f5b07a;}
 .loot-cell .qty{
-  position:absolute;right:4px;top:3px;font-size:10px;color:var(--muted);
+  position:absolute;right:7px;top:5px;font-size:10px;color:var(--muted);
+  text-shadow:0 1px 2px rgba(0,0,0,.85);
 }
 .levelup-note{
   font-size:12.5px;color:var(--gold-2);margin-top:6px;letter-spacing:.5px;
@@ -824,7 +831,7 @@
 /* 覆盖 adapt.css 中旧的弹窗内边距与标题字号（否则缎带标题会被缩小） */
 .modal .modal-head{height:36px;padding:0;}
 .modal .modal-head h3{font-size:30px;letter-spacing:2px;}
-.modal .modal-head .sub{font-size:18px;}
+.modal .modal-head .sub{font-size:20px;}
 .modal .modal-body{padding:2px 26px 18px;}
 .modal .modal-foot{padding:14px 26px 18px;}
 .modal .confirm-text{font-size:24px;line-height:1.8;}
@@ -874,12 +881,12 @@
 .modal .section-label > span:first-child::before{color:#96713c;}
 .modal .section-label .meta{color:#5c4a33;}
 .modal .section-label .meta b{color:#7d4c12;}
-.modal .equip-divider{color:#96713c;font-size:15px;letter-spacing:2px;}
-.modal .equip-hero-lv{font-size:16px;padding:2px 10px;}
-.modal .hero-lv{font-size:16px;padding:2px 9px;}
-.modal .tn-idx{font-size:14px;padding:0 6px;}
-.modal .rarity-tag{font-size:15px;}
-.modal .item-cell.empty .glyph{font-size:16px;}
+.modal .equip-divider{color:#7d5a2a;font-size:20px;letter-spacing:2px;}
+.modal .equip-hero-lv{font-size:20px;padding:2px 10px;}
+.modal .hero-lv{font-size:20px;padding:2px 9px;}
+.modal .tn-idx{font-size:20px;padding:0 6px;}
+.modal .rarity-tag{font-size:20px;}
+.modal .item-cell.empty .glyph{font-size:20px;}
 .modal .tab-bar{gap:10px;margin-bottom:14px;}
 .modal .tab-btn{height:48px;padding:0 26px;font-size:21px;letter-spacing:1.5px;border-radius:6px;}
 .modal .equip-divider::before{background:linear-gradient(90deg,transparent,rgba(150,113,60,.5));}
@@ -892,12 +899,12 @@
 .modal .bag-cap i{background:linear-gradient(90deg,#a97c2e,#e2c078);}
 .modal .bag-grid{grid-template-columns:repeat(8,1fr);gap:8px;}
 .modal .item-cell .glyph{font-size:26px;}
-.modal .item-cell .lvl{font-size:14px;color:#d8cfbd;}
-.modal .item-cell .equipped-mark{font-size:13px;}
-.modal .equip-slot .slot-label{font-size:17px;}
-.modal .equip-slot .slot-name{font-size:16px;}
+.modal .item-cell .lvl{font-size:20px;color:#5c4a33;}
+.modal .item-cell .equipped-mark{font-size:20px;}
+.modal .equip-slot .slot-label{font-size:20px;}
+.modal .equip-slot .slot-name{font-size:20px;}
 .modal .equip-doll .equip-trinkets .slot-label,
-.modal .equip-doll .equip-trinkets .slot-name{font-size:14px;}
+.modal .equip-doll .equip-trinkets .slot-name{font-size:20px;}
 .modal .tree-head{border-bottom-color:rgba(90,60,30,.18);}
 
 /* ---------- 页签 / 分段选择：纸面浅底 + 深褐选中 ---------- */
@@ -951,55 +958,58 @@
 
 /* ---------- 字号：按 720 设计宽放大，手机缩放后仍清晰 ---------- */
 .modal .section-label{font-size:20px;letter-spacing:1.5px;margin-bottom:12px;}
-.modal .section-label .meta{font-size:18px;}
-.modal .stat-list li{font-size:20px;}
-.modal .stat-list li b{font-size:22px;}
-.modal .stat-list li b em{font-size:17px;}
+.modal .section-label{font-size:21px;color:#7d5a2a;}
+.modal .section-label .meta{font-size:20px;}
+.modal .stat-list li{font-size:20px;color:#4a3a28;}
+.modal .stat-list li b{font-size:22px;color:#2f2418;}
+.modal .stat-list li b em{font-size:20px;color:#5c4a33;}
 .modal .equip-stats .stat-list{justify-content:flex-start;}
 .modal .equip-stats .stat-list li{padding:9px 0;}
 .modal .item-name{font-size:27px;}
-.modal .item-type{font-size:19px;margin:5px 0 12px;}
+.modal .item-type{font-size:20px;margin:5px 0 12px;}
 .modal .item-stat{font-size:20px;line-height:1.85;}
-.modal .compare{font-size:19px;}
-.modal .compare-note{font-size:17px;}
+.modal .compare{font-size:20px;}
+.modal .compare-note{font-size:20px;color:#5c4a33;}
 .modal .detail-empty{font-size:20px;line-height:1.9;}
-.modal .detail-actions .btn{min-width:150px;height:98px;padding:0 12px;font-size:26px;}
+.modal .detail-actions .btn{min-width:150px;height:98px;padding:0 12px;font-size:36px;}
 .modal .skill-row{grid-template-columns:70px 1fr auto;gap:18px;padding:17px;}
 .modal .skill-icon{width:70px;height:70px;font-size:27px;}
 .modal .skill-name{font-size:24px;}
-.modal .skill-name .lv{font-size:17px;}
-.modal .skill-name .key-tip{font-size:17px;}
+.modal .skill-name .lv{font-size:20px;}
+.modal .skill-name .key-tip{font-size:20px;color:#5c4a33;}
 .modal .skill-desc{font-size:20px;line-height:1.72;}
-.modal .skill-next{font-size:17px;letter-spacing:0;}
-.modal .skill-plus .cost{font-size:16px;}
-.modal .skill-plus .btn{width:auto;min-width:238px;height:98px;padding:0 18px;font-size:28px;}
-.modal .modal-body .note{font-size:18px;line-height:1.85;}
+.modal .skill-next{font-size:20px;letter-spacing:0;color:#5c4a33;}
+.modal .skill-plus .cost{font-size:20px;}
+.modal .skill-plus .btn{width:auto;min-width:238px;height:98px;padding:0 18px;font-size:36px;}
+.modal .modal-body .note{font-size:20px;line-height:1.85;}
 .modal .tree-head b{font-size:21px;}
-.modal .tree-head .meta{font-size:17px;}
+.modal .tree-head .meta{font-size:20px;}
 .modal .tree-nodes{grid-template-columns:repeat(2,1fr);gap:10px;}
 .modal .tree-node{padding:12px;}
-.modal .tree-node b{font-size:18px;}
-.modal .tree-node p{font-size:16px;line-height:1.55;min-height:0;}
-.modal .tree-node em{font-size:15px;}
+.modal .tree-node b{font-size:20px;}
+.modal .tree-node p{font-size:20px;line-height:1.55;min-height:0;}
+.modal .tree-node em{font-size:20px;}
 .modal .result-banner h2{font-size:42px;letter-spacing:10px;}
-.modal .result-banner p{font-size:19px;}
+.modal .result-banner p{font-size:20px;}
 .modal .result-cell{padding:16px;}
-.modal .result-cell .k{font-size:17px;}
+.modal .result-cell .k{font-size:20px;color:#5c4a33;}
 .modal .result-cell .v{font-size:28px;}
-.modal .loot-title{font-size:18px;}
-.modal .loot-empty{font-size:19px;}
-.modal .levelup-note,.modal .skillup-note{font-size:19px;}
+.modal .loot-title{font-size:20px;}
+.modal .loot-empty{font-size:20px;}
+.modal .levelup-note,.modal .skillup-note{font-size:20px;}
 .modal .loot-cell{width:100px;height:110px;font-size:26px;}
-.modal .loot-cell .loot-name{font-size:15px;}
+.modal .loot-cell .loot-name{font-size:20px;}
 .modal .setting-title{font-size:21px;}
-.modal .setting-desc{font-size:19px;line-height:1.7;}
-.modal .seg-btn{height:52px;font-size:19px;padding:0 22px;}
-.modal .settings-note{font-size:19px;line-height:1.9;}
-.modal .modal-body .note{font-size:18px;}
+.modal .setting-desc{font-size:20px;line-height:1.7;color:#5c4a33;}
+.modal .seg-btn{height:52px;font-size:20px;padding:0 22px;}
+.modal .settings-note{font-size:20px;line-height:1.9;color:#5c4a33;}
+.modal .setting-range .range-val{min-width:64px;font-size:20px;color:#7d4c12;}
+.modal .modal-body .note{font-size:20px;}
 .modal .pick-glyph{font-size:36px;}
 .modal .pick-name{font-size:20px;}
-.modal .pick-title{font-size:17px;}
-.modal .cls-desc{font-size:19px;}
+.modal .pick-title{font-size:20px;color:#4a3a28;}
+.modal .cls-desc{font-size:20px;color:#3f3223;}
+.modal .cls-base{font-size:20px;color:#4a3a28;}
 .modal input[type=text],
 .modal input[type=password]{
   width:100%;
@@ -1020,24 +1030,26 @@
   text-shadow:0 1px 1px rgba(0,0,0,.4);
 }
 .modal input::placeholder{color:#fff;opacity:1;font-weight:700;}
-.modal .ci-sub{font-size:18px;}
-.modal .ci-desc{font-size:18px;line-height:1.7;}
-.modal .hero-xp-meta{font-size:17px;}
+.modal .ci-sub{font-size:20px;}
+.modal .ci-desc{font-size:20px;line-height:1.7;color:#3f3223;}
+.modal .hero-xp-meta{font-size:20px;}
 .modal .hero-xp-bar{height:14px;}
-.modal .ci-power span{font-size:16px;}
+.modal .ci-power span{font-size:20px;color:#5c4a33;}
 .modal .ci-power b{font-size:30px;}
 .modal .equip-hero-name{font-size:24px;}
-.modal .equip-hero-sub{font-size:17px;}
-.modal .equip-hero-power span{font-size:15px;}
+.modal .equip-hero-sub{font-size:20px;color:#5c4a33;}
+.modal .equip-hero-power span{font-size:20px;color:#5c4a33;}
 .modal .equip-hero-power b{font-size:30px;}
+.modal .hero-mini-stats span{font-size:20px;color:#5c4a33;}
+.modal .hero-mini-stats b{font-size:20px;color:#2f2418;}
 
 /* ---------- 弹框内按钮：统一公用九宫按钮 ----------
    高度固定 98，装饰角按资源原像素 1:1 渲染；宽度只压缩中间平色区，
    因此行内次要操作可以使用更窄的按钮，既不放大也不变形。 */
-.modal .btn{font-size:30px;letter-spacing:1px;}
-.modal .btn-sm{font-size:26px;padding:0 16px;letter-spacing:.5px;}
-.modal .confirm-actions .btn{height:98px;font-size:30px;}
-.modal .settle-btn{min-width:238px;height:98px;font-size:30px;}
+.modal .btn{font-size:36px;letter-spacing:1px;}
+.modal .btn-sm{font-size:32px;padding:0 20px;letter-spacing:.5px;}
+.modal .confirm-actions .btn{height:98px;font-size:36px;}
+.modal .settle-btn{min-width:238px;height:98px;font-size:36px;}
 
 /* 技能行：图标 | 说明 | 紧凑升级按钮，按钮不再独占一整行 */
 .modal .skill-row{
@@ -1054,13 +1066,13 @@
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:8px;
 }
-.modal .skill-plus .btn{min-width:150px;width:auto;height:98px;padding:0 10px;font-size:28px;}
+.modal .skill-plus .btn{min-width:150px;width:auto;height:98px;padding:0 10px;font-size:36px;}
 .modal .skill-plus .cost{order:0;margin:0;font-size:16px;color:#6a5840;}
 
 /* 标题行右侧的次要按钮（重置等）：紧凑宽度，与点数徽章保持同一行 */
 .modal .section-label{flex-wrap:wrap;row-gap:8px;}
 .modal .section-label .meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;}
-.modal .section-label .meta .btn{min-width:150px;height:98px;padding:0 12px;font-size:26px;}
+.modal .section-label .meta .btn{min-width:150px;height:98px;padding:0 12px;font-size:36px;}
 
 .modal .section-label > span:first-child{white-space:nowrap;}
 .modal .section-label{align-items:center;}
@@ -1177,7 +1189,7 @@
   font-size:34px;font-weight:700;color:#f2e6cb;text-shadow:0 2px 4px rgba(0,0,0,.8);
 }
 .eq-ilvl{
-  position:absolute;right:5px;bottom:3px;font-size:16px;color:#f0e2c8;
+  position:absolute;right:5px;bottom:3px;font-size:20px;color:#f0e2c8;
   text-shadow:0 1px 2px #000;
 }
 .eq-ancient{
@@ -1193,7 +1205,7 @@
 }
 .eq-stats-title{
   position:absolute;left:0;right:0;top:14px;height:34px;line-height:34px;text-align:center;
-  font-size:26px;font-weight:700;letter-spacing:4px;color:#8d7c60;
+  font-size:26px;font-weight:700;letter-spacing:4px;color:#6b5330;
 }
 .eq-stat-list{
   position:absolute;left:16px;right:16px;top:68px;margin:0;padding:0;list-style:none;
@@ -1201,10 +1213,10 @@
 .eq-stat-list li{
   display:flex;align-items:center;justify-content:space-between;height:55px;font-size:22px;
 }
-.eq-stat-list .k{color:#8a795f;}
-.eq-stat-list .v{color:#6a5943;font-weight:700;}
+.eq-stat-list .k{color:#4a3a28;}
+.eq-stat-list .v{color:#2f2418;font-weight:700;}
 .eq-stat-list .v em{
-  font-style:normal;font-weight:400;font-size:20px;margin-left:6px;color:#8a795f;
+  font-style:normal;font-weight:400;font-size:20px;margin-left:6px;color:#5c4a33;
 }
 
 /* ---------- 临时装备库 ---------- */
@@ -1223,7 +1235,7 @@
 .eq-tab{
   /* 三个页签按 125 间距排布，宽度收 2px，最后一个正好落在 368 的页签底框内 */
   position:absolute;top:0;width:118px;height:69px;padding:0;border:0;background:none;
-  font-size:24px;font-weight:700;letter-spacing:2px;color:#96714a;cursor:pointer;
+  font-size:24px;font-weight:700;letter-spacing:2px;color:#6b4a26;cursor:pointer;
 }
 .eq-tab.on{color:#fff4dd;text-shadow:0 1px 2px #7a3610;}
 .eq-btn{
@@ -1240,10 +1252,12 @@
 }
 .eq-cap b{color:#2f2418;}
 .eq-grid-wrap{
-  /* 高度必须正好等于 3 行：92×3 + 24×2 = 324，多出来会把第 4 行的彩色框顶边露成细条 */
-  position:absolute;left:36px;top:144px;width:603px;height:324px;
+  /* 高度 = 3 整行 + 第 4 行露出半格（46px），提示列表还能上下滑动 */
+  position:absolute;left:36px;top:137px;width:603px;height:382px;
   overflow-y:auto;overflow-x:hidden;touch-action:pan-y;scrollbar-width:none;
 }
+/* 背包页行距略收，让半格提示正好落在底框内；装备库仍用原来的行距 */
+.eq-bag-page .eq-grid{row-gap:20px;}
 .eq-grid-wrap::-webkit-scrollbar,.eq-stash-grid-wrap::-webkit-scrollbar{display:none;}
 .eq-grid{
   display:grid;grid-template-columns:repeat(5,93px);column-gap:34px;row-gap:24px;
@@ -1464,7 +1478,7 @@
   min-width:167px;width:167px;height:69px;
   padding:0 6px;
   border-width:21px 28px;
-  font-size:23px;
+  font-size:25px;
   letter-spacing:.5px;
 }
 .qp-actions{display:flex;justify-content:flex-end;gap:12px;margin-top:16px;}

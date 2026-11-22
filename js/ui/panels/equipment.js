@@ -25,29 +25,12 @@
     boots: [173, 449]
   };
 
-  // 品质框：白 / 蓝 / 紫 / 普通套装 / 暗金，套装与暗金另有远古框
-  const FRAME = {
-    normal: 'frame-normal.png',
-    magic: 'frame-magic.png',
-    rare: 'frame-rare.png',
-    set: 'frame-set.png',
-    legend: 'frame-legend.png'
-  };
-  const FRAME_ANCIENT = {
-    set: 'frame-set-ancient.png',
-    legend: 'frame-legend-ancient.png'
-  };
-
+  // 品质框统一走公用道具框（assets/ui/items/frames），含远古套装 / 远古暗金
   const TABS = [
     { id: 'equip', name: '装备' },
     { id: 'item', name: '道具' },
     { id: 'other', name: '其他' }
   ];
-
-  function frameSrc(item) {
-    const ancient = item.ancient && FRAME_ANCIENT[item.rarity];
-    return ASSET + (ancient || FRAME[item.rarity] || FRAME.normal);
-  }
 
   function slotOf(item) {
     return DG.items.slotInfo(item.slot) || { name: '装备', glyph: '?' };
@@ -97,7 +80,7 @@
     }
     cell.classList.add('has');
     const img = U.el('img', 'eq-frame');
-    img.src = frameSrc(item);
+    img.src = DG.ui.itemFrameSrc(item);
     img.alt = '';
     cell.appendChild(img);
     cell.appendChild(U.el('span', 'eq-glyph', slot.glyph));

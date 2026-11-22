@@ -122,7 +122,7 @@
   justify-content:space-between;
   gap:20px;
   padding-bottom:18px;
-  border-bottom:1px solid var(--line-soft);
+  border-bottom:2px solid rgba(220,203,176,.3);
   position:relative;
   z-index:2;
 }
@@ -148,13 +148,13 @@
   right:36px;
   z-index:3;
 }
-/* 新号无角色：只保留标题与创建区，背景压暗 60%，仅创建按钮与登出可操作 */
+/* 新号无角色：只保留标题与创建区，背景压暗 30%，仅创建按钮与登出可操作 */
 .char-new-mask{display:none;}
 .char-screen.is-new .char-new-mask{
   display:block;
   position:absolute;
   inset:0;
-  background:rgba(0,0,0,.6);
+  background:rgba(0,0,0,.3);
   z-index:2;
   pointer-events:auto;
 }
@@ -164,6 +164,8 @@
 .char-screen.is-new .preview-nav,
 .char-screen.is-new .char-slots,
 .char-screen.is-new .char-foot{display:none;}
+/* 新号创建区整体下移 100 像素，避开标题区 */
+.char-screen.is-new .preview-empty{top:691px;}
 /* 预览区：立绘按舞台坐标锚定，脚底永远落在石台中心，不随屏幕比例 / 字号档位漂移 */
 .char-preview{
   position:absolute;
@@ -297,8 +299,10 @@
 .preview-empty-glyph{
   width:120px;height:120px;
   display:flex;align-items:center;justify-content:center;
-  font-size:52px;line-height:1;color:#a99a80;
-  border:1px dashed #5d5544;border-radius:50%;
+  /* 与石台中心的圆环对齐，压在台面圆圈上 */
+  transform:translateY(-28px);
+  font-size:72px;line-height:1;color:#dccbb0;
+  border:3px dashed rgba(220,203,176,.7);border-radius:50%;
 }
 .preview-empty-text{font-size:19px;letter-spacing:2px;color:#ecdfc8;text-shadow:0 1px 3px rgba(0,0,0,.7);}
 .preview-empty-hint{
@@ -306,7 +310,7 @@
   text-shadow:0 1px 3px rgba(0,0,0,.85);
 }
 /* 空槽创建按钮：使用公用按钮资源原尺寸 238×98，不压缩 */
-.preview-empty .btn{width:238px;height:98px;padding:0;margin-top:6px;font-size:30px;letter-spacing:.5px;}
+.preview-empty .btn{width:238px;height:98px;padding:0;margin-top:6px;font-size:36px;letter-spacing:.5px;}
 
 /* 底部槽位切换（预览层已脱离文档流，这里靠 margin-top 压到底部） */
 .char-slots{

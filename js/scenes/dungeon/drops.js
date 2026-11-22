@@ -41,7 +41,7 @@
       this.player.hp = Math.min(this.player.maxHp, this.player.hp + heal);
       if (DG.audio) DG.audio.play('stagePickup', { vol: 0.7 });
       this.addFloater(this.player.x, this.player.y - 38, `+${heal}`, '#7fd08a', 22);
-      this.addBurst(d.x, d.y, '#7fd08a', 6);
+      this.addBurst(d.x, d.y, '#ff5a4a', 8);
       return true;
     }
     if (d.kind === 'rune') {

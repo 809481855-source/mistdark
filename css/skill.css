@@ -64,9 +64,10 @@
   position:absolute;transform-origin:top center;pointer-events:none;
   background:url("../assets/ui/skill/line.png") 0 0/100% 100% no-repeat;
 }
-/* 已激活 / 可激活的线路：黄色发光 */
-.sk-line.lit{
-  background-image:url("../assets/ui/skill/line-active.png");
+/* 已激活 / 可激活的线路：黄色内芯嵌进黑色线路，左右各留 1px 黑边 */
+.sk-line.lit::before{
+  content:'';position:absolute;left:1px;right:1px;top:0;bottom:0;
+  background:url("../assets/ui/skill/line-active.png") 0 0/100% 100% no-repeat;
   filter:drop-shadow(0 0 4px rgba(255,183,42,.7));
 }
 
@@ -110,8 +111,7 @@
   text-shadow:0 2px 2px rgba(0,0,0,.55);
   z-index:3;pointer-events:auto;cursor:pointer;
 }
-.sk-label.off{color:#ded5c6;opacity:.9;}
-.sk-tree.locked .sk-label{opacity:.55;}
+.sk-label.off{color:#ded5c6;}
 
 /* 主技能未解锁等级提示（压在灰色图标下沿，避开名称标签） */
 .sk-lock{

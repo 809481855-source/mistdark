@@ -13,6 +13,7 @@
       ? items.map(it => {
           const slot = DG.items.slotInfo(it.slot);
           return `<div class="loot-cell r-${it.rarity}" title="${U.escapeHtml(it.name)}">` +
+            `<img class="loot-frame" src="${DG.ui.itemFrameSrc(it)}" alt="">` +
             `<span class="qty">${DG.data.rarityById[it.rarity].name}</span>` +
             `${U.escapeHtml(slot.glyph)}` +
             `<span class="loot-name">${U.escapeHtml(it.name)}</span></div>`;

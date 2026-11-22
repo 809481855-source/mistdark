@@ -16,6 +16,7 @@
   width:var(--stage-w,720px);
   height:var(--stage-h,1440px);
   background:url("../assets/login-bg.jpg") center bottom / cover no-repeat,
+    url("data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABUOEBIQDRUSERIYFhUZHzQiHx0dH0AuMCY0TENQT0tDSUhUXnlmVFlyWkhJaY9qcnyAh4iHUWWUn5ODnXmEh4L/2wBDARYYGB8cHz4iIj6CVklWgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoL/wAARCABDACQDASIAAhEBAxEB/8QAGgAAAwEBAQEAAAAAAAAAAAAAAAIDBAEFBv/EACQQAAICAQMEAwEBAAAAAAAAAAECABEDEiFBBDFRYRMioQUU/8QAFgEBAQEAAAAAAAAAAAAAAAAAAAEC/8QAGREBAQEBAQEAAAAAAAAAAAAAAAERAjFB/9oADAMBAAIRAxEAPwD5qhyagBqHj3DTa3Yj4cbZGKodxwYxXVG1VHCEiaMPTMt6tvAuS6t1RdCN9uam/jJCghIfO42sQk0Oh+Mn6g7dzwZ6fSZMOldaqHPc1MWLCGTWxrmXxspIAWh5klxqq/1WCqgxH0SJ5hUi73uelnwrkUHxM79MumwbqOtJjAQL7fkJU0pINQkDgsVAUtQ4lFViVq9u/uRxPU24coHEzdbmV1v9GNFBSlI2mfVkUMs35utfIiK7AhBQ2AmDNmJMnN6vq2czxnJaza/sIrZW1GE2w7jIHapUZJjv3GXJKy1lweYjab2uQOQGLdcwqpO/aElrMIRIGMO0ISDsUmEIHLMIQgf/2Q==") center bottom / cover no-repeat,
     radial-gradient(ellipse at 50% 32%, #2a303c 0%, #141a24 50%, #07080b 100%);
   pointer-events:none;
 }

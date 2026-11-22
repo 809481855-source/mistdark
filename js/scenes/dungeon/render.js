@@ -624,18 +624,39 @@
         ctx.fillRect(-4, -4, 8, 8);
         ctx.restore();
       } else if (d.kind === 'orb') {
+        // 血球：红色、大而醒目，靠近自动回血
+        const pulse = 0.5 + Math.sin(d.t * 5) * 0.5;
+        const coreR = 19 + Math.sin(d.t * 5) * 1.5;
         ctx.save();
         ctx.translate(d.x, d.y + bob);
+        // 地面血色光晕
         ctx.globalCompositeOperation = 'lighter';
-        ctx.drawImage(this.glowSprite('#6fd08a'), -18, -18, 36, 36);
+        const gr = 46 + pulse * 10;
+        ctx.drawImage(this.glowSprite('#ff3b30'), -gr, -gr, gr * 2, gr * 2);
+        // 呼吸提示环：让血球在杂乱地面上一眼可见
         ctx.globalCompositeOperation = 'source-over';
-        ctx.fillStyle = '#3d8a55';
+        ctx.strokeStyle = `rgba(255,86,72,${0.5 - pulse * 0.28})`;
+        ctx.lineWidth = 2.5;
         ctx.beginPath();
-        ctx.arc(0, 0, 8, 0, Math.PI * 2);
+        ctx.arc(0, 0, 27 + pulse * 11, 0, Math.PI * 2);
+        ctx.stroke();
+        // 球体：内亮外暗的红色径向渐变
+        const rg = ctx.createRadialGradient(-coreR * 0.35, -coreR * 0.4, coreR * 0.15, 0, 0, coreR);
+        rg.addColorStop(0, '#ff8a7a');
+        rg.addColorStop(0.45, '#e03024');
+        rg.addColorStop(1, '#7d0b06');
+        ctx.fillStyle = rg;
+        ctx.beginPath();
+        ctx.arc(0, 0, coreR, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = '#9fe6ad';
-        ctx.fillRect(-4, -1.5, 8, 3);
-        ctx.fillRect(-1.5, -4, 3, 8);
+        // 深色描边与高光：红地面上也能看清轮廓
+        ctx.strokeStyle = 'rgba(60,2,0,0.85)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(255,220,210,0.75)';
+        ctx.beginPath();
+        ctx.ellipse(-coreR * 0.38, -coreR * 0.42, coreR * 0.28, coreR * 0.18, -0.6, 0, Math.PI * 2);
+        ctx.fill();
         ctx.restore();
       } else if (d.kind === 'rune') {
         ctx.save();

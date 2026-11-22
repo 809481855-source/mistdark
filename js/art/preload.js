@@ -69,6 +69,13 @@
     if (state.started) return;
     state.started = true;
 
+    // 先让登录页完成首帧绘制，再开始下载贴图：
+    // 贴图总量约 2MB，若在脚本仍未下载完时就开始拉，会和登录背景抢带宽，
+    // 反而让首屏更慢（浏览器对每域名只有 6 个并发连接）。
+    requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(begin, 200)));
+  }
+
+  function begin() {
     // 全部小怪贴图（内部按 src 去重，并顺带烘焙暗色调 / 白闪）
     if (DG.art.monsters && DG.art.monsters.preload) DG.art.monsters.preload();
     // 全部首领贴图
