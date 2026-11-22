@@ -50,7 +50,11 @@
       if (ctx.state !== 'running') {
         const p = ctx.resume();
         if (p && p.catch) p.catch(() => {});
+        return;
       }
+      // 从挂起/中断恢复：部分内核中断后旧的 BufferSource 不会续播，
+      // 这里重建长音频源，避免“上下文 running 但一片安静”
+      reviveLongSources();
     };
     return ctx;
   }
@@ -150,6 +154,10 @@
       if (unlocked) rebuild();
       return;
     }
+    // 是否处于被系统挂起/中断状态：恢复后需要重建长音频播放源。
+    // 部分手机内核中断后不会让旧的 BufferSource 自动续播，
+    // 表现就是上下文 running、界面正常，但 BGM 和环境音彻底没声。
+    const wasAsleep = ctx.state !== 'running';
     // 在手势回调栈内同步 resume 一次：严格自动播放策略（iOS Safari / 省电模式）
     // 只认手势里发出的 resume，延迟到 Promise 里再调会被拒绝
     if (ctx.state !== 'running' && ctx.state !== 'closed') {
@@ -174,13 +182,20 @@
         if (token !== wakeSeq || blocked()) return;
         if (!ctx) return;
         if (ctx.state === 'closed') { rebuild(); return; }
-        if (ctx.state === 'running') { hardRecover(force); return; }
+        if (ctx.state === 'running') {
+          if (wasAsleep) reviveLongSources();
+          hardRecover(force);
+          return;
+        }
         // 不能依赖 resume() 的 Promise：页面被冻结 / 音频焦点被抢占时
         // 该 Promise 可能永远不落地，必须靠定时器自己重试
         try {
           const p = ctx.resume();
           if (p && p.then) p.then(() => {
-            if (token === wakeSeq && !blocked() && ctx && ctx.state === 'running') hardRecover(force);
+            if (token === wakeSeq && !blocked() && ctx && ctx.state === 'running') {
+              if (wasAsleep) reviveLongSources();
+              hardRecover(force);
+            }
           }, () => {});
         } catch (e) { /* 旧内核没有 resume */ }
         tries++;
@@ -237,6 +252,32 @@
       }
     }
     rebuilding = false;
+  }
+
+  let lastReviveAt = 0;
+  // 中断恢复后重建长音频播放源：BGM 与环境音的 BufferSource 在部分手机内核上
+  // 被系统中断后不会自动续播（上下文 running 但没声），只能重新创建节点
+  function reviveLongSources() {
+    if (!ctx || ctx.state !== 'running' || !unlocked || !enabled) return;
+    const now = Date.now();
+    if (now - lastReviveAt < 1200) return;
+    lastReviveAt = now;
+    if (bgmKey && musicOn && !bgmEl) {
+      // startBgmNode 内部会把旧节点淡出并接手，相当于一次无缝重连
+      if (bgmBuffers[bgmKey]) startBgmNode(bgmKey, 320);
+      else resumeBgm();
+    } else if (bgmEl && bgmHtmlKey && bgmEl.paused) {
+      const p = bgmEl.play();
+      if (p && p.catch) p.catch(() => {});
+    }
+    // 环境音噪声源同样要重建，否则回到前台后只剩 BGM
+    if (current) {
+      if (amb) {
+        amb.nodes.forEach(n => { try { n.stop(); } catch (e) { /* 已停止 */ } });
+        amb = null;
+      }
+      buildAmbient(current);
+    }
   }
 
   // 已解锁后，每次手势都顺手检查一次：避免中断后一直静音
@@ -766,6 +807,8 @@
     g.connect(bus);
     src.start();
     bgmNodes = { key: key, src: src, gain: g, bornAt: Date.now() };
+    // 刚起播的曲目不需要立刻被恢复逻辑重建
+    lastReviveAt = Date.now();
     releaseBgmBuffers(key);
     fadeGain(g.gain, BGM_LEVEL, fadeMs == null ? BGM_FADE : fadeMs);
     if (c.state === 'suspended') {
