@@ -34,13 +34,13 @@
   };
 
   // 各小怪按自身特色选招：狼/史莱姆扑，骷髅/镰手/劫掠者挥刀，蝠/狐/鳍/蜥抓挠，
-  // 甲虫/刺球/羊/甲兽/豌豆撞，宝箱怪与噬人花抓拽
+  // 甲虫/刺球/仙人掌/野猪/豌豆撞，木乃伊与噬人蠕虫抓拽
   const MELEE_STYLE = {
     wolf: 'pounce', frostwolf: 'pounce', slime: 'pounce', frostslime: 'pounce',
-    skeleton: 'slash', boneknight: 'slash', pumpkin: 'slash', cowlbandit: 'slash', plaguedoc: 'slash',
-    bat: 'claw', foxraider: 'claw', deepfin: 'claw', venomlisk: 'claw',
+    skeleton: 'slash', boneknight: 'slash', pumpkin: 'slash', cowlbandit: 'slash', plaguedoc: 'slash', mummy: 'slash',
+    bat: 'claw', foxraider: 'claw', deepfin: 'claw', venomlisk: 'claw', angler: 'claw',
     pea: 'charge', beetle: 'charge', urchin: 'charge', fleece: 'charge', bulwark: 'charge',
-    mimic: 'grab', mawflower: 'grab'
+    mawflower: 'grab'
   };
 
   // 专属特效皮肤：每种小怪在共用招式之上再叠一层自身主题碎屑/元素，
@@ -57,7 +57,7 @@
     pumpkin:     { bits: 'ember', n: 10 },
     slime:       { bits: 'mucus', n: 9 },
     frostslime:  { bits: 'ice', n: 10 },
-    mimic:       { bits: 'coin', n: 8 },
+    mummy:       { bits: 'bone', n: 9 },
     bat:         { bits: 'blood', n: 8 },
     hornet:      { bits: 'needle', n: 8, cast: true },
     beetle:      { bits: 'shell', n: 9 },

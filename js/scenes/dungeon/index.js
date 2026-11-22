@@ -57,7 +57,6 @@
         [].concat(this.def.pool || [], this.def.elitePool || [], this.def.bossPool || []).forEach((id) => {
           if (id) warmIds.push(id);
         });
-        warmIds.push('mimic');
         const bosses = [].concat(this.def.bossPool || [], this.def.bossId ? [this.def.bossId] : []);
         bosses.forEach((id) => {
           if (minions[id]) warmIds.push(minions[id]);

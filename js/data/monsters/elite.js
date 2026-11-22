@@ -3,7 +3,7 @@
   const DG = window.DG;
   Object.assign(DG.data.monsters, {
     mawflower: {
-      id: 'mawflower', name: '噬人花', shape: 'circle', color: '#c0503f', r: 24,
+      id: 'mawflower', name: '噬人蠕虫', shape: 'circle', color: '#8a4a5a', r: 24,
       art: 'mawflower', artScale: 1.12, fxColor: '#ff8f6a', windup: 0.50,
       hp: 120, dmg: 14, speed: 52, attackRange: 66, attackCd: 2.2,
       xp: 30, gold: [10, 18], ranged: false

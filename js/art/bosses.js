@@ -11,28 +11,33 @@
   // 暗黑调色：贴图首领加载时烘焙暗色版本
   const DARK_FILTER_TEX = 'saturate(0.62) brightness(0.84) contrast(1.26) hue-rotate(-6deg)';
 
+  // 25 位首领全部使用本轮新贴图（一一对应，无复用 / 无染色）
   const DEFS = {
-    eyehorror: { src: 'assets/bosses/eyehorror.png', height: 286, kind: 'eye', glow: '#9b5ce0' },
-    reaper: { src: 'assets/bosses/reaper.png', height: 268, kind: 'reaper', glow: '#8b5fd6' },
-    // 首领批次一：直接从参考图鉴裁切、抠背景得到的大型角色
-    croc: { src: 'assets/bosses/croc.png', height: 232, kind: 'croc', glow: '#93d47a' },
-    hierophant: { src: 'assets/bosses/hierophant.png', height: 268, kind: 'hierophant', glow: '#b46be0' },
-    // 首领批次二：图鉴裁切
-    mummyking: { src: 'assets/bosses/mummyking.png', height: 238, kind: 'mummy', glow: '#a9c9bd' },
-    octoking: { src: 'assets/bosses/octoking.png', height: 252, kind: 'octo', glow: '#6f9fe0' },
-    // 首领批次三：图鉴裁切（迷雾林地）
-    piratecrab: { src: 'assets/bosses/piratecrab.png', height: 226, kind: 'crab', glow: '#7fd0d8' },
-    mawfish: { src: 'assets/bosses/mawfish.png', height: 236, kind: 'maw', glow: '#e0666a' },
-    goatbrute: { src: 'assets/bosses/goatbrute.png', height: 252, kind: 'goat', glow: '#b89ae0' },
-    // 首领批次三：图鉴裁切（沉沦墓穴）
-    silverknight: { src: 'assets/bosses/silverknight.png', height: 262, kind: 'knight', glow: '#cfe0f0' },
+    slimeking: { src: 'assets/bosses/slimeking.png', height: 250, kind: 'golem', glow: '#5fd0c0' },
+    reaper: { src: 'assets/bosses/reaper.png', height: 260, kind: 'reaper', glow: '#8b5fd6' },
+    goatbrute: { src: 'assets/bosses/goatbrute.png', height: 244, kind: 'goat', glow: '#c07be0' },
+    mawfish: { src: 'assets/bosses/mawfish.png', height: 240, kind: 'maw', glow: '#e0666a' },
+    croc: { src: 'assets/bosses/croc.png', height: 236, kind: 'croc', glow: '#93d47a' },
+    mushroomgun: { src: 'assets/bosses/mushroomgun.png', height: 240, kind: 'hierophant', glow: '#ffcf7a' },
+    golem: { src: 'assets/bosses/golem.png', height: 264, kind: 'golem', glow: '#7fd8f0' },
+    eyehorror: { src: 'assets/bosses/eyehorror.png', height: 244, kind: 'eye', glow: '#f0d060' },
+    mawflowerking: { src: 'assets/bosses/mawflowerking.png', height: 250, kind: 'maw', glow: '#e05a7a' },
     cauldron: { src: 'assets/bosses/cauldron.png', height: 240, kind: 'cauldron', glow: '#ffa54a' },
-    snakeking: { src: 'assets/bosses/snakeking.png', height: 252, kind: 'snake', glow: '#5fc8d8' },
-    // 首领批次三：图鉴裁切（腐化深渊）
-    crystalcrab: { src: 'assets/bosses/crystalcrab.png', height: 224, kind: 'crystal', glow: '#b877e0' },
-    shadowdemon: { src: 'assets/bosses/shadowdemon.png', height: 232, kind: 'demon', glow: '#e0556a' },
-    blueogre: { src: 'assets/bosses/blueogre.png', height: 268, kind: 'ogre', glow: '#6fb0e0' },
-    golem: { src: 'assets/bosses/golem.png', height: 268, kind: 'golem', glow: '#a8bcc8' }
+    crystalcrab: { src: 'assets/bosses/crystalcrab.png', height: 232, kind: 'crystal', glow: '#b877e0' },
+    pinkdemon: { src: 'assets/bosses/pinkdemon.png', height: 244, kind: 'demon', glow: '#ff7aa0' },
+    pumpkinlord: { src: 'assets/bosses/pumpkinlord.png', height: 248, kind: 'cauldron', glow: '#ff9a3c' },
+    octoking: { src: 'assets/bosses/octoking.png', height: 252, kind: 'octo', glow: '#b07ae0' },
+    mummyking: { src: 'assets/bosses/mummyking.png', height: 238, kind: 'mummy', glow: '#b8c0c8' },
+    blueogre: { src: 'assets/bosses/blueogre.png', height: 262, kind: 'ogre', glow: '#6fb0e0' },
+    hornedfiend: { src: 'assets/bosses/hornedfiend.png', height: 250, kind: 'demon', glow: '#c07ae0' },
+    snakeking: { src: 'assets/bosses/snakeking.png', height: 256, kind: 'snake', glow: '#5fc8d8' },
+    mushroommaw: { src: 'assets/bosses/mushroommaw.png', height: 252, kind: 'ogre', glow: '#d05a5a' },
+    shadowdemon: { src: 'assets/bosses/shadowdemon.png', height: 238, kind: 'demon', glow: '#e0556a' },
+    hierophant: { src: 'assets/bosses/hierophant.png', height: 252, kind: 'hierophant', glow: '#b46be0' },
+    abysseye: { src: 'assets/bosses/abysseye.png', height: 246, kind: 'eye', glow: '#e0556a' },
+    wormking: { src: 'assets/bosses/wormking.png', height: 250, kind: 'snake', glow: '#9fe08a' },
+    silverknight: { src: 'assets/bosses/silverknight.png', height: 244, kind: 'knight', glow: '#c0c8d8' },
+    piratecrab: { src: 'assets/bosses/piratecrab.png', height: 232, kind: 'crab', glow: '#7fd0d8' }
   };
 
   const cache = {};

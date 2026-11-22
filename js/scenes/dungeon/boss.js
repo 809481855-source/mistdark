@@ -39,10 +39,11 @@
 
   // 章内唯一：每个首领只归属一个章节；跨章再出场会被视为“复现”并强化
   const BOSS_ACT = {
-    eyehorror: 1, croc: 1, mawfish: 1, mummyking: 1,
-    cauldron: 2, golem: 2, blueogre: 2, goatbrute: 2, abysseye: 2,
-    piratecrab: 3, octoking: 3, silverknight: 3, snakeking: 3,
-    reaper: 4, hierophant: 4, shadowdemon: 4, crystalcrab: 4
+    eyehorror: 1, croc: 1, mawfish: 1, mummyking: 1, slimeking: 1,
+    cauldron: 2, golem: 2, blueogre: 2, goatbrute: 2, abysseye: 2, mushroomgun: 2,
+    piratecrab: 3, octoking: 3, silverknight: 3, snakeking: 3, mawflowerking: 3, wormking: 3,
+    reaper: 4, hierophant: 4, shadowdemon: 4, crystalcrab: 4,
+    pinkdemon: 4, pumpkinlord: 4, hornedfiend: 4, mushroommaw: 4
   };
 
   // 每只首领的招式粒子皮肤（复用 monsters.drawFxSkin 的 bits 渲染，零额外开销）
@@ -62,7 +63,15 @@
     crystalcrab: { bits: 'crystal', n: 11, color: '#d69cf0' },
     shadowdemon: { bits: 'shadow', n: 12, color: '#ff7a8a' },
     blueogre: { bits: 'rock', n: 11, color: '#8fc4ea' },
-    golem: { bits: 'rock', n: 12, color: '#c2d2dc' }
+    golem: { bits: 'rock', n: 12, color: '#c2d2dc' },
+    slimeking: { bits: 'toxin', n: 11, color: '#7fe0d0' },
+    mushroomgun: { bits: 'ash', n: 10, color: '#ffcf7a' },
+    mawflowerking: { bits: 'blood', n: 11, color: '#e05a7a' },
+    wormking: { bits: 'toxin', n: 11, color: '#9fe08a' },
+    pinkdemon: { bits: 'blood', n: 12, color: '#ff7aa0' },
+    pumpkinlord: { bits: 'flame', n: 12, color: '#ff9a3c' },
+    hornedfiend: { bits: 'void', n: 12, color: '#c07ae0' },
+    mushroommaw: { bits: 'ash', n: 12, color: '#d05a5a' }
   };
 
   // 近战型首领出手前冲距离：让横扫/镰击真的有扑上去的动作感

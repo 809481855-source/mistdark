@@ -523,14 +523,14 @@
       if (!secretChest(ch) && !U.chance(0.62)) continue;
       place(ch);
     }
-    // 保底：至少两个宝箱，保证宝箱怪必定混入且不占掉全部宝箱
+    // 保底：至少两个宝箱，保证伏击宝箱必定混入且不占掉全部宝箱
     if (chests.length < 2) {
       const spare = this.chunks.filter(ch => eligible(ch) && !chests.some(c => c.chunk === ch.index));
       while (chests.length < 2 && spare.length) {
         place(spare.splice(U.randInt(0, spare.length - 1), 1)[0]);
       }
     }
-    // 宝箱怪：混入 1~2 个普通宝箱，外观完全一致，触碰才现形
+    // 伏击宝箱：混入 1~2 个普通宝箱，外观完全一致，触碰才现形
     const pool = chests.slice();
     const want = pool.length >= 3 && U.chance(0.4) ? 2 : 1;
     for (let i = 0; i < want && pool.length > 1; i++) {
@@ -653,20 +653,22 @@
       else this.openChest(c);
     }
   },
-  // 宝箱怪伏击：宝箱消失，原地现形为精英，立即进入战斗
+  // 宝箱伏击：宝箱消失，原地现形为本关小怪组成的精英，立即进入战斗
   triggerMimic(c) {
     const i = this.chests.indexOf(c);
     if (i >= 0) this.chests.splice(i, 1);
     const pos = this.nearestFloorPoint(c.x, c.y, 3) || { x: c.x, y: c.y };
-    const m = this.spawnMonster('mimic', pos.x, pos.y, false, c.chunk);
+    const pool = (this.def.pool || []).filter((id) => DG.data.monsters[id] && !DG.data.monsters[id].boss);
+    const id = pool.length ? pool[Math.floor(Math.random() * pool.length)] : 'skeleton';
+    const m = this.spawnMonster(id, pos.x, pos.y, false, c.chunk);
     if (!m) return null;
     this.promoteElite(m);
     m.aggro = true;
     m.x = pos.x; m.y = pos.y;
     this.addBurst(c.x, c.y - 16, '#ffd76a', 16);
     this.addRing(c.x, c.y, 14, 96, '#d9b24a', 0.6);
-    this.addFloater(c.x, c.y - 46, '宝箱怪！', '#ffd76a', 26);
-    this.announce('宝箱怪伏击', 1500);
+    this.addFloater(c.x, c.y - 46, '有埋伏！', '#ffd76a', 26);
+    this.announce('宝箱伏击', 1500);
     this.shake = 0.3;
     return m;
   },

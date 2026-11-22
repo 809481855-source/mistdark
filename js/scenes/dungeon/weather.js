@@ -114,7 +114,7 @@
     sandstorm: {
       desc: '沙尘蔽目：流沙会陷住怪物，视野同时缩短',
       monSpeed: 0.95, sight: 0.62, spread: 0.85,
-      bias: ['skeleton', 'bat', 'foxraider', 'mimic', 'beetle']
+      bias: ['skeleton', 'bat', 'foxraider', 'mummy', 'beetle']
     },
     purplewind: {
       desc: '紫焰狂风：余烬地火会灼伤怪物，焰属怪增多',
@@ -129,7 +129,7 @@
     bloodrain: {
       desc: '血雨：血泊会减速并腐蚀怪物，嗜血怪增多',
       monSpeed: 1.02, windup: 0.9,
-      bias: ['bat', 'hornet', 'foxraider', 'skeleton', 'mimic']
+      bias: ['bat', 'hornet', 'foxraider', 'skeleton', 'mummy']
     },
     grasswind: {
       desc: '草原疾风：高草可以藏身，怪群更分散',

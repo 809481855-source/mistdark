@@ -2555,156 +2555,36 @@
   }
 
   // ---------- 对外接口 ----------
+  // 全部小怪统一使用本轮新贴图：src 走 drawTex（脚底锚定 + 呼吸 / 前冲 / 受击白闪）
   const defs = {
-    pea: {
-      h: ART_H, designH: DESIGN_H, name: '小碗豆',
-      draw: drawPea, pose: computePose, pal: PAL, flashPal: FLASH_PAL,
-      strikeGlow: { x: 24, y: -42, r: 24, dx: 12, dr: 10 }
-    },
-    musketeer: {
-      h: 76, designH: 100, name: '菌帽枪手',
-      draw: drawMusketeer, pose: poseMusketeer, pal: MUSH_PAL, flashPal: MUSH_FLASH
-    },
-    pumpkin: {
-      h: 92, designH: 108, name: '南瓜刈手',
-      draw: drawPumpkin, pose: posePumpkin, pal: PUMPKIN_PAL, flashPal: PUMPKIN_FLASH,
-      strikeGlow: { x: 30, y: -70, r: 26, dx: 10, dr: 8 }
-    },
-    slime: {
-      h: 70, designH: 88, name: '王冠史莱姆',
-      draw: drawSlime, pose: poseSlime, pal: SLIME_PAL, flashPal: SLIME_FLASH
-    },
-    wolf: {
-      h: 56, designH: 78, name: '腐化野狼',
-      draw: drawWolf, pose: poseWolf, pal: WOLF_PAL, flashPal: WOLF_FLASH,
-      strikeGlow: { x: 46, y: -46, r: 18, dx: 12, dr: 6 }
-    },
-    skeleton: {
-      h: 78, designH: 88, name: '骷髅战士',
-      draw: drawSkeleton, pose: poseSkel, pal: SKEL_PAL, flashPal: SKEL_FLASH,
-      strikeGlow: { x: 26, y: -46, r: 20, dx: 10, dr: 8 }
-    },
-    mistwalker: {
-      h: 82, designH: 94, name: '迷雾行者',
-      draw: drawMistwalker, pose: poseMist, pal: MIST_PAL, flashPal: MIST_FLASH
-    },
-    // 批次四：换色变体，复用基础怪的绘制与动作
-    frostwolf: {
-      h: 58, designH: 78, name: '霜牙狼',
-      draw: drawWolf, pose: poseWolf, pal: FROSTWOLF_PAL, flashPal: FROSTWOLF_FLASH,
-      strikeGlow: { x: 46, y: -46, r: 18, dx: 12, dr: 6 }
-    },
-    boneknight: {
-      h: 80, designH: 88, name: '骸骨卫士',
-      draw: drawSkeleton, pose: poseSkel, pal: BONEKNIGHT_PAL, flashPal: BONEKNIGHT_FLASH,
-      strikeGlow: { x: 26, y: -46, r: 20, dx: 10, dr: 8 }
-    },
-    frostslime: {
-      h: 72, designH: 88, name: '霜晶史莱姆',
-      draw: drawSlime, pose: poseSlime, pal: FROSTSLIME_PAL, flashPal: FROSTSLIME_FLASH
-    },
-    mimic: {
-      h: 46, designH: 96, name: '宝箱怪',
-      draw: drawMimic, pose: poseMimic, pal: MIMIC_PAL, flashPal: MIMIC_FLASH,
-      strikeGlow: { x: 18, y: -44, r: 24, dx: 10, dr: 10 }
-    },
-    mawflower: {
-      h: 92, designH: 104, name: '噬人花',
-      draw: drawMaw, pose: poseMaw, pal: MAW_PAL, flashPal: MAW_FLASH
-    },
-    plaguedoc: {
-      h: 100, designH: 122, name: '瘟疫医师',
-      draw: drawPlaguedoc, pose: poseDoc, pal: DOC_PAL, flashPal: DOC_FLASH,
-      strikeGlow: { x: 34, y: -76, r: 26, dx: 12, dr: 8 }
-    },
-    warlock: {
-      h: 94, designH: 110, name: '深渊巫师',
-      draw: drawWarlock, pose: poseWarlock, pal: WAR_PAL, flashPal: WAR_FLASH
-    },
-    // 批次五：直接裁切自参考图鉴的贴图小怪（src 走 drawTex）
-    bat: {
-      h: 40, name: '血翼蝠', src: 'assets/monsters/bat.png'
-    },
-    hornet: {
-      h: 50, name: '毒刺蜂', src: 'assets/monsters/hornet.png'
-    },
-    beetle: {
-      h: 50, name: '紫壳甲虫', src: 'assets/monsters/beetle.png'
-    },
-    cinderraven: {
-      h: 76, name: '黑焰鸦', src: 'assets/monsters/cinderraven.png'
-    },
-    // 批次六：图鉴裁切贴图 + 分件摆动（同一张贴图按矩形拆件，绕接缝枢轴微幅摆动）
-    candle: {
-      h: 86, name: '焰冠烛魔', src: 'assets/monsters/candle.png',
-      parts: [
-        { r: [0, 104, 131, 192], p: [65, 112], rot: 0.008, freq: 1.5, phase: 3.1, swing: 0.5 },
-        { r: [0, 0, 131, 120], p: [65, 112], rot: 0.022, freq: 1.7, swing: 0.7, strike: 0.02 }
-      ]
-    },
-    urchin: {
-      h: 44, name: '紫棘球', src: 'assets/monsters/urchin.png',
-      parts: [
-        { r: [0, 0, 107, 80], p: [58, 76], swing: 0.6, freq: 1.8 },
-        { r: [20, 74, 104, 92], p: [58, 76], swing: 2.2, freq: 8.5, rot: 0.02 }
-      ]
-    },
-    deepfin: {
-      h: 48, name: '幽蓝鳍怪', src: 'assets/monsters/deepfin.png',
-      parts: [
-        { r: [0, 62, 87, 90], p: [43, 68], rot: 0.03, freq: 1.2, phase: 2.0, swing: 0.8 },
-        { r: [0, 0, 87, 76], p: [43, 68], rot: 0.02, freq: 1.6, swing: 0.6, strike: 0.03 }
-      ]
-    },
-    cowlbandit: {
-      h: 46, name: '青兜劫掠者', src: 'assets/monsters/cowlbandit.png',
-      parts: [
-        { r: [0, 42, 106, 75], p: [53, 50], rot: 0.012, freq: 1.3, phase: 2.4 },
-        { r: [0, 0, 106, 58], p: [53, 50], rot: 0.05, freq: 1.5, swing: 0.7, strike: 0.05 }
-      ]
-    },
-    angler: {
-      h: 42, name: '黑灯鮟鱇', src: 'assets/monsters/angler.png',
-      parts: [
-        { r: [0, 0, 40, 78], p: [36, 54], rot: 0.10, freq: 2.4, phase: 0.8 },
-        { r: [26, 0, 105, 78], p: [36, 54], rot: 0.008, freq: 1.4 }
-      ]
-    },
-    fleece: {
-      h: 44, name: '白绒羊', src: 'assets/monsters/fleece.png',
-      parts: [
-        { r: [0, 0, 87, 72], p: [43, 64], rot: 0.014, freq: 1.2, swing: 0.6 },
-        { r: [0, 58, 87, 80], p: [43, 64], swing: 1.6, freq: 8, rot: 0.012 }
-      ]
-    },
-    foxraider: {
-      h: 56, name: '棕狐掠手', src: 'assets/monsters/foxraider.png',
-      parts: [
-        { r: [0, 0, 96, 92], p: [48, 84], rot: 0.016, freq: 1.4, swing: 0.6 },
-        { r: [0, 76, 96, 101], p: [48, 84], swing: 1.8, freq: 8.5, rot: 0.015 }
-      ]
-    },
-    emberdrake: {
-      h: 50, name: '赤棘龙', src: 'assets/monsters/emberdrake.png',
-      parts: [
-        { r: [0, 0, 88, 76], p: [44, 66], rot: 0.02, freq: 1.3, swing: 0.6, strike: 0.05 },
-        { r: [0, 58, 88, 85], p: [44, 66], rot: 0.028, freq: 1.9, phase: 1.5, swing: 0.8 }
-      ]
-    },
-    venomlisk: {
-      h: 50, name: '绿棘蜥', src: 'assets/monsters/venomlisk.png',
-      parts: [
-        { r: [0, 38, 90, 92], p: [48, 54], rot: 0.012, freq: 1.4, phase: 2.2 },
-        { r: [0, 0, 90, 64], p: [48, 54], rot: 0.045, freq: 1.5, swing: 0.6, strike: 0.05 }
-      ]
-    },
-    bulwark: {
-      h: 48, name: '蓝甲兽', src: 'assets/monsters/bulwark.png',
-      parts: [
-        { r: [0, 0, 91, 72], p: [46, 64], rot: 0.01, freq: 1.1, swing: 0.5 },
-        { r: [0, 58, 91, 81], p: [46, 64], swing: 1.2, freq: 7, rot: 0.012 }
-      ]
-    }
+    wolf: { h: 62, name: '腐化野狼', src: 'assets/monsters/wolf.png' },
+    skeleton: { h: 80, name: '骷髅战士', src: 'assets/monsters/skeleton.png' },
+    mistwalker: { h: 82, name: '迷雾行者', src: 'assets/monsters/mistwalker.png' },
+    pea: { h: 52, name: '孢帽菌人', src: 'assets/monsters/pea.png' },
+    musketeer: { h: 66, name: '菌帽枪手', src: 'assets/monsters/musketeer.png' },
+    pumpkin: { h: 62, name: '裂口刈手', src: 'assets/monsters/pumpkin.png' },
+    slime: { h: 54, name: '赤红史莱姆', src: 'assets/monsters/slime.png' },
+    frostwolf: { h: 64, name: '霜牙狼', src: 'assets/monsters/frostwolf.png' },
+    boneknight: { h: 84, name: '缠尸卫士', src: 'assets/monsters/boneknight.png' },
+    frostslime: { h: 66, name: '霜颅骸骨', src: 'assets/monsters/frostslime.png' },
+    bat: { h: 44, name: '血翼蝠', src: 'assets/monsters/bat.png' },
+    hornet: { h: 44, name: '毒刺蜂', src: 'assets/monsters/hornet.png' },
+    beetle: { h: 54, name: '青壳甲虫', src: 'assets/monsters/beetle.png' },
+    cinderraven: { h: 52, name: '黑焰蝠', src: 'assets/monsters/cinderraven.png' },
+    candle: { h: 74, name: '魔锅炉怪', src: 'assets/monsters/candle.png' },
+    urchin: { h: 66, name: '棘刺仙人掌', src: 'assets/monsters/urchin.png' },
+    deepfin: { h: 54, name: '幽蓝喙兽', src: 'assets/monsters/deepfin.png' },
+    cowlbandit: { h: 62, name: '游荡菌人', src: 'assets/monsters/cowlbandit.png' },
+    angler: { h: 46, name: '渊灯兽', src: 'assets/monsters/angler.png' },
+    fleece: { h: 60, name: '绷带猫', src: 'assets/monsters/fleece.png' },
+    foxraider: { h: 64, name: '灰狐掠手', src: 'assets/monsters/foxraider.png' },
+    emberdrake: { h: 62, name: '赤棘龙', src: 'assets/monsters/emberdrake.png' },
+    venomlisk: { h: 58, name: '绿鳞蛇', src: 'assets/monsters/venomlisk.png' },
+    bulwark: { h: 58, name: '铁背野猪', src: 'assets/monsters/bulwark.png' },
+    mummy: { h: 86, name: '墓穴木乃伊', src: 'assets/monsters/mummy.png' },
+    mawflower: { h: 92, name: '噬人蠕虫', src: 'assets/monsters/mawflower.png' },
+    plaguedoc: { h: 96, name: '瘟疫医师', src: 'assets/monsters/plaguedoc.png' },
+    warlock: { h: 86, name: '深渊巫师', src: 'assets/monsters/warlock.png' }
   };
 
   function displayHeight(m) {

@@ -10,7 +10,7 @@
  *   图片 / 音频 → 缓存优先（美术 / 音频有改动时把 ASSET_VERSION 加一，旧缓存自动清掉）。
  */
 const CORE_VERSION = 'c1';             // 脚本 / 样式更新策略变化时 +1
-const ASSET_VERSION = 'r1';            // 美术 / 音频有改动时 +1
+const ASSET_VERSION = 'r2';            // 美术 / 音频有改动时 +1
 const CORE_CACHE = 'mistdark-core-' + CORE_VERSION;
 const ASSET_CACHE = 'mistdark-asset-' + ASSET_VERSION;
 const NET_TIMEOUT = 4000;              // 导航请求最多等 4 秒，超时就走缓存
