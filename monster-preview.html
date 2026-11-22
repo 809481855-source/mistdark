@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>图鉴小怪与首领 · 动作预览</title>
+<style>
+  html,body{margin:0;background:#161a1c;overflow:hidden}
+  canvas{display:block}
+</style>
+</head>
+<body>
+<canvas id="c" width="1440" height="6900"></canvas>
+<script>window.DG = {};</script>
+<script src="js/art/bosses.js"></script>
+<script src="js/art/monsters.js"></script>
+<script>
+  const c = document.getElementById('c');
+  const g = c.getContext('2d');
+
+  // 固定规范：脚底原点，向上为负 Y；动作由 action / moving / walkPhase / shotAnim 驱动
+  function mob(art, r, extra) {
+    return Object.assign({
+      art, artScale: 1, r, seed: 0.7, facing: 0,
+      moving: false, walkPhase: 0, flash: 0, shotAnim: 0,
+      action: null, elite: false
+    }, extra || {});
+  }
+
+  const TYPES = [
+    { art: 'pea',        name: '小碗豆',     r: 17, color: '#cbe8a4', ranged: false },
+    { art: 'wolf',       name: '腐化野狼',   r: 17, color: '#d99a7c', ranged: false },
+    { art: 'skeleton',   name: '骷髅战士',   r: 18, color: '#d8d1b8', ranged: false },
+    { art: 'mistwalker', name: '迷雾行者',   r: 17, color: '#a9d8ea', ranged: true },
+    { art: 'musketeer',  name: '菌帽枪手',   r: 17, color: '#ffcf7a', ranged: true },
+    { art: 'pumpkin',    name: '南瓜刈手',   r: 19, color: '#ffd66a', ranged: false },
+    { art: 'slime',      name: '王冠史莱姆', r: 19, color: '#8fe0d0', ranged: false }
+  ];
+
+  const ACT = { windup: 0.34, strike: 0.14, recover: 0.30 };
+  const STATES = ['idle 待机', 'walk 行走', 'windup 蓄力', 'strike 出手', 'hurt 受击'];
+  const cells = [];
+  const COL_X = TYPES.map((_, i) => 110 + i * 203);
+  const ROW_Y = [230, 470, 710, 950, 1190];
+  const SCALE = 1.5;
+
+  TYPES.forEach((tp, ci) => {
+    STATES.forEach((label, ri) => {
+      const m = mob(tp.art, tp.r, { seed: 0.7 + ci * 0.9 });
+      if (ri === 1) m.moving = true;
+      if (ri === 2) m.action = { phase: 'windup', t: 0.22, windup: ACT.windup, strike: ACT.strike, recover: ACT.recover };
+      if (ri === 3) {
+        if (tp.ranged) m.shotAnim = 0.12;
+        else m.action = { phase: 'strike', t: 0.08, windup: ACT.windup, strike: ACT.strike, recover: ACT.recover };
+      }
+      if (ri === 4) m.flash = 0.10;
+      cells.push({ x: COL_X[ci], y: ROW_Y[ri], m, label, tp });
+    });
+  });
+
+  // ---------- 批次三：精英（图鉴大造型，读条施法） ----------
+  const ELITES = [
+    { art: 'mawflower', name: '噬人花',     r: 24, color: '#dd6f57', artScale: 1.12, seed: 1.3 },
+    { art: 'plaguedoc', name: '瘟疫医师',   r: 23, color: '#ffb26a', artScale: 1.10, seed: 2.1 },
+    { art: 'warlock',   name: '深渊巫师',   r: 22, color: '#9ff08a', artScale: 1.08, seed: 3.4, castTime: 0.68 }
+  ];
+  const ELITE_COL_X = [260, 495, 730, 965, 1200];
+  const ELITE_ROW_Y = [1720, 1960, 2200];
+  const ELITE_SCALE = 1.1;
+  const eliteCells = [];
+
+  ELITES.forEach((tp, ri) => {
+    STATES.forEach((label, ci) => {
+      const m = mob(tp.art, tp.r, {
+        seed: tp.seed, artScale: tp.artScale, elite: true,
+        ranged: !!tp.castTime, castTime: tp.castTime || 0
+      });
+      if (ci === 1) m.moving = true;
+      if (ci === 2) m.action = {
+        phase: 'windup', t: 0.3, cast: !!tp.castTime,
+        windup: tp.castTime || 0.42, strike: 0.12, recover: 0.36
+      };
+      if (ci === 3) {
+        m.action = {
+          phase: 'strike', t: 0.06, cast: !!tp.castTime,
+          windup: tp.castTime || 0.34, strike: 0.14, recover: 0.30
+        };
+      }
+      if (ci === 4) m.flash = 0.10;
+      eliteCells.push({ x: ELITE_COL_X[ci], y: ELITE_ROW_Y[ri], m, label, tp });
+    });
+  });
+
+  // ---------- 批次四：换色变体（复用基础怪分件与动作） ----------
+  const VARIANTS = [
+    { art: 'frostwolf',  name: '霜牙狼',     r: 18, color: '#bfe8ff', artScale: 1.02, seed: 4.2 },
+    { art: 'boneknight', name: '骸骨卫士',   r: 19, color: '#b6e08a', artScale: 1.04, seed: 5.1 },
+    { art: 'frostslime', name: '霜晶史莱姆', r: 20, color: '#a8e6ff', artScale: 1.05, seed: 6.3 }
+  ];
+  const VAR_COL_X = ELITE_COL_X;
+  const VAR_ROW_Y = [2560, 2770, 2980];
+  const VAR_SCALE = 1.35;
+  const variantCells = [];
+
+  VARIANTS.forEach((tp, ri) => {
+    STATES.forEach((label, ci) => {
+      const m = mob(tp.art, tp.r, { seed: tp.seed, artScale: tp.artScale });
+      if (ci === 1) m.moving = true;
+      if (ci === 2) m.action = { phase: 'windup', t: 0.24, windup: 0.30, strike: 0.14, recover: 0.30 };
+      if (ci === 3) m.action = { phase: 'strike', t: 0.07, windup: 0.34, strike: 0.14, recover: 0.30 };
+      if (ci === 4) m.flash = 0.10;
+      variantCells.push({ x: VAR_COL_X[ci], y: VAR_ROW_Y[ri], m, label, tp });
+    });
+  });
+
+  function tickMob(m, t) {
+    if (m.moving) m.walkPhase = t * 5.6 + m.seed;
+    if (m.action && m.action.phase === 'windup') {
+      m.action.t = 0.02 + ((t * 1.5) % Math.max(0.06, m.action.windup - 0.04));
+    }
+    if (m.action && m.action.phase === 'strike') m.action.t = 0.02 + ((t * 1.5) % 0.14);
+    if (m.flash > 0) m.flash = 0.06 + Math.abs(Math.sin(t * 4)) * 0.07;
+    if (m.art === 'musketeer' && m.shotAnim > 0) m.shotAnim = 0.06 + Math.abs(Math.sin(t * 3)) * 0.14;
+  }
+
+  function drawCells(cells, t, scale, labelDy, labelColor, labelFont) {
+    cells.forEach((cell) => {
+      const m = cell.m;
+      tickMob(m, t);
+      g.save();
+      g.translate(cell.x, cell.y);
+      g.scale(scale, scale);
+      g.fillStyle = 'rgba(0,0,0,.4)';
+      g.beginPath();
+      g.ellipse(0, m.r * 0.72, m.r * 1.15, m.r * 0.4, 0, 0, Math.PI * 2);
+      g.fill();
+      DG.art.monsters.draw(g, m, { t });
+      g.restore();
+
+      g.fillStyle = labelColor;
+      g.font = labelFont;
+      g.textAlign = 'center';
+      g.fillText(cell.label, cell.x, cell.y + labelDy);
+    });
+  }
+
+  const STILL = /[?&]still=1/.test(location.search);
+
+  function frame(ts) {
+    const t = STILL ? 1.2 : ts / 1000;
+    g.clearRect(0, 0, c.width, c.height);
+    const bg = g.createLinearGradient(0, 0, 0, c.height);
+    bg.addColorStop(0, '#1b2224');
+    bg.addColorStop(1, '#121617');
+    g.fillStyle = bg;
+    g.fillRect(0, 0, c.width, c.height);
+
+    g.strokeStyle = 'rgba(255,255,255,.04)';
+    g.lineWidth = 1;
+    for (let x = 0; x < c.width; x += 40) {
+      g.beginPath(); g.moveTo(x, 0); g.lineTo(x, c.height); g.stroke();
+    }
+    for (let y = 0; y < c.height; y += 40) {
+      g.beginPath(); g.moveTo(0, y); g.lineTo(c.width, y); g.stroke();
+    }
+
+    // 列标题
+    g.textAlign = 'center';
+    TYPES.forEach((tp, ci) => {
+      g.fillStyle = tp.color;
+      g.font = 'bold 22px "Microsoft YaHei", sans-serif';
+      g.fillText(tp.name, COL_X[ci], 52);
+      g.fillStyle = 'rgba(235,240,230,.45)';
+      g.font = '14px "Microsoft YaHei", sans-serif';
+      g.fillText(tp.ranged ? '远程 · 火枪' : '近战', COL_X[ci], 76);
+    });
+
+    drawCells(cells, t, SCALE, 60, 'rgba(235,240,230,.72)', '15px "Microsoft YaHei", sans-serif');
+
+    // 特效对照：peaArc / muzzle / peaPuff
+    const arcLife = 0.3 - (t % 0.7) * 0.43;
+    if (arcLife > 0) {
+      DG.art.monsters.drawEffect(g, {
+        kind: 'peaArc', x: 200, y: 1330, angle: 0,
+        radius: 50, arc: 1.5, color: '#cbe8a4',
+        life: Math.max(0.001, arcLife), max: 0.3
+      });
+    }
+    const muzzleLife = 0.22 - (t % 0.55) * 0.41;
+    if (muzzleLife > 0) {
+      DG.art.monsters.drawEffect(g, {
+        kind: 'muzzle', x: 560, y: 1330, angle: 0, color: '#ffcf7a',
+        life: Math.max(0.001, muzzleLife), max: 0.22
+      });
+    }
+    const puffLife = 0.5 - (t % 0.9) * 0.55;
+    if (puffLife > 0) {
+      DG.art.monsters.drawEffect(g, {
+        kind: 'peaPuff', x: 920, y: 1325, r0: 6, r1: 60,
+        color: '#8fe0d0', life: Math.max(0.001, puffLife), max: 0.5
+      });
+    }
+    g.fillStyle = 'rgba(235,240,230,.6)';
+    g.font = '15px "Microsoft YaHei", sans-serif';
+    g.textAlign = 'center';
+    g.fillText('peaArc 横扫', 200, 1390);
+    g.fillText('muzzle 枪口闪光', 560, 1390);
+    g.fillText('peaPuff 消散', 920, 1390);
+
+    // ---------- 批次三：精英 ----------
+    g.textAlign = 'left';
+    g.fillStyle = '#e8dcc0';
+    g.font = 'bold 24px "Microsoft YaHei", sans-serif';
+    g.fillText('批次三 · 精英（图鉴大造型 · 体型 ×1.25 · 专属前摇）', 110, 1470);
+    g.strokeStyle = 'rgba(201,162,95,.35)';
+    g.lineWidth = 1;
+    g.beginPath();
+    g.moveTo(110, 1492);
+    g.lineTo(1330, 1492);
+    g.stroke();
+
+    g.textAlign = 'center';
+    STATES.forEach((label, ci) => {
+      g.fillStyle = 'rgba(235,240,230,.5)';
+      g.font = '15px "Microsoft YaHei", sans-serif';
+      g.fillText(label, ELITE_COL_X[ci], 1548);
+    });
+
+    ELITES.forEach((tp, ri) => {
+      const y = ELITE_ROW_Y[ri];
+      g.textAlign = 'left';
+      g.fillStyle = tp.color;
+      g.font = 'bold 20px "Microsoft YaHei", sans-serif';
+      g.fillText(tp.name, 34, y - 8);
+      g.fillStyle = 'rgba(235,240,230,.45)';
+      g.font = '13px "Microsoft YaHei", sans-serif';
+      g.fillText(tp.castTime ? '远程 · 读条施法' : '近战 · 长前摇', 34, y + 14);
+    });
+
+    drawCells(eliteCells, t, ELITE_SCALE, 74, 'rgba(235,240,230,.55)', '14px "Microsoft YaHei", sans-serif');
+
+    // ---------- 批次四：换色变体 ----------
+    g.textAlign = 'left';
+    g.fillStyle = '#e8dcc0';
+    g.font = 'bold 24px "Microsoft YaHei", sans-serif';
+    g.fillText('批次四 · 换色变体（复用分件与动作 · 按副本难度调数值）', 110, 2385);
+    g.strokeStyle = 'rgba(201,162,95,.35)';
+    g.lineWidth = 1;
+    g.beginPath();
+    g.moveTo(110, 2407);
+    g.lineTo(1330, 2407);
+    g.stroke();
+
+    g.textAlign = 'center';
+    STATES.forEach((label, ci) => {
+      g.fillStyle = 'rgba(235,240,230,.5)';
+      g.font = '15px "Microsoft YaHei", sans-serif';
+      g.fillText(label, VAR_COL_X[ci], 2468);
+    });
+
+    VARIANTS.forEach((tp, ri) => {
+      const y = VAR_ROW_Y[ri];
+      g.textAlign = 'left';
+      g.fillStyle = tp.color;
+      g.font = 'bold 20px "Microsoft YaHei", sans-serif';
+      g.fillText(tp.name, 34, y - 8);
+      g.fillStyle = 'rgba(235,240,230,.45)';
+      g.font = '13px "Microsoft YaHei", sans-serif';
+      g.fillText('换色 · 高难变体', 34, y + 14);
+    });
+
+    drawCells(variantCells, t, VAR_SCALE, 70, 'rgba(235,240,230,.55)', '14px "Microsoft YaHei", sans-serif');
+
+    // 批次四 · 专属出手特效
+    const fs4 = 0.32 - (t % 0.7) * 0.43;
+    if (fs4 > 0) {
+      DG.art.monsters.drawEffect(g, {
+        kind: 'frostSlash', x: 300, y: 3165, angle: 0, radius: 58, arc: 1.5,
+        color: '#bfe8ff', life: Math.max(0.001, fs4), max: 0.32
+      });
+    }
+    const ss4 = 0.32 - (t % 0.7) * 0.43;
+    if (ss4 > 0) {
+      DG.art.monsters.drawEffect(g, {
+        kind: 'soulSlash', x: 720, y: 3165, angle: 0, radius: 58, arc: 1.5,
+        color: '#b6e08a', life: Math.max(0.001, ss4), max: 0.32
+      });
+    }
+    const fb4 = 0.42 - (t % 0.9) * 0.4;
+    if (fb4 > 0) {
+      DG.art.monsters.drawEffect(g, {
+        kind: 'frostBurst', x: 1140, y: 3165, radius: 46,
+        color: '#a8e6ff', life: Math.max(0.001, fb4), max: 0.42
+      });
+    }
+    g.fillStyle = 'rgba(235,240,230,.6)';
+    g.font = '15px "Microsoft YaHei", sans-serif';
+    g.textAlign = 'center';
+    g.fillText('frostSlash 霜爪', 300, 3245);
+    g.fillText('soulSlash 亡魂斩', 720, 3245);
+    g.fillText('frostBurst 冰晶爆', 1140, 3245);
+
+    // ---------- 首领批次一：矢量首领 ----------
+    g.textAlign = 'left';
+    g.fillStyle = '#e8dcc0';
+    g.font = 'bold 24px "Microsoft YaHei", sans-serif';
+    g.fillText('首领批次一 · 图鉴裁切（直接使用参考图资源 · 独立招式模组）', 110, 3360);
+    g.strokeStyle = 'rgba(201,162,95,.35)';
+    g.lineWidth = 1;
+    g.beginPath();
+    g.moveTo(110, 3382);
+    g.lineTo(1330, 3382);
+    g.stroke();
+
+    g.textAlign = 'center';
+    ['idle 待机', 'windup 蓄力', 'strike 出手'].forEach((label, ci) => {
+      g.fillStyle = 'rgba(235,240,230,.5)';
+      g.font = '15px "Microsoft YaHei", sans-serif';
+      g.fillText(label, [300, 720, 1140][ci], 3446);
+    });
+
+    const BOSSES = [
+      { art: 'croc', name: '腐沼巨鳄', tag: '近战 · 尾扫 / 吐息 / 潜袭', color: '#9fd07a',
+        rowY: 3720, artScale: 0.85, seed: 1.7, windupLabel: '巨尾横扫' },
+      { art: 'hierophant', name: '深渊主教', tag: '远程 · 弹幕 / 射线 / 召唤', color: '#c07be0',
+        rowY: 4100, artScale: 0.80, seed: 3.1, windupLabel: '深渊之握' }
+    ];
+
+    BOSSES.forEach((tp) => {
+      g.textAlign = 'left';
+      g.fillStyle = tp.color;
+      g.font = 'bold 20px "Microsoft YaHei", sans-serif';
+      g.fillText(tp.name, 34, tp.rowY - 150);
+      g.fillStyle = 'rgba(235,240,230,.45)';
+      g.font = '13px "Microsoft YaHei", sans-serif';
+      g.fillText(tp.tag, 34, tp.rowY - 128);
+
+      [300, 720, 1140].forEach((x, ci) => {
+        const m = {
+          art: tp.art, r: 44, seed: tp.seed, artScale: tp.artScale,
+          facing: 0, moving: false, flash: 0, enraged: false, cast: null
+        };
+        if (ci === 1) {
+          m.cast = {
+            atk: { windup: 0.9, recover: 0.5, label: tp.windupLabel, color: tp.color },
+            t: 0.55, phase: 'windup'
+          };
+        } else if (ci === 2) {
+          m.cast = {
+            atk: { windup: 0.9, recover: 0.5, label: tp.windupLabel, color: tp.color },
+            t: 0.12, phase: 'recover'
+          };
+        }
+        g.save();
+        g.translate(x, tp.rowY);
+        g.fillStyle = 'rgba(0,0,0,.4)';
+        g.beginPath();
+        g.ellipse(0, 30, 66, 22, 0, 0, Math.PI * 2);
+        g.fill();
+        DG.art.bosses.draw(g, m, { t });
+        g.restore();
+      });
+    });
+
+    // 首领专属出手特效
+    const cw = 0.32 - (t % 0.8) * 0.4;
+    if (cw > 0) {
+      DG.art.bosses.drawEffect(g, {
+        kind: 'crocWave', x: 300, y: 4260, angle: 0, radius: 92, arc: 2.6,
+        color: '#9fd07a', life: Math.max(0.001, cw), max: 0.32
+      });
+    }
+    const vn = 0.42 - (t % 0.9) * 0.42;
+    if (vn > 0) {
+      DG.art.bosses.drawEffect(g, {
+        kind: 'voidNova', x: 720, y: 4260, radius: 84,
+        color: '#a45fe0', life: Math.max(0.001, vn), max: 0.42
+      });
+    }
+    g.fillStyle = 'rgba(235,240,230,.6)';
+    g.font = '15px "Microsoft YaHei", sans-serif';
+    g.textAlign = 'center';
+    g.fillText('crocWave 巨尾冲击', 300, 4332);
+    g.fillText('voidNova 深渊之握', 720, 4332);
+
+    // ---------- 批次五：图鉴裁切贴图小怪 ----------
+    g.textAlign = 'left';
+    g.fillStyle = '#e8dcc0';
+    g.font = 'bold 24px "Microsoft YaHei", sans-serif';
+    g.fillText('批次五 · 图鉴裁切贴图小怪（直接使用参考图资源）', 110, 4470);
+    g.strokeStyle = 'rgba(201,162,95,.35)';
+    g.lineWidth = 1;
+    g.beginPath();
+    g.moveTo(110, 4492);
+    g.lineTo(1330, 4492);
+    g.stroke();
+
+    g.textAlign = 'center';
+    STATES.forEach((label, ci) => {
+      g.fillStyle = 'rgba(235,240,230,.5)';
+      g.font = '15px "Microsoft YaHei", sans-serif';
+      g.fillText(label, ELITE_COL_X[ci], 4548);
+    });
+
+    const TEX_MOBS = [
+      { art: 'bat', name: '血翼蝠', tag: '近战 · 高速扑咬', r: 16, color: '#e05a6a', seed: 1.1 },
+      { art: 'hornet', name: '毒刺蜂', tag: '远程 · 毒针弹道', r: 15, color: '#f2d24a', seed: 2.4 },
+      { art: 'beetle', name: '紫壳甲虫', tag: '近战 · 重甲慢速', r: 20, color: '#b06bd0', seed: 3.7 },
+      { art: 'cinderraven', name: '黑焰鸦', tag: '远程 · 读条火弹', r: 22, color: '#ff8a3c', seed: 5.2 }
+    ];
+    const TEX_ROW_Y = [4700, 4940, 5180, 5420];
+    const texCells = [];
+    TEX_MOBS.forEach((tp, ri) => {
+      STATES.forEach((label, ci) => {
+        const m = mob(tp.art, tp.r, { seed: tp.seed });
+        if (ci === 1) m.moving = true;
+        if (ci === 2) m.action = { phase: 'windup', t: 0.26, windup: 0.34, strike: 0.14, recover: 0.30 };
+        if (ci === 3) {
+          m.action = { phase: 'strike', t: 0.06, windup: 0.34, strike: 0.14, recover: 0.30 };
+          if (tp.art === 'hornet' || tp.art === 'cinderraven') m.shotAnim = 0.12;
+        }
+        if (ci === 4) m.flash = 0.10;
+        texCells.push({ x: ELITE_COL_X[ci], y: TEX_ROW_Y[ri], m, label, tp });
+      });
+    });
+
+    TEX_MOBS.forEach((tp, ri) => {
+      const y = TEX_ROW_Y[ri];
+      g.textAlign = 'left';
+      g.fillStyle = tp.color;
+      g.font = 'bold 20px "Microsoft YaHei", sans-serif';
+      g.fillText(tp.name, 34, y - 8);
+      g.fillStyle = 'rgba(235,240,230,.45)';
+      g.font = '13px "Microsoft YaHei", sans-serif';
+      g.fillText(tp.tag, 34, y + 14);
+    });
+    drawCells(texCells, t, 1.6, 78, 'rgba(235,240,230,.55)', '14px "Microsoft YaHei", sans-serif');
+
+    // ---------- 首领批次二：图鉴裁切 ----------
+    g.textAlign = 'left';
+    g.fillStyle = '#e8dcc0';
+    g.font = 'bold 24px "Microsoft YaHei", sans-serif';
+    g.fillText('首领批次二 · 图鉴裁切（直接使用参考图资源 · 独立招式模组）', 110, 5620);
+    g.strokeStyle = 'rgba(201,162,95,.35)';
+    g.lineWidth = 1;
+    g.beginPath();
+    g.moveTo(110, 5642);
+    g.lineTo(1330, 5642);
+    g.stroke();
+
+    g.textAlign = 'center';
+    ['idle 待机', 'windup 蓄力', 'strike 出手'].forEach((label, ci) => {
+      g.fillStyle = 'rgba(235,240,230,.5)';
+      g.font = '15px "Microsoft YaHei", sans-serif';
+      g.fillText(label, [300, 720, 1140][ci], 5706);
+    });
+
+    const BOSSES2 = [
+      { art: 'mummyking', name: '缠尸武士', tag: '近战 · 绷带横扫 / 诅咒凝视', color: '#d9c9a0',
+        rowY: 5980, artScale: 0.85, seed: 2.3, windupLabel: '绷带横扫' },
+      { art: 'octoking', name: '骷髅章鱼王', tag: '远程 · 墨弹 / 水柱 / 召唤', color: '#7fb8f0',
+        rowY: 6350, artScale: 0.80, seed: 4.6, windupLabel: '触须横扫' }
+    ];
+
+    BOSSES2.forEach((tp) => {
+      g.textAlign = 'left';
+      g.fillStyle = tp.color;
+      g.font = 'bold 20px "Microsoft YaHei", sans-serif';
+      g.fillText(tp.name, 34, tp.rowY - 150);
+      g.fillStyle = 'rgba(235,240,230,.45)';
+      g.font = '13px "Microsoft YaHei", sans-serif';
+      g.fillText(tp.tag, 34, tp.rowY - 128);
+
+      [300, 720, 1140].forEach((x, ci) => {
+        const m = {
+          art: tp.art, r: 44, seed: tp.seed, artScale: tp.artScale,
+          facing: 0, moving: false, flash: 0, enraged: false, cast: null
+        };
+        if (ci === 1) {
+          m.cast = {
+            atk: { windup: 0.9, recover: 0.5, label: tp.windupLabel, color: tp.color },
+            t: 0.55, phase: 'windup'
+          };
+        } else if (ci === 2) {
+          m.cast = {
+            atk: { windup: 0.9, recover: 0.5, label: tp.windupLabel, color: tp.color },
+            t: 0.12, phase: 'recover'
+          };
+        }
+        g.save();
+        g.translate(x, tp.rowY);
+        g.fillStyle = 'rgba(0,0,0,.4)';
+        g.beginPath();
+        g.ellipse(0, 30, 66, 22, 0, 0, Math.PI * 2);
+        g.fill();
+        DG.art.bosses.draw(g, m, { t });
+        g.restore();
+      });
+    });
+
+    // 首领批次二 · 专属出手特效（复用 crocWave / voidNova 的贴地语言）
+    const cw2 = 0.32 - (t % 0.8) * 0.4;
+    if (cw2 > 0) {
+      DG.art.bosses.drawEffect(g, {
+        kind: 'crocWave', x: 300, y: 6680, angle: 0, radius: 92, arc: 2.6,
+        color: '#d9c9a0', life: Math.max(0.001, cw2), max: 0.32
+      });
+    }
+    const vn2 = 0.42 - (t % 0.9) * 0.42;
+    if (vn2 > 0) {
+      DG.art.bosses.drawEffect(g, {
+        kind: 'voidNova', x: 720, y: 6680, radius: 84,
+        color: '#5f9fe0', life: Math.max(0.001, vn2), max: 0.42
+      });
+    }
+    g.fillStyle = 'rgba(235,240,230,.6)';
+    g.font = '15px "Microsoft YaHei", sans-serif';
+    g.textAlign = 'center';
+    g.fillText('crocWave 绷带冲击', 300, 6742);
+    g.fillText('voidNova 触须绽裂', 720, 6742);
+
+    if (!STILL) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  // 静态截图模式：等贴图加载完成后补绘两次
+  if (STILL) {
+    setTimeout(() => frame(0), 600);
+    setTimeout(() => frame(0), 1800);
+  }
+</script>
+</body>
+</html>

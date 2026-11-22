@@ -1,0 +1,39 @@
+/* 入场界面（登录成功后的确认页）：不套卡片框，不压暗，只留两颗按钮。
+   与登录页完全解耦：登录页是弹窗、保留黑色遮罩，本页直接呈现原画。 */
+.entry-screen{
+  align-items:center;
+  justify-content:flex-start;
+  padding:40px 56px;
+  overflow:auto;
+  background:url("../assets/login-bg.jpg") center bottom / cover no-repeat,
+    radial-gradient(ellipse at 50% 32%, #2a303c 0%, #141a24 50%, #07080b 100%);
+}
+.entry-screen::after{background:none;}
+
+.entry-actions{
+  position:absolute;
+  z-index:2;
+  left:0;
+  right:0;
+  /* 按钮组中心落在画面约 68% 高度处（红框位置），再整体下移 110px */
+  top:calc(68% + 110px);
+  transform:translateY(-50%);
+  width:100%;
+  max-width:420px;
+  margin:0 auto;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.entry-start{
+  width:100%;
+  height:58px;
+  font-size:18px;
+  letter-spacing:8px;
+  padding-left:8px;
+}
+.entry-switch{
+  width:100%;
+  height:48px;
+  letter-spacing:4px;
+}

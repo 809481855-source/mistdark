@@ -1,0 +1,1179 @@
+/* ---------- 弹窗：统一使用公用二级弹框（dialog-frame 九宫纸面） ---------- */
+.modal-mask{
+  position:absolute;
+  inset:0;
+  background:rgba(0,0,0,.8);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px 18px;
+  overflow:auto;
+  z-index:var(--z-modal);
+  pointer-events:auto;
+  animation:fadeIn .14s ease-out;
+}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal{
+  /* 公用关闭按钮定位：所有二级弹框共用这两个变量（相对弹框 padding box 右上角）
+     --close-right 越大按钮越靠左；--close-top 越负按钮越靠上 */
+  --close-right:4px;
+  --close-top:-25px;
+  position:relative;
+  width:min(636px, 100%);
+  max-width:100%;
+  max-height:calc(100% - 80px);
+  margin:auto;
+  flex:0 0 auto;
+  border-style:solid;
+  border-width:55px 12px 8px 12px;
+  border-image:url("../assets/ui/public/dialog-frame.png") 55 12 8 12 fill stretch;
+  border-radius:0;
+  background:none;
+  box-shadow:0 40px 110px rgba(0,0,0,.88);
+  display:flex;
+  flex-direction:column;
+  color:#33291d;
+  animation:popIn .16s ease-out;
+}
+@keyframes popIn{from{transform:translateY(12px) scale(.99);opacity:.4}to{transform:none;opacity:1}}
+.modal-head{
+  position:relative;
+  flex:0 0 auto;
+  height:36px;
+  padding:0;
+  border:0;
+  background:none;
+}
+/* 缎带标题：位于弹框顶部 xi 带内，白字黑描边保证任何背景都清晰 */
+.modal-head h3{
+  position:absolute;
+  left:-12px;
+  right:-12px;
+  top:-46px;
+  height:38px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin:0;
+  font-family:var(--font);
+  font-size:30px;
+  font-weight:800;
+  line-height:1;
+  letter-spacing:2px;
+  color:#fff;
+  -webkit-text-stroke:4px #0b0705;
+  paint-order:stroke fill;
+  text-shadow:0 2px 3px rgba(0,0,0,.45);
+  pointer-events:none;
+}
+.modal-head .sub{
+  position:absolute;
+  left:0;
+  /* 跟随关闭按钮定位，始终与其保持 12px 间距 */
+  right:calc(var(--close-right) + 66.9px);
+  top:2px;
+  margin:0;
+  text-align:center;
+  font-size:18px;
+  line-height:1.4;
+  letter-spacing:1px;
+  color:#5c4a33;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+/* 公用关闭按钮：dialog-close.png 按原图等比缩小 10%（54.9×53.1），固定弹框右上角，所有二级弹框共用同一坐标 */
+.modal-close{
+  position:absolute;
+  top:var(--close-top);
+  right:var(--close-right);
+  z-index:3;
+  width:54.9px;
+  height:53.1px;
+  padding:0;
+  border:0;
+  border-radius:0;
+  background:url("../assets/ui/public/dialog-close.png") center / 100% 100% no-repeat;
+  font-size:0;
+  line-height:0;
+  color:transparent;
+  cursor:pointer;
+  -webkit-appearance:none;
+  appearance:none;
+  -webkit-tap-highlight-color:transparent;
+  transition:filter .15s, transform .08s;
+}
+.modal-close:hover{filter:brightness(1.12);}
+.modal-close:active{transform:scale(.92);filter:brightness(.86);}
+.modal-body{padding:2px 26px 18px;overflow:auto;flex:1;min-height:0;}
+.modal-foot{
+  position:relative;
+  padding:14px 26px 18px;
+  border-top:1px solid rgba(90,60,30,.18);
+  display:flex;justify-content:flex-end;gap:12px;
+  background:none;
+  flex:0 0 auto;
+}
+.confirm-text{
+  font-size:22px;color:#4a3a28;line-height:1.8;
+  text-align:center;padding:10px 6px 16px;letter-spacing:.5px;
+}
+.confirm-actions{display:flex;gap:12px;width:100%;}
+.confirm-actions .btn{flex:1;}
+.settle-btn{min-width:180px;}
+.compare-note{font-size:17px;color:#7b6850;margin-top:4px;}
+.detail-empty-glyph{
+  width:44px;height:44px;
+  margin:0 auto 12px;
+  display:flex;align-items:center;justify-content:center;
+  border:1px dashed #a98f66;border-radius:50%;
+  color:#7b6850;font-size:18px;font-weight:700;
+}
+
+/* ---------- 分组块 ---------- */
+.sheet{
+  border:1px solid #3a3428;
+  border-radius:2px;
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(201,162,95,.05), transparent 52%),
+    linear-gradient(180deg,rgba(255,255,255,.022),rgba(0,0,0,.18));
+  box-shadow:
+    inset 0 1px 0 rgba(239,217,168,.06),
+    inset 0 -2px 0 rgba(0,0,0,.35);
+  padding:14px 16px;
+}
+
+/* ---------- 物品 ---------- */
+.item-cell{
+  position:relative;
+  width:60px;height:60px;
+  border:1px solid #3f382a;
+  border-radius:2px;
+  background:linear-gradient(160deg,#1c2027,#0d1014);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.04),
+    inset 0 -2px 0 rgba(0,0,0,.4);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  transition:transform .1s, box-shadow .12s, border-color .12s;
+}
+.item-cell:hover{
+  transform:translateY(-1px);
+  box-shadow:0 8px 18px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.06), inset 0 -2px 0 rgba(0,0,0,.4);
+  border-color:#7a6642;
+}
+.item-cell .glyph{
+  font-size:24px;
+  font-weight:700;
+  color:#c6c0b2;
+  text-shadow:0 1px 3px #000;
+}
+.item-cell .lvl{
+  position:absolute;right:3px;bottom:2px;
+  font-size:10px;color:#b1aa9b;
+  background:rgba(0,0,0,.55);
+  padding:0 3px;border-radius:2px;
+  line-height:1.4;
+}
+.item-cell .equipped-mark{
+  position:absolute;left:4px;top:3px;
+  font-size:10px;color:var(--gold-2);
+}
+.item-cell.r-normal{border-color:#5f5c54;}
+.item-cell.r-magic{border-color:#4370a8;background:linear-gradient(160deg,#1b2433,#10141c);box-shadow:inset 0 0 16px rgba(109,155,223,.16);}
+.item-cell.r-rare{border-color:#b8932f;background:linear-gradient(160deg,#2b2516,#14120c);box-shadow:inset 0 0 16px rgba(224,184,79,.18);}
+.item-cell.r-legend{border-color:#b86426;background:linear-gradient(160deg,#301e12,#150e0a);box-shadow:inset 0 0 18px rgba(232,133,60,.22);}
+.item-cell.empty{
+  border-style:dashed;
+  border-color:#33353c;
+  background:rgba(255,255,255,.012);
+  cursor:default;
+}
+.item-cell.empty .glyph{color:#6a675e;font-size:12px;font-weight:400;}
+.item-cell.empty:hover{transform:none;box-shadow:none;border-color:#33353c;}
+.item-cell.selected{
+  border-color:var(--gold-2);
+  box-shadow:
+    0 0 0 1px rgba(201,162,95,.5),
+    0 0 20px rgba(201,162,95,.25),
+    inset 0 0 16px rgba(201,162,95,.18);
+}
+
+/* 装备面板：角色摘要 + 装备/属性双栏 + 背包 + 详情 */
+.equip-layout{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+/* 角色摘要条 */
+.equip-hero{
+  position:relative;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:13px 18px;
+  border:1px solid var(--sk-line);
+  border-radius:2px;
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(201,162,95,.12), transparent 58%),
+    linear-gradient(180deg,#1b1f26,#0d1014);
+  box-shadow:
+    inset 0 1px 0 var(--sk-hi),
+    inset 0 -2px 0 var(--sk-lo),
+    0 4px 14px rgba(0,0,0,.3);
+}
+.equip-hero::after{
+  content:"";
+  position:absolute;
+  top:6px;right:6px;
+  width:18px;height:18px;
+  border-top:1px solid rgba(201,162,95,.35);
+  border-right:1px solid rgba(201,162,95,.35);
+  pointer-events:none;
+}
+.equip-hero-emblem{
+  width:52px;height:52px;
+  flex:0 0 auto;
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;font-weight:700;
+  border:1px solid rgba(201,162,95,.45);
+  background:radial-gradient(circle at 40% 30%, rgba(201,162,95,.22), rgba(8,9,12,.92) 72%);
+  box-shadow:0 0 0 3px rgba(0,0,0,.3), inset 0 0 16px rgba(0,0,0,.65);
+}
+.equip-hero-id{flex:1;min-width:0;}
+.equip-hero-name{
+  font-size:20px;letter-spacing:2px;color:var(--text);font-weight:600;line-height:1.25;
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+}
+.equip-hero-lv{
+  font-size:12px;color:#231a0d;letter-spacing:.5px;
+  background:linear-gradient(180deg,#e3c88e,#bf9b58);
+  border-radius:2px;padding:1px 8px;
+}
+.equip-hero-sub{
+  font-size:11.5px;color:var(--gold-dim);letter-spacing:1.5px;margin-top:4px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.equip-hero-power{text-align:right;line-height:1;flex:0 0 auto;}
+.equip-hero-power span{display:block;font-size:10px;letter-spacing:3px;color:var(--dim);margin-bottom:5px;}
+.equip-hero-power b{
+  font-size:26px;color:var(--gold);font-weight:700;letter-spacing:1px;
+  text-shadow:0 0 16px rgba(201,162,95,.25);
+}
+/* 段落标题：菱形符号 + 右侧信息 */
+.section-label{
+  font-size:12px;color:var(--gold-dim);letter-spacing:2.5px;
+  margin-bottom:12px;display:flex;align-items:baseline;justify-content:space-between;gap:14px;
+}
+.section-label > span:first-child{display:inline-flex;align-items:center;gap:8px;}
+.section-label > span:first-child::before{
+  content:"◆";
+  font-size:7px;color:rgba(201,162,95,.62);line-height:1;
+}
+.section-label .meta{font-size:12px;color:var(--text-2);letter-spacing:.5px;}
+.section-label .meta b{color:var(--gold-2);font-weight:600;}
+/* 装备 / 属性双栏 */
+.equip-top{
+  display:grid;
+  grid-template-columns:minmax(0,1.22fr) minmax(0,.92fr);
+  gap:12px;
+  align-items:stretch;
+}
+.equip-doll .equip-slots{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:10px;
+}
+/* 主体装备与饰物之间的分隔：◆ 两侧渐隐金线 */
+.equip-divider{
+  display:flex;align-items:center;gap:10px;
+  margin:12px 0 10px;
+  font-size:10px;letter-spacing:3px;color:rgba(201,162,95,.62);
+}
+.equip-divider::before,.equip-divider::after{
+  content:"";flex:1;height:1px;
+}
+.equip-divider::before{background:linear-gradient(90deg,transparent,rgba(201,162,95,.28));}
+.equip-divider::after{background:linear-gradient(90deg,rgba(201,162,95,.28),transparent);}
+.equip-doll .equip-trinkets{grid-template-columns:repeat(3,1fr);gap:8px;}
+.equip-doll .equip-trinkets .equip-slot{padding:8px 6px;gap:5px;align-items:center;}
+.equip-doll .equip-trinkets .slot-label{text-align:center;font-size:9.5px;letter-spacing:1px;}
+.equip-doll .equip-trinkets .slot-cell,
+.equip-doll .equip-trinkets .slot-cell .item-cell{width:44px;height:44px;}
+.equip-doll .equip-trinkets .slot-name{font-size:9.5px;}
+.equip-slot{
+  display:flex;flex-direction:column;align-items:flex-start;gap:6px;
+  padding:9px 10px 10px;
+  border:1px solid #3a3428;
+  border-radius:2px;
+  background:linear-gradient(180deg,rgba(255,255,255,.025),rgba(0,0,0,.22));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04), inset 0 -2px 0 rgba(0,0,0,.38);
+  min-width:0;
+}
+.equip-slot .slot-label{font-size:10.5px;color:var(--gold-dim);width:100%;letter-spacing:2px;}
+.equip-slot .slot-cell{width:56px;height:56px;align-self:center;flex:0 0 auto;}
+.equip-slot .slot-cell .item-cell{width:56px;height:56px;}
+.slot-name{
+  font-size:11px;color:var(--text-2);width:100%;text-align:center;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.equip-stats{display:flex;flex-direction:column;}
+.equip-stats .stat-list{
+  grid-template-columns:1fr;
+  gap:0;
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-around;
+}
+.equip-stats .stat-list li{
+  padding:7px 0;
+  border-bottom:1px solid rgba(201,162,95,.08);
+}
+.equip-stats .stat-list li:last-child{border-bottom:0;padding-bottom:0;}
+/* 背包容量 */
+.equip-bag .section-label{margin-bottom:8px;}
+.bag-cap{
+  height:3px;
+  background:rgba(255,255,255,.06);
+  border-radius:2px;
+  overflow:hidden;
+  margin-bottom:10px;
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.5);
+}
+.bag-cap i{
+  display:block;height:100%;
+  background:linear-gradient(90deg,#8a7448,#e3c88e);
+  transition:width .2s;
+}
+.stat-list{
+  list-style:none;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:9px 30px;
+}
+.stat-list li{
+  display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+  font-size:12.5px;color:var(--text-2);
+  padding-bottom:5px;
+  border-bottom:1px dashed rgba(255,255,255,.055);
+}
+.stat-list li b{color:#f2ecdf;font-weight:600;font-size:14.5px;white-space:nowrap;}
+.stat-list li b em{
+  font-style:normal;font-size:11.5px;color:var(--muted);font-weight:400;margin-left:4px;
+}
+.stat-list li b.gold{color:var(--gold);}
+.stat-list.compact{gap:7px 30px;}
+.bag-grid{
+  display:grid;
+  grid-template-columns:repeat(6,1fr);
+  gap:8px;
+  align-content:start;
+}
+.bag-grid .item-cell{
+  width:100%;
+  height:auto;
+  aspect-ratio:1;
+  align-self:start;
+}
+.detail-box{
+  border:1px solid #3a3428;
+  border-radius:2px;
+  padding:16px 18px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(201,162,95,.06), transparent 58%),
+    linear-gradient(180deg,rgba(255,255,255,.02),rgba(0,0,0,.16));
+  box-shadow:inset 0 1px 0 rgba(239,217,168,.06), inset 0 -2px 0 rgba(0,0,0,.35);
+  min-height:150px;
+}
+.detail-empty{color:var(--dim);font-size:13px;line-height:2;padding:24px 0;text-align:center;}
+.item-name{font-size:18px;font-weight:600;letter-spacing:1px;}
+.item-name.r-normal{color:var(--rar-normal);}
+.item-name.r-magic{color:var(--rar-magic);}
+.item-name.r-rare{color:var(--rar-rare);}
+.item-name.r-legend{color:var(--rar-legend);}
+.item-type{font-size:12.5px;color:var(--muted);margin:4px 0 12px;letter-spacing:.5px;}
+.item-stat{
+  font-size:13px;color:#aab6c6;line-height:1.95;
+  display:flex;justify-content:space-between;gap:20px;
+}
+.item-stat span:last-child{color:#e6eef8;font-weight:600;}
+.compare{
+  margin-top:12px;padding-top:10px;border-top:1px dashed #2c2e34;
+  font-size:12.5px;
+}
+.compare .up{color:var(--ok);}
+.compare .down{color:var(--danger);}
+.compare .same{color:var(--muted);}
+.rarity-tag{
+  display:inline-block;font-size:10.5px;padding:1px 6px;border-radius:2px;
+  border:1px solid currentColor;margin-left:8px;vertical-align:2px;letter-spacing:1px;
+}
+.detail-actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;justify-content:flex-end;}
+
+/* ---------- 技能 ---------- */
+.skill-list{display:flex;flex-direction:column;gap:12px;}
+.skill-row{
+  display:grid;
+  grid-template-columns:60px 1fr auto;
+  gap:16px;
+  align-items:center;
+  padding:16px;
+  border:1px solid #2d3038;
+  border-radius:5px;
+  background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,0));
+}
+.skill-icon{
+  width:60px;height:60px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;font-weight:700;
+  border:1px solid #3d4048;border-radius:5px;
+  background:linear-gradient(160deg,#1e2128,#121419);
+  color:#cfc7b4;
+}
+.skill-icon.basic{color:#c3d3ea;}
+.skill-name{font-size:16px;color:var(--text);letter-spacing:1px;display:flex;align-items:center;flex-wrap:wrap;gap:8px;}
+.skill-name .lv{
+  font-size:11.5px;color:var(--gold-2);margin-left:0;letter-spacing:.5px;
+  background:rgba(201,162,95,.1);
+  border:1px solid rgba(201,162,95,.28);
+  padding:1px 8px;border-radius:20px;
+}
+.skill-name .key-tip{font-size:11.5px;color:var(--dim);letter-spacing:1px;}
+.skill-desc{font-size:13px;color:#c4bdae;margin-top:7px;line-height:1.75;}
+.skill-desc em{color:#eadcba;font-style:normal;}
+.skill-next{font-size:12px;color:var(--dim);margin-top:5px;}
+.skill-plus{display:flex;flex-direction:column;align-items:center;gap:6px;}
+.skill-plus .btn{width:74px;height:38px;font-size:13px;}
+.skill-plus .cost{font-size:11px;color:#8f897c;}
+.point-badge{
+  display:inline-block;font-size:12.5px;color:#1d170c;background:var(--gold);
+  padding:1px 9px;border-radius:10px;margin-left:6px;font-weight:700;
+}
+.modal-body .note{
+  font-size:12px;color:var(--dim);margin-top:16px;line-height:1.9;
+}
+
+/* ---------- 结算 ---------- */
+.result-banner{
+  text-align:center;
+  padding:10px 0 20px;
+}
+.result-banner h2{
+  font-size:34px;letter-spacing:12px;color:var(--gold);font-weight:700;
+  text-shadow:0 0 26px rgba(201,162,95,.25);
+}
+.result-banner.fail h2{color:var(--danger);text-shadow:0 0 26px rgba(208,101,93,.2);}
+.result-banner p{font-size:12.5px;color:var(--muted);margin-top:8px;letter-spacing:2px;}
+.result-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;
+}
+.result-cell{
+  border:1px solid #2d3038;border-radius:5px;padding:14px 14px;
+  background:rgba(255,255,255,.016);
+}
+.result-cell .k{font-size:11.5px;color:var(--muted);letter-spacing:1px;}
+.result-cell .v{font-size:21px;color:var(--text);font-weight:600;margin-top:3px;line-height:1.2;}
+.result-cell .v.gold{color:var(--gold-2);}
+.result-cell .v.ok{color:var(--ok);}
+.loot-area{
+  border:1px solid #2d3038;border-radius:5px;padding:16px 18px;
+  background:rgba(255,255,255,.012);
+  min-height:96px;
+}
+.loot-title{font-size:12px;color:var(--gold-dim);letter-spacing:2px;margin-bottom:14px;display:flex;justify-content:space-between;}
+.loot-title span:last-child{color:var(--dim);letter-spacing:.5px;}
+.loot-grid{display:flex;flex-wrap:wrap;gap:10px;}
+.loot-empty{font-size:12.5px;color:var(--dim);padding:8px 0;}
+.loot-cell{
+  width:86px;height:92px;border-radius:4px;
+  border:1px solid #3d4048;
+  background:linear-gradient(160deg,#1e2128,#121419);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;
+  font-size:22px;font-weight:700;color:#c6c0b2;
+  position:relative;
+  padding:0 6px;
+}
+.loot-cell .loot-name{
+  font-size:11.5px;font-weight:400;color:var(--text-2);
+  max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.loot-cell.r-magic{border-color:#4370a8;color:#a8c6f0;box-shadow:inset 0 0 16px rgba(109,155,223,.16);}
+.loot-cell.r-rare{border-color:#b8932f;color:#f0d27a;box-shadow:inset 0 0 16px rgba(224,184,79,.18);}
+.loot-cell.r-legend{border-color:#b86426;color:#f5b07a;box-shadow:inset 0 0 20px rgba(232,133,60,.24);}
+.loot-cell .qty{
+  position:absolute;right:4px;top:3px;font-size:10px;color:var(--muted);
+}
+.levelup-note{
+  font-size:12.5px;color:var(--gold-2);margin-top:6px;letter-spacing:.5px;
+}
+.skillup-note{font-size:12.5px;color:#a9c6ec;margin-top:6px;letter-spacing:.5px;}
+
+/* ---------- 提示：菜单位于底部安全区，战斗中右上角，弹窗时置顶 ---------- */
+.toast-wrap{
+  position:absolute;
+  left:50%;
+  bottom:30px;
+  transform:translateX(-50%);
+  width:min(440px, calc(100% - 48px));
+  display:flex;flex-direction:column;gap:8px;
+  z-index:var(--z-toast);
+  pointer-events:none;
+  align-items:stretch;
+}
+/* 打开弹窗时移到画面最上方，避免遮挡弹窗标题与关闭按钮 */
+.toast-wrap.over-modal{top:24px;bottom:auto;}
+/* 主城：提示居中展示，避免与底部图标、场景角色挤在一角 */
+#ui:has(.town-screen) + .toast-wrap:not(.over-modal){
+  top:50%;bottom:auto;
+  transform:translate(-50%,-50%);
+}
+/* 战斗中放到右下角技能栏上方，避开顶部进度 / 小地图 / 首领血条 */
+.toast-wrap.in-battle{
+  top:auto;bottom:320px;
+  left:auto;right:22px;
+  transform:none;
+  width:360px;
+}
+.toast{
+  font-size:13px;
+  line-height:1.5;
+  color:var(--text);
+  background:rgba(12,14,18,.95);
+  border:1px solid #3b3f47;
+  border-left:3px solid var(--gold-dim);
+  padding:10px 14px;
+  border-radius:3px;
+  letter-spacing:.5px;
+  box-shadow:0 10px 30px rgba(0,0,0,.6);
+  animation:toastIn .2s ease-out;
+  word-break:break-word;
+}
+.toast.gold{border-left-color:var(--gold);color:var(--gold-2);}
+.toast.blue{border-left-color:var(--blue);color:#b3ccef;}
+.toast.danger{border-left-color:var(--danger);color:#f0aca5;}
+.toast.fade{opacity:0;transition:opacity .35s, transform .35s;transform:translateX(12px);}
+@keyframes toastIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+
+
+/* ============ 技能 / 天赋 页签 ============ */
+.tab-bar{display:flex;gap:8px;margin-bottom:16px;}
+.tab-btn{
+  height:38px;padding:0 24px;border:1px solid var(--line-mid);border-radius:8px;
+  background:rgba(255,255,255,.02);color:var(--muted);font-family:var(--font);
+  font-size:14px;letter-spacing:2px;cursor:pointer;
+  transition:color .15s,border-color .15s,background .15s;
+}
+.tab-btn:hover{color:var(--text);border-color:var(--gold-dim);}
+.tab-btn.sel{color:#1d170c;background:var(--gold);border-color:var(--gold);font-weight:600;}
+.tab-content{min-height:320px;}
+
+/* ============ 秘境副本：整屏关卡选择（按 PSD 切图还原） ============ */
+.secret-screen{
+  position:absolute;inset:0;z-index:var(--z-modal);overflow:hidden;
+  /* #ui 默认 pointer-events:none，整屏层必须单独开启，否则页签/关卡/按钮全部点不到 */
+  pointer-events:auto;
+  /* 中段纯色取自 bg.png，上下美术由伪元素按效果图锚点拼接 */
+  background:#381c18;
+  animation:secret-in .18s ease-out;
+}
+@keyframes secret-in{from{opacity:0}to{opacity:1}}
+/* 顶部传送门 + 红色标题带：bg.png 整体上移 69px，让标题带落在 338-391，与效果图一致。
+   原图 0-69px 为纯黑，裁切无可见损失；411 以下本身也是纯色，接缝不可见。 */
+.secret-screen::before{
+  content:"";position:absolute;left:0;top:0;width:100%;height:411px;z-index:0;
+  background:url("../assets/ui/secret/bg.png") center -69px/100% auto no-repeat;
+  pointer-events:none;
+}
+/* 底部石带：bg.png 下移 37px，石带落在 1264-1275，按钮上沿压在石带上，与效果图一致 */
+.secret-screen::after{
+  content:"";position:absolute;left:0;bottom:0;width:100%;height:195px;z-index:0;
+  background:url("../assets/ui/secret/bg.png") center -1208px/100% auto no-repeat;
+  pointer-events:none;
+}
+
+/* 公用关闭按钮：沿用二级弹框的 61×59 公用切图，按 PSD 固定在右上 */
+.secret-close{
+  position:absolute;top:138px;right:29px;z-index:4;
+  width:61px;height:59px;border:0;padding:0;
+  background:url("../assets/ui/public/dialog-close.png") center/100% 100% no-repeat;
+  font-size:0;color:transparent;cursor:pointer;
+}
+.secret-close:active{transform:scale(.92);filter:brightness(.86);}
+
+/* 章节页签：底边对齐标题带，选中页签更高并染成绯红 */
+.secret-tabs{
+  position:absolute;left:0;right:0;top:213px;height:115px;
+  display:flex;align-items:flex-end;justify-content:center;gap:46px;
+  z-index:2;
+}
+.secret-tab{
+  position:relative;width:97px;height:95px;padding:8px 6px 12px;
+  border:0;display:flex;align-items:center;justify-content:center;
+  background:url("../assets/ui/secret/tab.png") center bottom/100% 100% no-repeat;
+  font-family:var(--font);color:#efe3d2;cursor:pointer;
+  transition:transform .08s ease,filter .14s ease;
+}
+.secret-tab b{
+  position:relative;z-index:1;
+  font-size:40px;line-height:1;font-weight:800;letter-spacing:1px;
+  text-shadow:0 2px 4px rgba(0,0,0,.66);
+}
+.secret-tab .st-label{display:none;}
+.secret-tab:hover{filter:brightness(1.1);}
+.secret-tab:active{transform:translateY(1px) scale(.97);}
+.secret-tab.on{
+  height:115px;flex-direction:column;gap:7px;padding-bottom:17px;
+  background-image:url("../assets/ui/secret/tab-on.png");
+}
+.secret-tab.on .st-label{
+  display:block;font-size:26px;line-height:1;font-weight:700;
+  letter-spacing:2px;color:#fff4e6;text-shadow:0 2px 4px rgba(60,0,12,.7);
+}
+/* 未解锁章节：黑色遮罩压暗页签，锁图标压在页签顶部 */
+.secret-tab.locked{cursor:not-allowed;}
+.secret-tab.locked:hover{filter:none;}
+.secret-tab.locked:active{transform:none;}
+.secret-tab.locked b{opacity:.5;}
+.secret-tab .s-mask{
+  position:absolute;inset:0;pointer-events:none;
+  background:url("../assets/ui/secret/tab-mask.png") center/100% 100% no-repeat;
+}
+.secret-tab .s-lock{
+  position:absolute;left:50%;top:-23px;z-index:3;
+  width:44px;height:51px;transform:translateX(-50%);pointer-events:none;
+  background:url("../assets/ui/public/lock.png") center/contain no-repeat;
+  filter:drop-shadow(0 3px 6px rgba(0,0,0,.8));
+}
+
+/* 标题带文字（底图已含裂纹石板） */
+.secret-title{
+  position:absolute;left:0;right:0;top:319px;height:87px;margin:0;z-index:2;
+  display:flex;align-items:center;justify-content:center;
+  font-size:40px;font-weight:800;letter-spacing:12px;text-indent:12px;
+  color:#fff7ec;
+  text-shadow:2px 0 0 #2b0b14,-2px 0 0 #2b0b14,0 2px 0 #2b0b14,0 -2px 0 #2b0b14,
+    2px 2px 0 #2b0b14,-2px 2px 0 #2b0b14,2px -2px 0 #2b0b14,-2px -2px 0 #2b0b14,
+    0 6px 12px rgba(0,0,0,.55);
+  pointer-events:none;
+}
+
+/* 关卡列表：按 PSD 绝对坐标排列，首行紧贴标题带（429），行距 16，不随关卡数量上下浮动 */
+.secret-list{
+  position:absolute;left:82px;top:429px;width:559px;height:836px;
+  padding:12px 12px 8px;box-sizing:border-box;
+  display:flex;flex-direction:column;gap:16px;
+  overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:thin;scrollbar-color:rgba(196,120,74,.55) transparent;
+  z-index:2;
+}
+.secret-list::-webkit-scrollbar{width:6px;}
+.secret-list::-webkit-scrollbar-track{background:rgba(0,0,0,.25);border-radius:3px;}
+.secret-list::-webkit-scrollbar-thumb{background:rgba(196,120,74,.55);border-radius:3px;}
+.secret-row{
+  position:relative;flex:0 0 92px;width:535px;height:92px;padding:0;border:0;
+  background:url("../assets/ui/secret/row.png") center/100% 100% no-repeat;
+  font-family:var(--font);text-align:left;cursor:pointer;
+  transition:filter .14s ease,transform .08s ease;
+}
+.secret-row:hover{filter:brightness(1.07);}
+.secret-row:active{transform:scale(.99);}
+.secret-row.sel::before{
+  content:"";position:absolute;left:50%;top:50%;width:555px;height:114px;
+  transform:translate(-50%,-50%);
+  background:url("../assets/ui/secret/row-sel.png") center/100% 100% no-repeat;
+  pointer-events:none;
+}
+.secret-row .s-num,
+.secret-row .s-name,
+.secret-row .s-meta{position:absolute;top:50%;transform:translateY(-50%);z-index:1;}
+.secret-row .s-num{
+  left:16px;width:61px;height:61px;display:flex;align-items:center;justify-content:center;
+  background:url("../assets/ui/secret/num.png") center/100% 100% no-repeat;
+  font-size:34px;font-weight:800;line-height:1;color:#ffefd8;
+  text-shadow:0 2px 4px rgba(0,0,0,.7);
+}
+.secret-row .s-name{
+  left:101px;max-width:196px;white-space:nowrap;
+  font-size:32px;font-weight:700;letter-spacing:2px;color:#fff;
+  text-shadow:0 2px 5px rgba(0,0,0,.72);
+}
+.secret-row .s-meta{
+  left:303px;display:flex;flex-direction:column;gap:4px;
+  font-size:24px;line-height:1.25;letter-spacing:1px;font-weight:600;
+  color:#e9a468;font-style:normal;white-space:nowrap;
+  text-shadow:0 1px 3px rgba(0,0,0,.65);
+}
+.secret-row .s-meta em{font-style:normal;}
+.secret-row.locked{cursor:not-allowed;}
+.secret-row.locked:hover{filter:none;}
+/* 未解锁：纯黑半透明遮罩压暗底图，右侧锁图标 */
+.secret-row .s-mask{
+  position:absolute;inset:0;z-index:0;pointer-events:none;
+  background:url("../assets/ui/secret/row-mask.png") center/100% 100% no-repeat;
+}
+.secret-row .s-lock{
+  position:absolute;right:22px;top:50%;z-index:2;
+  width:42px;height:48px;transform:translateY(-50%);pointer-events:none;
+  background:url("../assets/ui/public/lock.png") center/contain no-repeat;
+  filter:drop-shadow(0 2px 5px rgba(0,0,0,.75));
+}
+.secret-row.locked .s-num,
+.secret-row.locked .s-name,
+.secret-row.locked .s-meta{opacity:.55;}
+
+/* 底部进入副本：公用红底按钮，按 PSD 尺寸放宽中间平色区（高度保持 98 不压板） */
+.secret-foot{
+  position:absolute;left:0;right:0;top:1286px;z-index:2;
+  display:flex;justify-content:center;
+}
+.secret-foot .btn{
+  width:253px;min-width:253px;height:98px;padding:0 12px;
+  font-size:30px;letter-spacing:6px;
+}
+.secret-foot .btn.off{filter:grayscale(.55) brightness(.62);}
+
+/* ============ 任务面板 ============ */
+.quest-card{
+  border:1px solid #2d3038;border-radius:6px;padding:14px 16px;
+  background:linear-gradient(180deg,rgba(255,255,255,.022),rgba(255,255,255,0));
+  margin-bottom:12px;
+}
+.quest-card.main{
+  border-color:rgba(201,162,95,.34);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(201,162,95,.08), transparent 60%),
+    rgba(255,255,255,.015);
+}
+.quest-card.ready{border-color:var(--gold);box-shadow:inset 0 0 18px rgba(201,162,95,.1);}
+.quest-card.done{opacity:.82;}
+.q-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;}
+.q-head b{font-size:15.5px;color:var(--text);letter-spacing:1px;font-weight:600;}
+.quest-card.main .q-head b{color:var(--gold-2);}
+.q-progress{font-size:12px;color:var(--muted);letter-spacing:.5px;white-space:nowrap;}
+.q-desc{font-size:13px;color:#c4bdae;line-height:1.75;margin-top:9px;}
+.q-lore{font-size:12px;color:var(--dim);line-height:1.7;margin-top:7px;font-style:italic;}
+.q-target{font-size:12.5px;color:var(--gold-dim);margin-top:9px;letter-spacing:.4px;}
+.q-target .ok{color:var(--ok);font-style:normal;}
+.q-bar{
+  height:6px;border-radius:3px;margin-top:10px;
+  background:rgba(0,0,0,.45);
+  border:1px solid rgba(255,255,255,.05);
+  overflow:hidden;
+}
+.q-bar i{
+  display:block;height:100%;border-radius:3px;
+  background:linear-gradient(90deg,var(--gold-dim),var(--gold-2));
+  transition:width .3s ease-out;
+}
+.quest-card.ready .q-bar i{background:linear-gradient(90deg,#8fbf7a,#c6e39b);}
+.q-foot{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  margin-top:12px;flex-wrap:wrap;
+}
+.q-foot .btn{height:34px;padding:0 18px;font-size:12.5px;flex:0 0 auto;}
+.qg-gold{font-size:12px;color:var(--gold-2);}
+.qg-xp{font-size:12px;color:#a9c6ec;margin-left:10px;}
+.qg-tree{font-size:12px;color:#b7e0a8;margin-left:10px;}
+.qg-skill{font-size:12px;color:#d8bcf0;margin-left:10px;}
+.quest-sub{
+  font-size:12px;color:var(--gold-dim);letter-spacing:2px;
+  margin:18px 0 10px;
+}
+.quest-grid{display:flex;flex-direction:column;gap:12px;}
+.quest-grid .quest-card{margin-bottom:0;}
+
+/* ============ 技能树 ============ */
+.tree-list{display:flex;flex-direction:column;gap:14px;}
+.tree-block{
+  border:1px solid var(--line-soft);border-radius:8px;
+  padding:12px 14px 14px;background:rgba(255,255,255,.012);
+}
+.tree-head{
+  display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+  margin-bottom:11px;padding-bottom:9px;border-bottom:1px dashed rgba(255,255,255,.07);
+}
+.tree-head b{font-size:15px;color:var(--gold-2);letter-spacing:2px;font-weight:600;}
+.tree-head .meta{font-size:11.5px;color:var(--dim);letter-spacing:.5px;}
+.tree-nodes{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;}
+.tree-node{
+  position:relative;display:flex;flex-direction:column;gap:4px;width:100%;
+  padding:10px 10px 9px;border:1px solid var(--line-mid);border-radius:6px;
+  background:linear-gradient(160deg,#1e2128,#121419);
+  color:var(--text-2);font-family:var(--font);text-align:left;cursor:pointer;
+  transition:border-color .15s,background .15s,opacity .15s;
+}
+.tree-node b{font-size:12.5px;font-weight:600;color:var(--text-2);letter-spacing:.5px;}
+.tree-node p{font-size:11px;color:var(--dim);line-height:1.55;min-height:34px;}
+.tree-node em{font-style:normal;font-size:10.5px;color:#b1655f;line-height:1.4;}
+.tn-idx{
+  position:absolute;right:7px;top:6px;
+  font-size:10px;font-weight:700;color:var(--muted);
+  border:1px solid var(--line-mid);border-radius:3px;padding:0 4px;
+}
+.tree-node.can{border-color:var(--gold-dim);box-shadow:0 0 0 0 rgba(201,162,95,0);}
+.tree-node.can b{color:var(--gold-2);}
+.tree-node.can:hover{transform:translateY(-1px);border-color:var(--gold);}
+.tree-node.on{
+  border-color:var(--gold);
+  background:linear-gradient(160deg,#2c2517,#17130b);
+  box-shadow:inset 0 0 12px rgba(210,171,104,.14);
+}
+.tree-node.on b{color:var(--gold-2);}
+.tree-node.on .tn-idx{color:#1d170c;background:var(--gold);border-color:var(--gold-2);}
+.tree-node.locked{opacity:.56;cursor:not-allowed;}
+.tree-node[disabled]{cursor:not-allowed;}
+.tree-node.on[disabled]{cursor:default;opacity:1;}
+.tree-head .meta .btn{margin-left:10px;}
+
+/* ============================================================
+   公用二级弹框 · 纸面主题
+   ------------------------------------------------------------
+   弹框框体统一使用 assets/ui/public/dialog-frame.png，
+   内部文字统一为深墨色、卡片统一为浅纸色，
+   避免原来深色卡片 + 浅色文字在纸面上看不清。
+   ============================================================ */
+.modal{
+  --text:#33291d;
+  --text-2:#4d3e2c;
+  --muted:#6a5840;
+  --dim:#7b6850;
+  --faint:#8a775e;
+  --gold:#7d4c12;
+  --gold-2:#8f5a17;
+  --gold-dim:#96713c;
+  --danger:#a33a2c;
+  --danger-2:#8f2f22;
+  --ok:#4d7938;
+  --blue:#3c6396;
+  --line:#c2a97f;
+  --line-mid:#cbb58f;
+  --line-soft:#d3bf9a;
+  --rar-normal:#5f574b;
+  --rar-magic:#2f5f9e;
+  --rar-rare:#946100;
+  --rar-legend:#a84e12;
+  --sk-line:#c2a97f;
+  --sk-line-soft:rgba(90,60,30,.18);
+  --sk-hi:rgba(255,250,238,.6);
+  --sk-lo:rgba(90,60,30,.14);
+  --sk-ink-0:#f2e7d2;
+  --sk-ink-1:#ecdfc7;
+  --sk-ink-2:#e4d5b9;
+}
+.modal-body{line-height:1.6;}
+
+/* 覆盖 adapt.css 中旧的弹窗内边距与标题字号（否则缎带标题会被缩小） */
+.modal .modal-head{height:36px;padding:0;}
+.modal .modal-head h3{font-size:30px;letter-spacing:2px;}
+.modal .modal-head .sub{font-size:18px;}
+.modal .modal-body{padding:2px 26px 18px;}
+.modal .modal-foot{padding:14px 26px 18px;}
+.modal .confirm-text{font-size:24px;line-height:1.8;}
+
+/* ---------- 浅纸卡片 ---------- */
+.modal .sheet,
+.modal .detail-box,
+.modal .skill-row,
+.modal .quest-card,
+.modal .result-cell,
+.modal .loot-area,
+.modal .tree-block,
+.modal .equip-hero,
+.modal .equip-slot{
+  background:linear-gradient(180deg,rgba(255,250,238,.56),rgba(214,194,158,.34));
+  border-color:#c2a97f;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.45), inset 0 -1px 0 rgba(90,60,30,.10);
+}
+.modal .quest-card.main{
+  background:linear-gradient(180deg,rgba(255,248,230,.86),rgba(232,214,180,.56));
+  border-color:#b8934f;
+}
+.modal .quest-card.ready{border-color:#a97c2e;box-shadow:inset 0 0 18px rgba(169,124,46,.12);}
+.modal .equip-slot{padding:10px;}
+
+/* ---------- 深色凹槽：物品格 / 技能图标 / 阶级徽章保持深底浅字 ---------- */
+.modal .item-cell .equipped-mark{color:#f0d9a8;}
+.modal .item-cell.selected{
+  border-color:#f0d9a8;
+  box-shadow:0 0 0 1px rgba(240,217,168,.65), 0 0 18px rgba(240,217,168,.35), inset 0 0 14px rgba(240,217,168,.18);
+}
+.modal .loot-cell .loot-name{color:#ded4c0;}
+.modal .loot-cell .qty{color:#c8bfae;}
+
+/* ---------- 文字对比度修正 ---------- */
+.modal .stat-list li b{color:#2e2418;}
+.modal .stat-list li b em{color:#6a5840;}
+.modal .item-stat{color:#4a3c2c;}
+.modal .item-stat span:last-child{color:#2e2418;}
+.modal .skill-desc{color:#463728;}
+.modal .skill-desc em{color:#8f5a17;}
+.modal .q-desc{color:#463728;}
+.modal .q-lore{color:#7b6850;}
+.modal .qg-xp{color:#3c6396;}
+.modal .qg-tree{color:#4d7938;}
+.modal .qg-skill{color:#6b4a9a;}
+.modal .skillup-note{color:#3c6396;}
+/* 点数徽章：数字必须清晰可读（此前被 .meta b 的深色覆盖成「深底深字」） */
+.modal .point-badge{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:36px;height:36px;padding:0 10px;margin:0 2px;
+  font-size:19px;font-weight:700;line-height:1;
+  color:#fff8ea;background:#8f5a17;border-radius:18px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18);
+}
+.modal .section-label .meta b.point-badge{color:#fff8ea;font-size:19px;}
+.modal .section-label{color:#8f5a17;}
+.modal .section-label > span:first-child::before{color:#96713c;}
+.modal .section-label .meta{color:#5c4a33;}
+.modal .section-label .meta b{color:#7d4c12;}
+.modal .equip-divider{color:#96713c;font-size:15px;letter-spacing:2px;}
+.modal .equip-hero-lv{font-size:16px;padding:2px 10px;}
+.modal .hero-lv{font-size:16px;padding:2px 9px;}
+.modal .tn-idx{font-size:14px;padding:0 6px;}
+.modal .rarity-tag{font-size:15px;}
+.modal .item-cell.empty .glyph{font-size:16px;}
+.modal .tab-bar{gap:10px;margin-bottom:14px;}
+.modal .tab-btn{height:48px;padding:0 26px;font-size:21px;letter-spacing:1.5px;border-radius:6px;}
+.modal .equip-divider::before{background:linear-gradient(90deg,transparent,rgba(150,113,60,.5));}
+.modal .equip-divider::after{background:linear-gradient(90deg,rgba(150,113,60,.5),transparent);}
+.modal .detail-empty{color:#7b6850;}
+.modal .item-type{color:#6a5840;}
+.modal .compare{border-top-color:#bda57e;}
+.modal .compare .same{color:#7b6850;}
+.modal .bag-cap{background:rgba(90,60,30,.18);box-shadow:inset 0 1px 2px rgba(90,60,30,.2);}
+.modal .bag-cap i{background:linear-gradient(90deg,#a97c2e,#e2c078);}
+.modal .bag-grid{grid-template-columns:repeat(8,1fr);gap:8px;}
+.modal .item-cell .glyph{font-size:26px;}
+.modal .item-cell .lvl{font-size:14px;color:#d8cfbd;}
+.modal .item-cell .equipped-mark{font-size:13px;}
+.modal .equip-slot .slot-label{font-size:17px;}
+.modal .equip-slot .slot-name{font-size:16px;}
+.modal .equip-doll .equip-trinkets .slot-label,
+.modal .equip-doll .equip-trinkets .slot-name{font-size:14px;}
+.modal .tree-head{border-bottom-color:rgba(90,60,30,.18);}
+
+/* ---------- 页签 / 分段选择：纸面浅底 + 深褐选中 ---------- */
+.modal .tab-btn{
+  background:rgba(255,250,238,.45);
+  border-color:#c2a97f;
+  color:#5c4a33;
+}
+.modal .tab-btn:hover{color:#7d4c12;border-color:#96713c;}
+.modal .tab-btn.sel{
+  background:#8f5a17;border-color:#6f4510;color:#fff8ea;
+}
+.modal .seg-btn{
+  background:rgba(255,250,238,.45);
+  border-color:#c2a97f;
+  color:#5c4a33;
+}
+.modal .seg-btn:hover{color:#7d4c12;border-color:#96713c;}
+.modal .seg-btn.sel{
+  background:linear-gradient(180deg,#a0681c,#7d4c12);
+  border-color:#6f4510;color:#fff8ea;
+}
+.modal .setting-row{border-bottom-color:rgba(90,60,30,.18);}
+
+/* ---------- 技能树节点：纸面浅卡，不再深底浅字 ---------- */
+.modal .tree-node{
+  background:linear-gradient(180deg,#f8efdd,#e7d6b8);
+  border-color:#c2a97f;
+  color:#4d3e2c;
+}
+.modal .tree-node b{color:#4d3e2c;}
+.modal .tree-node p{color:#6a5840;}
+.modal .tree-node em{color:#a33a2c;}
+.modal .tn-idx{color:#7b6850;border-color:#c2a97f;}
+.modal .tree-node.can b{color:#7d4c12;}
+.modal .tree-node.on{
+  background:linear-gradient(180deg,#f4e2bc,#e6cd9b);
+  border-color:#a97c2e;
+  box-shadow:inset 0 0 12px rgba(169,124,46,.18);
+}
+.modal .tree-node.on b{color:#7d4c12;}
+.modal .tree-node.on .tn-idx{background:#8f5a17;border-color:#6f4510;color:#fff8ea;}
+.modal .tree-node.locked{opacity:.62;}
+
+/* ---------- 技能升级标签 ---------- */
+.modal .skill-name .lv{
+  color:#7d4c12;
+  background:rgba(143,90,23,.12);
+  border-color:rgba(143,90,23,.4);
+}
+
+/* ---------- 字号：按 720 设计宽放大，手机缩放后仍清晰 ---------- */
+.modal .section-label{font-size:20px;letter-spacing:1.5px;margin-bottom:12px;}
+.modal .section-label .meta{font-size:18px;}
+.modal .stat-list li{font-size:20px;}
+.modal .stat-list li b{font-size:22px;}
+.modal .stat-list li b em{font-size:17px;}
+.modal .equip-stats .stat-list{justify-content:flex-start;}
+.modal .equip-stats .stat-list li{padding:9px 0;}
+.modal .item-name{font-size:27px;}
+.modal .item-type{font-size:19px;margin:5px 0 12px;}
+.modal .item-stat{font-size:20px;line-height:1.85;}
+.modal .compare{font-size:19px;}
+.modal .compare-note{font-size:17px;}
+.modal .detail-empty{font-size:20px;line-height:1.9;}
+.modal .detail-actions .btn{min-width:150px;height:98px;padding:0 12px;font-size:26px;}
+.modal .skill-row{grid-template-columns:70px 1fr auto;gap:18px;padding:17px;}
+.modal .skill-icon{width:70px;height:70px;font-size:27px;}
+.modal .skill-name{font-size:24px;}
+.modal .skill-name .lv{font-size:17px;}
+.modal .skill-name .key-tip{font-size:17px;}
+.modal .skill-desc{font-size:20px;line-height:1.72;}
+.modal .skill-next{font-size:17px;letter-spacing:0;}
+.modal .skill-plus .cost{font-size:16px;}
+.modal .skill-plus .btn{width:auto;min-width:238px;height:98px;padding:0 18px;font-size:28px;}
+.modal .modal-body .note{font-size:18px;line-height:1.85;}
+.modal .q-head b{font-size:23px;}
+.modal .q-progress{font-size:18px;}
+.modal .q-desc{font-size:20px;}
+.modal .q-lore{font-size:18px;}
+.modal .q-target{font-size:19px;}
+.modal .q-foot{gap:14px;}
+.modal .q-foot .btn{height:98px;padding:0 22px;font-size:26px;}
+.modal .qg-gold,.modal .qg-xp,.modal .qg-tree,.modal .qg-skill{font-size:18px;}
+.modal .quest-sub{font-size:19px;}
+.modal .tree-head b{font-size:21px;}
+.modal .tree-head .meta{font-size:17px;}
+.modal .tree-nodes{grid-template-columns:repeat(2,1fr);gap:10px;}
+.modal .tree-node{padding:12px;}
+.modal .tree-node b{font-size:18px;}
+.modal .tree-node p{font-size:16px;line-height:1.55;min-height:0;}
+.modal .tree-node em{font-size:15px;}
+.modal .result-banner h2{font-size:42px;letter-spacing:10px;}
+.modal .result-banner p{font-size:19px;}
+.modal .result-cell{padding:16px;}
+.modal .result-cell .k{font-size:17px;}
+.modal .result-cell .v{font-size:28px;}
+.modal .loot-title{font-size:18px;}
+.modal .loot-empty{font-size:19px;}
+.modal .levelup-note,.modal .skillup-note{font-size:19px;}
+.modal .loot-cell{width:100px;height:110px;font-size:26px;}
+.modal .loot-cell .loot-name{font-size:15px;}
+.modal .setting-title{font-size:21px;}
+.modal .setting-desc{font-size:19px;line-height:1.7;}
+.modal .seg-btn{height:52px;font-size:19px;padding:0 22px;}
+.modal .settings-note{font-size:19px;line-height:1.9;}
+.modal .modal-body .note{font-size:18px;}
+.modal .pick-glyph{font-size:36px;}
+.modal .pick-name{font-size:20px;}
+.modal .pick-title{font-size:17px;}
+.modal .cls-desc{font-size:19px;}
+.modal input[type=text],
+.modal input[type=password]{
+  width:100%;
+  height:72px;
+  padding:0 22px 2px;
+  border-style:solid;
+  border-width:6px;
+  border-image:url("../assets/ui/public/input-field.png") 6 6 8 6 fill stretch;
+  border-radius:0;
+  background:none;
+  color:#fff;
+  font-size:24px;
+  font-weight:700;
+  line-height:1;
+  letter-spacing:1px;
+  box-shadow:none;
+  outline:none;
+  text-shadow:0 1px 1px rgba(0,0,0,.4);
+}
+.modal input::placeholder{color:#fff;opacity:1;font-weight:700;}
+.modal .ci-sub{font-size:18px;}
+.modal .ci-desc{font-size:18px;line-height:1.7;}
+.modal .hero-xp-meta{font-size:17px;}
+.modal .hero-xp-bar{height:14px;}
+.modal .ci-power span{font-size:16px;}
+.modal .ci-power b{font-size:30px;}
+.modal .equip-hero-name{font-size:24px;}
+.modal .equip-hero-sub{font-size:17px;}
+.modal .equip-hero-power span{font-size:15px;}
+.modal .equip-hero-power b{font-size:30px;}
+
+/* ---------- 弹框内按钮：统一公用九宫按钮 ----------
+   高度固定 98，装饰角按资源原像素 1:1 渲染；宽度只压缩中间平色区，
+   因此行内次要操作可以使用更窄的按钮，既不放大也不变形。 */
+.modal .btn{font-size:30px;letter-spacing:1px;}
+.modal .btn-sm{font-size:26px;padding:0 16px;letter-spacing:.5px;}
+.modal .confirm-actions .btn{height:98px;font-size:30px;}
+.modal .settle-btn{min-width:238px;height:98px;font-size:30px;}
+
+/* 技能行：图标 | 说明 | 紧凑升级按钮，按钮不再独占一整行 */
+.modal .skill-row{
+  grid-template-columns:70px minmax(0,1fr) 158px;
+  grid-template-areas:"icon main plus";
+  align-items:center;
+  gap:10px 14px;
+  padding:14px 16px;
+}
+.modal .skill-icon{grid-area:icon;}
+.modal .skill-row > div:nth-child(2){grid-area:main;}
+.modal .skill-plus{
+  grid-area:plus;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:8px;
+}
+.modal .skill-plus .btn{min-width:150px;width:auto;height:98px;padding:0 10px;font-size:28px;}
+.modal .skill-plus .cost{order:0;margin:0;font-size:16px;color:#6a5840;}
+
+/* 任务卡：奖励与领取按钮同一行，减少卡片高度 */
+/* 奖励在左、状态/按钮在右；奖励多时在左列内换行，不在按钮下方留大片空白 */
+.modal .q-foot{display:flex;flex-wrap:nowrap;align-items:center;gap:14px;}
+.modal .q-rewards{flex:1 1 auto;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;}
+.modal .q-foot .btn{flex:0 0 auto;margin-left:auto;min-width:190px;height:98px;padding:0 12px;font-size:26px;}
+/* 未完成状态用轻量状态签，避免禁用大按钮占据整行 */
+.modal .q-state{
+  flex:0 0 auto;margin-left:auto;
+  padding:8px 18px;border:1px solid #c2a97f;border-radius:22px;
+  background:rgba(255,250,238,.55);
+  font-size:18px;line-height:1.3;letter-spacing:1px;color:#7b6850;
+  white-space:nowrap;
+}
+
+/* 标题行右侧的次要按钮（重置等）：紧凑宽度，与点数徽章保持同一行 */
+.modal .section-label{flex-wrap:wrap;row-gap:8px;}
+.modal .section-label .meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;}
+.modal .section-label .meta .btn{min-width:150px;height:98px;padding:0 12px;font-size:26px;}
+
+.modal .section-label > span:first-child{white-space:nowrap;}
+.modal .section-label{align-items:center;}
+
+/* 纸面次级文字：统一深褐，清除深色主题遗留的浅灰，保证纸底上可读 */
+.modal .skill-name .key-tip,
+.modal .skill-next,
+.modal .skill-plus .cost,
+.modal .q-progress,
+.modal .modal-body .note,
+.modal .settings-note,
+.modal .compare-note,
+.modal .detail-empty{color:#6a5840;}
+.modal .skill-name .lv{background:rgba(255,246,225,.9);border-color:#b8934f;padding:2px 9px;}
+
+/* ---------- 弹框内按钮：统一按压反馈 ---------- */
+.modal .btn:active,
+.pause-card .btn:active{
+  transform:translateY(2px) scale(.92);
+  filter:brightness(.9);
+}
+.modal .tab-btn,
+.modal .seg-btn{transition:transform .06s ease, filter .14s ease, color .15s, border-color .15s, background .15s;}
+.modal .tab-btn:active,
+.modal .seg-btn:active{
+  transform:translateY(1px) scale(.92);
+  filter:brightness(.92);
+}
+.modal .modal-close:active,
+.pause-card .modal-close:active{transform:scale(.92);filter:brightness(.86);}
+
+/* ---------- 弹框内滚动条：纸面配色 ---------- */
+.modal-body::-webkit-scrollbar-track{background:rgba(120,90,50,.12);}
+.modal-body::-webkit-scrollbar-thumb{background:#a98f66;border-color:#d8c6a6;}
+.modal-body::-webkit-scrollbar-thumb:hover{background:#8f7550;}
+

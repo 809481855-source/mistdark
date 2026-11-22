@@ -1,0 +1,74 @@
+/* 登录界面：严格按 720×1440 设计稿还原（登录弹框.psb）
+   公用控件全部来自 css/ui-kit.css，本文件只负责登录页的定位与背景。 */
+
+.login-screen{
+  display:block;
+  padding:0;
+  overflow:hidden;
+  background:url("../assets/login-bg.jpg") center bottom / cover no-repeat,
+    radial-gradient(ellipse at 50% 32%, #2a303c 0%, #141a24 50%, #07080b 100%);
+}
+/* 设计稿为纯遮罩层，不再叠网格纹理 */
+.login-screen::after{content:none;}
+
+/* 弹框：设计稿坐标 (41,279)，尺寸 636×883 */
+.login-dialog{
+  position:absolute;
+  left:41px;
+  top:279px;
+}
+
+/* 内容底：设计稿坐标 (74,392)，尺寸 572×562，相对弹框 (33,113) */
+.login-inset{
+  position:absolute;
+  left:33px;
+  top:113px;
+  width:572px;
+  height:562px;
+}
+
+/* 账号 */
+.login-label-account{
+  position:absolute;
+  left:50px;
+  top:63px;
+}
+.login-input-account{
+  position:absolute;
+  left:51px;
+  top:111px;
+  height:79px;
+}
+
+/* 密码 */
+.login-label-pass{
+  position:absolute;
+  left:51px;
+  top:253px;
+}
+.ui-kit input.login-input-pass{
+  position:absolute;
+  left:51px;
+  top:301px;
+  height:80px;
+}
+
+/* 记住密码：勾选底 (126,820) → 内容底内 (52,428) */
+.login-remember{
+  position:absolute;
+  left:52px;
+  top:428px;
+  height:58px;
+}
+
+/* 底部按钮：按公用按钮资源原尺寸 238×98 居中排布 */
+.login-btn-register{
+  position:absolute;
+  left:32px;
+  top:739px;
+}
+.login-btn-login{
+  position:absolute;
+  left:366px;
+  top:739px;
+}

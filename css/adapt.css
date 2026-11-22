@@ -1,0 +1,380 @@
+/* ============================================================
+   移动端可读性：手机上 720 逻辑宽会被等比缩小，
+   这里统一放大字号与触控尺寸，保证文字与按钮在窄屏上依然清晰好点。
+   ============================================================ */
+
+/* 通用控件 */
+body{font-size:16px;}
+.btn{height:56px;font-size:17px;padding:0 26px;}
+.btn-sm{height:44px;padding:0 18px;font-size:14px;}
+input[type=text],input[type=password]{height:56px;font-size:17px;padding:0 18px;}
+input::placeholder{color:#8b857a;}
+
+/* 登录（尺寸由 ui-kit.css 按设计稿固定，此处不再放大） */
+
+/* 开始界面 */
+.entry-start{height:60px;font-size:20px;}
+.entry-switch{height:52px;font-size:17px;}
+
+/* 选角 */
+.screen-head h2{font-size:30px;letter-spacing:7px;}
+.head-sub{font-size:16px;}
+.preview-name{font-size:32px;}
+.preview-lv{font-size:16px;}
+.preview-meta{font-size:15px;}
+.pstat{min-width:116px;padding:9px 14px;}
+.pstat i{font-size:15px;}
+.pstat b{font-size:20px;}
+.pxp-text{font-size:15.5px;}
+.preview-actions .btn{height:62px;}
+.preview-actions .btn.primary{font-size:20px;}
+.char-slot{height:84px;}
+.slot-emblem{width:50px;height:50px;font-size:22px;}
+.char-slot .slot-name{font-size:17px;}
+.char-slot .slot-lv{font-size:15px;}
+.char-slot .slot-empty{font-size:16px;}
+.char-slot .slot-plus{font-size:22px;}
+.preview-empty-text{font-size:22px;}
+.preview-empty-hint{font-size:14px;}
+.char-foot{font-size:15.5px;}
+.pick-glyph{font-size:34px;}
+.pick-name{font-size:17px;}
+.pick-title{font-size:13px;}
+.cls-desc{font-size:14px;}
+.class-pick{padding:22px 12px;}
+
+/* 主城 */
+.town-top{padding:16px 18px;}
+.town-zone{gap:12px;}
+.town-corner-btn{width:70px;height:70px;}
+.town-tools{gap:14px;}
+.hero-name{font-size:29px;}
+.hero-lv{font-size:13.5px;padding:3px 12px;}
+.hero-sub{font-size:14.5px;}
+.hero-power span{font-size:12.5px;}
+.hero-power b{font-size:31px;}
+.hero-xp-meta{font-size:14px;}
+.hero-mini-stats span{font-size:13px;}
+.hero-mini-stats b{font-size:18px;}
+.strip-glyph{font-size:26px;}
+.exp-text{font-size:11.5px;}
+#ui:has(.town-screen) + .toast-wrap:not(.over-modal){top:50%;bottom:auto;}
+
+/* 弹窗通用 */
+.modal-head{padding:20px 24px;}
+.modal-head h3{font-size:21px;letter-spacing:2px;}
+.modal-head .sub{font-size:13.5px;}
+/* 关闭按钮为公用图片资源，固定 61×59 原尺寸，不随断点缩放 */
+.modal-body{padding:22px 24px;}
+.modal-foot{padding:18px 24px;}
+.confirm-text{font-size:15.5px;line-height:1.85;}
+.sheet{padding:16px 18px;}
+.section-label{font-size:13.5px;letter-spacing:2px;}
+.section-label .meta{font-size:13px;}
+
+/* 装备与背包 */
+.equip-doll .equip-slots{gap:12px;}
+.equip-slot{padding:10px 8px;gap:7px;}
+.equip-slot .slot-label{font-size:11.5px;}
+.equip-slot .slot-cell,
+.equip-slot .slot-cell .item-cell{width:62px;height:62px;}
+.equip-doll .equip-trinkets .slot-cell,
+.equip-doll .equip-trinkets .slot-cell .item-cell{width:52px;height:52px;}
+.equip-doll .equip-trinkets .slot-label,
+.equip-doll .equip-trinkets .slot-name{font-size:10.5px;}
+.slot-name{font-size:11.5px;}
+.section-label > span:first-child::before{font-size:8px;}
+.equip-hero{padding:14px 18px;}
+.equip-hero-emblem{width:54px;height:54px;font-size:23px;}
+.equip-hero-name{font-size:21px;}
+.equip-hero-sub{font-size:12px;}
+.equip-hero-power b{font-size:27px;}
+.bag-grid{grid-template-columns:repeat(6,1fr);gap:10px;}
+.bag-grid .item-cell{height:auto;aspect-ratio:1;}
+.stat-list{gap:11px 28px;}
+.stat-list li{font-size:15px;padding-bottom:6px;}
+.stat-list li b{font-size:17px;}
+.stat-list li b em{font-size:12.5px;}
+.item-cell .glyph{font-size:27px;}
+.item-cell .lvl{font-size:11.5px;}
+.item-cell .equipped-mark{font-size:11.5px;}
+.item-cell.empty .glyph{font-size:13px;}
+.detail-box{padding:18px 20px;}
+.detail-empty{font-size:14px;}
+.item-name{font-size:21px;}
+.item-type{font-size:13.5px;}
+.item-stat{font-size:14.5px;}
+.compare{font-size:13.5px;}
+.compare-note{font-size:12.5px;}
+.rarity-tag{font-size:11.5px;}
+.detail-actions .btn{height:48px;font-size:15px;}
+
+/* 技能 */
+.skill-row{grid-template-columns:68px 1fr auto;gap:18px;padding:18px;}
+.skill-icon{width:68px;height:68px;font-size:25px;}
+.skill-name{font-size:17.5px;}
+.skill-name .lv{font-size:13px;padding:2px 10px;}
+.skill-name .key-tip{font-size:13px;}
+.skill-desc{font-size:16px;color:#cfc8b8;line-height:1.75;}
+.skill-next{font-size:14px;}
+.skill-plus .btn{width:84px;height:46px;font-size:15px;}
+.skill-plus .cost{font-size:12.5px;}
+.point-badge{font-size:13.5px;}
+.modal-body .note{font-size:13.5px;}
+
+/* 任务 / 技能树 */
+.quest-card{padding:16px;}
+.q-head b{font-size:17.5px;}
+.q-progress{font-size:13px;}
+.q-desc{font-size:15px;}
+.q-lore{font-size:13.5px;}
+.q-target{font-size:13.5px;}
+.q-foot .btn{height:40px;font-size:14px;}
+.qg-gold,.qg-xp,.qg-tree,.qg-skill{font-size:13.5px;}
+.quest-sub{font-size:13.5px;}
+.tree-block{padding:14px;}
+.tree-head b{font-size:17px;}
+.tree-node b{font-size:14px;}
+.tree-node p{font-size:12.5px;}
+.tree-node em{font-size:12px;}
+
+/* 结算 */
+.result-banner h2{font-size:36px;letter-spacing:10px;}
+.result-banner p{font-size:14px;}
+.result-cell{padding:16px;}
+.result-cell .k{font-size:13px;}
+.result-cell .v{font-size:24px;}
+.loot-area{padding:18px 20px;}
+.loot-title{font-size:13px;}
+.loot-cell{width:96px;height:104px;font-size:25px;}
+.loot-cell .loot-name{font-size:13.5px;}
+.loot-cell .qty{font-size:14px;}
+.loot-empty{font-size:14px;}
+.levelup-note,.skillup-note{font-size:14px;}
+
+/* 提示 */
+.toast-wrap{width:min(560px, calc(100% - 40px));}
+.toast{font-size:16px;padding:12px 16px;}
+.toast-wrap.in-battle{width:420px;top:auto;bottom:320px;}
+
+/* 战斗 HUD（顶部按 PSD 固定坐标，不随视口放大） */
+.boss-compass{font-size:14px;padding:6px 15px;}
+.boss-compass .bc-arrow{width:14px;height:14px;}
+.dg-bottom{bottom:24px;gap:16px;}
+.strip-glyph{font-size:30px;}
+.strip-slot .cdtext{font-size:36px;-webkit-text-stroke:2.5px #000;}
+.exp-text{font-size:13px;}
+.pause-card{width:460px;padding:0;}
+.pause-card .btn{height:54px;margin-bottom:0;}
+.pause-card .hint{font-size:15px;margin-top:4px;}
+
+/* 触屏操作：只保留摇杆 */
+
+/* 操作设置 */
+.setting-title{font-size:17px;}
+.setting-desc{font-size:14px;line-height:1.7;}
+.seg-btn{height:50px;font-size:15px;padding:0 24px;}
+.settings-note{font-size:14px;line-height:1.9;}
+
+@media (pointer:coarse){
+/* ============================================================
+   手机触控显示：文字与控件放大，保证窄屏清晰可点。
+   ============================================================ */
+
+/* 通用控件 */
+body{font-size:20px;}
+.btn{height:62px;font-size:21px;padding:0 28px;}
+.btn-sm{height:50px;padding:0 20px;font-size:18px;}
+input[type=text],input[type=password]{height:62px;font-size:21px;padding:0 20px;}
+
+/* 登录（尺寸由 ui-kit.css 按设计稿固定，此处不再放大） */
+
+/* 开始界面 */
+.entry-start{height:66px;font-size:24px;}
+.entry-switch{height:58px;font-size:20px;}
+
+/* 选角 */
+.screen-head h2{font-size:34px;}
+.head-sub{font-size:19px;}
+.preview-name{font-size:36px;}
+.preview-lv{font-size:18px;}
+.preview-meta{font-size:18px;}
+.pstat{min-width:130px;padding:10px 16px;}
+.pstat i{font-size:16px;}
+.pstat b{font-size:23px;}
+.pxp-text{font-size:17px;}
+.preview-actions .btn{height:68px;}
+.preview-actions .btn.primary{font-size:23px;}
+.char-slot{height:94px;}
+.slot-emblem{width:56px;height:56px;font-size:25px;}
+.char-slot .slot-name{font-size:20px;}
+.char-slot .slot-lv{font-size:17px;}
+.char-slot .slot-empty{font-size:19px;}
+.char-slot .slot-plus{font-size:26px;}
+.preview-empty-text{font-size:25px;}
+.preview-empty-hint{font-size:17px;}
+.char-foot{font-size:18px;}
+.pick-glyph{font-size:38px;}
+.pick-name{font-size:21px;}
+.pick-title{font-size:17px;}
+.cls-desc{font-size:18px;}
+
+/* 主城 */
+.town-top{padding:18px 20px;}
+.town-corner-btn{width:70px;height:70px;}
+.hero-name{font-size:33px;}
+.hero-lv{font-size:17.5px;padding:3px 12px;}
+.hero-sub{font-size:18.5px;}
+.hero-power span{font-size:16.5px;}
+.hero-power b{font-size:35px;}
+.hero-xp-meta{font-size:18px;}
+.hero-mini-stats span{font-size:17px;}
+.hero-mini-stats b{font-size:22px;}
+.strip-glyph{font-size:32px;}
+.exp-text{font-size:14px;}
+
+/* 弹窗通用 */
+.modal-head h3{font-size:25px;}
+.modal-head .sub{font-size:17.5px;}
+.confirm-text{font-size:19.5px;line-height:1.8;}
+.sheet{padding:18px 20px;}
+.section-label{font-size:17.5px;}
+.section-label .meta{font-size:17px;}
+
+/* 装备与背包 */
+.equip-slot{padding:12px 10px;gap:8px;}
+.equip-slot .slot-label{font-size:15px;}
+.equip-slot .slot-cell,
+.equip-slot .slot-cell .item-cell{width:78px;height:78px;}
+.equip-doll .equip-trinkets .slot-cell,
+.equip-doll .equip-trinkets .slot-cell .item-cell{width:60px;height:60px;}
+.equip-doll .equip-trinkets .slot-label,
+.equip-doll .equip-trinkets .slot-name{font-size:13px;}
+.slot-name{font-size:15px;}
+.equip-hero-name{font-size:25px;}
+.equip-hero-lv{font-size:15px;padding:2px 10px;}
+.equip-hero-sub{font-size:15px;}
+.equip-hero-power span{font-size:13px;}
+.equip-hero-power b{font-size:32px;}
+.bag-grid{gap:9px;}
+.bag-grid .item-cell{height:auto;aspect-ratio:1;}
+.stat-list li{font-size:19px;padding-bottom:8px;}
+.stat-list li b{font-size:21px;}
+.stat-list li b em{font-size:16.5px;}
+.item-cell .glyph{font-size:31px;}
+.item-cell .lvl{font-size:15.5px;}
+.item-cell .equipped-mark{font-size:15.5px;}
+.item-cell.empty .glyph{font-size:17px;}
+.detail-empty{font-size:18px;}
+.item-name{font-size:25px;}
+.item-type{font-size:17.5px;}
+.item-stat{font-size:18.5px;}
+.compare{font-size:17.5px;}
+.compare-note{font-size:16.5px;}
+.rarity-tag{font-size:15.5px;}
+.detail-actions .btn{height:54px;font-size:19px;}
+
+/* 技能 */
+.skill-row{grid-template-columns:76px 1fr auto;gap:18px;padding:20px;}
+.skill-icon{width:76px;height:76px;font-size:29px;}
+.skill-name{font-size:21.5px;}
+.skill-name .lv{font-size:17px;padding:3px 11px;}
+.skill-name .key-tip{font-size:17px;}
+.skill-desc{font-size:20px;line-height:1.7;}
+.skill-next{font-size:18px;}
+.skill-plus .btn{width:92px;height:52px;font-size:19px;}
+.skill-plus .cost{font-size:16.5px;}
+.point-badge{font-size:17.5px;}
+.modal-body .note{font-size:17.5px;}
+
+/* 任务 / 技能树 */
+.quest-card{padding:18px;}
+.q-head b{font-size:21px;}
+.q-progress{font-size:16.5px;}
+.q-desc{font-size:18.5px;}
+.q-lore{font-size:16.5px;}
+.q-target{font-size:17px;}
+.q-foot .btn{height:46px;font-size:17.5px;}
+.qg-gold,.qg-xp,.qg-tree,.qg-skill{font-size:17px;}
+.quest-sub{font-size:17px;}
+.tree-block{padding:16px;}
+.tree-head b{font-size:21px;}
+.tree-node{padding:12px;}
+.tree-node b{font-size:17px;}
+.tree-node p{font-size:15px;min-height:40px;}
+.tree-node em{font-size:14px;}
+.tn-idx{font-size:12.5px;}
+
+/* 结算 */
+.result-banner h2{font-size:40px;letter-spacing:8px;}
+.result-banner p{font-size:18px;}
+.result-cell{padding:18px;}
+.result-cell .k{font-size:17px;}
+.result-cell .v{font-size:28px;}
+.loot-title{font-size:17px;}
+.loot-cell{width:118px;height:118px;font-size:30px;}
+.loot-cell .loot-name{font-size:17.5px;}
+.loot-cell .qty{font-size:15.5px;}
+.loot-empty{font-size:18px;}
+.levelup-note,.skillup-note{font-size:18px;}
+
+/* 提示 */
+.toast{font-size:20px;padding:14px 20px;}
+.toast-wrap{width:min(600px, calc(100% - 40px));}
+.toast-wrap.in-battle{top:auto;bottom:330px;}
+
+/* 战斗 HUD（顶部按 PSD 固定坐标，不随视口放大） */
+.boss-compass{font-size:16px;padding:6px 16px;}
+.boss-compass .bc-arrow{width:16px;height:16px;}
+.strip-glyph{font-size:36px;}
+.strip-slot .cdtext{font-size:46px;-webkit-text-stroke:3px #000;}
+.exp-text{font-size:16px;}
+.pause-card{width:480px;padding:0;}
+.pause-card .btn{height:62px;margin-bottom:0;}
+.pause-card .hint{font-size:17.5px;}
+
+/* 触屏操作：只保留摇杆，技能栏统一在底部居中 */
+
+/* 操作设置 */
+.setting-title{font-size:21px;}
+.setting-desc{font-size:18px;line-height:1.7;}
+.seg-btn{height:56px;font-size:19px;padding:0 26px;}
+.setting-range input[type=range]{height:44px;}
+.setting-range .range-val{min-width:66px;font-size:18px;}
+.settings-note{font-size:18px;line-height:1.9;}
+
+/* 摇杆尺寸与位置统一由 combat-bar.css 的 .touch-ui 控制（主城 / 战斗共用） */
+}
+
+/* ============================================================
+   公用九宫按钮：按资源原尺寸 238×98 排版
+   高度固定 98，只允许中间平色区横向拉伸，避免压扁变形
+   ============================================================ */
+.btn{height:98px;font-size:30px;padding:0 36px;}
+.btn-sm{height:98px;font-size:26px;padding:0 20px;}
+.entry-start,.entry-switch{height:98px;font-size:30px;}
+.preview-actions .btn{height:98px;}
+.preview-actions .btn.primary{font-size:30px;}
+.pause-card .btn{height:98px;font-size:28px;}
+
+/* 战斗顶栏暂停键：HUD 深色小键，不套用大号公用底板（否则挤爆顶栏） */
+/* 战斗公告：天气规则等长文案在 720 宽下自动换行，避免左右被裁 */
+.dungeon-announce{
+  left:36px;right:36px;
+  font-size:29px;letter-spacing:2px;line-height:1.5;
+  white-space:normal;word-break:break-word;
+}
+
+/* 经验条文字：条高仅 20px，行高压到 1，避免上下被裁 */
+.combat-exp .exp-text{line-height:1;}
+
+/* 暂停弹框：按钮与留白收紧，避免按钮过大撑满弹框 */
+.pause-card .btn{
+  height:72px;
+  min-width:0;
+  font-size:21px;
+  padding:0 22px;
+  border-width:22px 30px;
+}
+.pause-card .modal-body{gap:10px;padding:6px 24px 18px;}
+.pause-card .hint{font-size:13px;}

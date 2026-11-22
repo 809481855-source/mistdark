@@ -1,0 +1,232 @@
+/* 主城界面：营地图层、功能图标、秘境入口。只改本文件，不影响其它界面。 */
+
+/* ---------- 主城：概览 + 主行动 + 次级行动 ---------- */
+.town-screen{padding:22px 26px 16px;}
+.town-top{
+  display:flex;
+  align-items:center;
+  padding:16px 20px;
+  position:relative;
+  z-index:2;
+}
+.town-zone{
+  display:flex;align-items:center;gap:16px;
+  width:100%;
+  min-width:0;
+}
+.char-emblem{
+  width:52px;height:52px;
+  flex:0 0 auto;
+  font-size:22px;
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700;
+  border:1px solid rgba(255,255,255,.16);
+  box-shadow:inset 0 0 24px rgba(0,0,0,.55);
+}
+.town-tools{display:flex;align-items:center;gap:14px;margin-left:auto;}
+/* 右上角按钮（选角 / 登出）的样式在 base.css 的 .plate-btn，主城与选角共用 */
+/* 顶栏左上角功能键：设置 */
+.town-corner-btn{
+  flex:0 0 auto;
+  display:flex;align-items:center;justify-content:center;
+  width:70px;height:70px;padding:0;
+  border:0;background:none;
+  cursor:pointer;
+  transition:transform .12s, filter .16s;
+}
+.town-corner-btn img{
+  display:block;width:100%;height:100%;object-fit:contain;
+  filter:drop-shadow(0 6px 12px rgba(0,0,0,.55));
+}
+.town-corner-btn:hover{
+  transform:translateY(-1px);
+  filter:brightness(1.08);
+}
+.town-corner-btn:active{transform:translateY(0);}
+.town-corner-btn:focus-visible{outline:2px solid var(--gold-2);outline-offset:2px;}
+.town-body{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  padding-top:16px;
+  position:relative;
+  z-index:2;
+  min-height:0;
+}
+
+/* 角色展示舞台 */
+.hero-stage{
+  position:relative;
+  flex:1;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  border:1px solid var(--line);
+  border-radius:6px;
+  overflow:hidden;
+  padding:18px 24px 16px;
+  background:
+    radial-gradient(circle at 50% 6%, rgba(201,162,95,.07), transparent 55%),
+    linear-gradient(180deg,rgba(23,26,32,.97),rgba(10,12,16,.98));
+}
+.hero-aura{
+  position:absolute;
+  inset:-12% -22%;
+  pointer-events:none;
+  filter:blur(8px);
+}
+.hero-stage-top{
+  position:relative;
+  z-index:2;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:16px;
+}
+.hero-id{min-width:0;}
+.hero-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;}
+.hero-name{
+  display:flex;align-items:center;gap:10px;
+  font-size:26px;font-weight:600;letter-spacing:2px;color:var(--text);
+  line-height:1.2;
+}
+.hero-lv{
+  font-size:12px;font-weight:600;letter-spacing:.5px;
+  color:#231a0d;
+  background:linear-gradient(180deg,#e3c88e,#bf9b58);
+  border-radius:20px;
+  padding:2px 10px;
+}
+.hero-power{text-align:right;line-height:1;flex:0 0 auto;}
+.hero-power span{display:block;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:5px;}
+.hero-power b{font-size:27px;color:var(--gold);font-weight:700;letter-spacing:1px;}
+.hero-sub{font-size:12.5px;color:var(--muted);letter-spacing:1px;margin-top:4px;}
+.hero-art-wrap{
+  position:relative;
+  z-index:1;
+  flex:1;
+  min-height:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:8px 0 4px;
+}
+.hero-svg{
+  display:block;
+  width:100%;
+  height:100%;
+  animation:heroFloat 5.5s ease-in-out infinite;
+  filter:drop-shadow(0 18px 40px rgba(0,0,0,.6));
+}
+@keyframes heroFloat{
+  0%,100%{transform:translateY(2px);}
+  50%{transform:translateY(-7px);}
+}
+.hero-foot{
+  position:relative;
+  z-index:2;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.hero-xp{margin-top:2px;}
+.hero-xp-meta{
+  display:flex;justify-content:space-between;align-items:baseline;
+  font-size:12px;color:var(--dim);letter-spacing:.5px;margin-bottom:6px;
+}
+.hero-xp-meta em{font-style:normal;color:var(--text-2);}
+.hero-xp-bar{height:5px;border-radius:3px;background:rgba(255,255,255,.07);overflow:hidden;}
+.hero-xp-bar i{display:block;height:100%;background:linear-gradient(90deg,#7d9fc9,#c3dcf5);border-radius:3px;}
+.hero-mini-stats{
+  list-style:none;
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:10px;
+}
+.hero-mini-stats li{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:3px;
+  padding:9px 4px 8px;
+  border:1px solid #2c2f36;
+  border-radius:4px;
+  background:rgba(0,0,0,.2);
+}
+.hero-mini-stats span{font-size:10.5px;color:var(--muted);letter-spacing:1px;}
+.hero-mini-stats b{font-size:15px;color:#f2ecdf;font-weight:600;}
+
+/* 功能图标坞：5 个入口与弹框一一对应 */
+
+/* 角色信息弹窗 */
+.ci-head{display:flex;align-items:flex-start;gap:20px;}
+.ci-emblem{flex:0 0 auto;font-size:34px;}
+.ci-id{flex:1;min-width:0;}
+.ci-name{
+  display:flex;align-items:center;gap:10px;
+  font-size:23px;font-weight:600;letter-spacing:2px;color:var(--text);line-height:1.2;
+}
+.ci-sub{font-size:12.5px;color:var(--text-2);letter-spacing:.5px;margin-top:5px;}
+.ci-desc{font-size:12px;color:var(--text-2);line-height:1.7;margin-top:6px;}
+.ci-power{flex:0 0 auto;text-align:right;line-height:1;padding-top:4px;}
+.ci-power span{display:block;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:5px;}
+.ci-power b{font-size:26px;color:var(--gold);font-weight:700;}
+
+
+/* ---------- 主城：可行走营地地图 ---------- */
+.town-screen{
+  display:block;
+  padding:0;
+  overflow:hidden;
+  background:#07080b;
+}
+.town-screen::after{display:none;}
+
+.town-world{
+  position:absolute;left:0;top:0;
+  overflow:hidden;
+  z-index:0;
+}
+.town-map{
+  position:absolute;inset:0;
+  /* 暗角直接叠在地图背景上（而不是盖一层遮罩），角色作为子元素始终在其上方，不会被压暗
+     下部渐变只压到 HUD 高度以内（底部约 19%），行走区域保持原图亮度 */
+  background:
+    linear-gradient(180deg,
+      rgba(6,7,10,.5) 0%,
+      rgba(6,7,10,.08) 18%,
+      rgba(6,7,10,0) 46%,
+      rgba(6,7,10,0) 81%,
+      rgba(6,7,10,.4) 100%),
+    url("../assets/town-map.jpg") center/cover no-repeat,
+    radial-gradient(ellipse at 50% 40%, #232a34 0%, #10141b 56%, #07090d 100%);
+  will-change:transform;
+}
+.town-actor{
+  position:absolute;left:0;top:0;
+  width:240px;height:256px;
+  will-change:transform;
+}
+.town-actor-art{
+  position:absolute;inset:0;
+  transform-origin:50% 100%;
+}
+.town-actor-art svg{display:block;width:100%;height:100%;}
+.town-hero-canvas{display:block;width:100%;height:100%;}
+/* 角色自带的地面阴影交给 .town-actor-shadow，避免重影 */
+.town-actor-art .hero-svg > ellipse:first-child{display:none;}
+.town-actor-shadow{
+  position:absolute;left:50%;bottom:6px;
+  width:92px;height:18px;margin-left:-46px;
+  border-radius:50%;
+  background:radial-gradient(ellipse,rgba(0,0,0,.55),rgba(0,0,0,0) 70%);
+}
+
+
+/* 悬浮顶栏：无底板，按钮直接浮在场景上 */
+.town-screen .town-top{
+  position:absolute;left:18px;right:18px;top:16px;z-index:3;
+  padding:14px 18px;
+}

@@ -1,0 +1,249 @@
+/* ============================================================
+   公用 UI 套件（ui-kit）
+   ------------------------------------------------------------
+   资源来源：F:\暗黑\登录弹框资源
+   统一放在 assets/ui/public/，所有界面共用，禁止各自复制一份。
+
+   名称映射（PSD 图层 → 资源文件）：
+     公共黑色透明遮罩        → .ui-mask（CSS 纯色，rgba(0,0,0,.8)）
+     公共二级弹框            → dialog-frame.png      竖向三宫拉伸
+     公共二级弹框_九宫内容底 → dialog-content-bg.png 九宫拉伸
+     公共_九宫_可输入内容底  → input-field.png       九宫拉伸
+     公用主按钮_九宫_红色    → btn-primary-red.png   九宫拉伸
+     公用主按钮_九宫_褐色    → btn-primary-brown.png 九宫拉伸
+     公共_勾选底             → checkbox-box.png      固定尺寸
+     公共_勾选图标           → checkbox-tick.png     固定尺寸
+     公共_关闭按钮           → dialog-close.png      固定尺寸 61×59（所有二级弹框统一右上角）
+
+   九宫切片（上 右 下 左，单位 px，均按 1x 设计稿 720×1440）：
+     dialog-frame       55 12  8 12
+     dialog-content-bg   6  6  6  6
+     input-field         6  6  8  6
+     btn-primary-*      30 40 30 40（资源原尺寸 238×98，切在装饰角内侧）
+
+   使用方式：
+     <div class="screen ui-kit">           ← 界面根节点加 .ui-kit
+       <div class="ui-mask"></div>
+       <section class="ui-dialog">         ← 默认 636×883，可用 --ui-w / --ui-h 改尺寸
+         <div class="ui-dialog-title">标题</div>
+         <div class="ui-inset">…</div>     ← 内容底，尺寸由使用方定位
+         <input class="ui-input">         ← 输入框，九宫横向拉伸
+         <button class="ui-btn ui-btn-red"><span>登录</span></button>
+       </section>
+     </div>
+   新增界面只允许复用本文件，不要另建同名控件。
+   ============================================================ */
+
+.ui-kit{
+  --ui-paper:#b2a085;   /* 弹框纸面底色（PSD 178,160,133） */
+  --ui-ink:#544738;     /* 标签文字（PSD 84,71,56） */
+  --ui-ink-2:#4e4234;   /* 勾选说明文字（PSD 78,66,52） */
+  --ui-title:#fff;
+  --ui-outline:#0b0705;
+}
+
+/* ---------- 遮罩：公共黑色透明遮罩 ---------- */
+.ui-mask{
+  position:absolute;
+  inset:0;
+  background:rgba(0,0,0,.8);
+  pointer-events:auto;
+}
+
+/* ---------- 二级弹框：636×883（可按 --ui-w / --ui-h 缩放） ---------- */
+.ui-dialog{
+  position:relative;
+  width:var(--ui-w,636px);
+  height:var(--ui-h,883px);
+  color:var(--ui-ink);
+}
+.ui-dialog::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-style:solid;
+  border-width:55px 12px 8px 12px;
+  border-image:url("../assets/ui/public/dialog-frame.png") 55 12 8 12 fill stretch;
+  pointer-events:none;
+}
+.ui-dialog > *{position:relative;}
+
+/* 顶部缎带标题：位于弹框 y=10~46 的缎带内 */
+.ui-dialog-title{
+  position:absolute;
+  left:0;
+  right:0;
+  top:10px;
+  height:36px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-family:var(--font);
+  font-size:30px;
+  font-weight:800;
+  line-height:1;
+  letter-spacing:1px;
+  color:var(--ui-title);
+  -webkit-text-stroke:4px var(--ui-outline);
+  paint-order:stroke fill;
+  text-shadow:0 2px 3px rgba(0,0,0,.45);
+  pointer-events:none;
+}
+
+/* ---------- 内容底：九宫拉伸 ---------- */
+.ui-inset{
+  position:relative;
+}
+.ui-inset::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-style:solid;
+  border-width:6px;
+  border-image:url("../assets/ui/public/dialog-content-bg.png") 6 fill stretch;
+  pointer-events:none;
+}
+.ui-inset > *{position:relative;}
+
+/* ---------- 标签文字 ---------- */
+.ui-label{
+  font-family:var(--font);
+  font-size:30px;
+  font-weight:700;
+  line-height:1;
+  letter-spacing:.5px;
+  color:var(--ui-ink);
+}
+
+/* ---------- 输入框：九宫横向拉伸 ---------- */
+.ui-kit input.ui-input{
+  display:block;
+  width:472px;
+  height:79px;
+  margin:0;
+  padding:0 22px 4px;
+  border-style:solid;
+  border-width:6px;
+  border-image:url("../assets/ui/public/input-field.png") 6 6 8 6 fill stretch;
+  border-radius:0;
+  background:none;
+  box-shadow:none;
+  outline:none;
+  color:#fff;
+  font-family:var(--font);
+  font-size:30px;
+  font-weight:700;
+  line-height:1;
+  letter-spacing:1px;
+  caret-color:#fff;
+  text-shadow:0 1px 1px rgba(0,0,0,.4);
+  -webkit-appearance:none;
+  appearance:none;
+}
+.ui-kit input.ui-input::placeholder{
+  color:#fff;
+  font-weight:700;
+  opacity:1;
+}
+.ui-kit input.ui-input:focus{
+  filter:drop-shadow(0 0 6px rgba(255,240,205,.28));
+}
+.ui-kit input.ui-input:-webkit-autofill{
+  -webkit-text-fill-color:#fff;
+  -webkit-box-shadow:0 0 0 100px #6b5a46 inset;
+}
+
+/* ---------- 勾选框：固定 58×58 + 勾选图标 56×49 ---------- */
+.ui-check{
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.ui-check input{
+  position:absolute;
+  left:0;
+  top:0;
+  width:58px;
+  height:58px;
+  margin:0;
+  opacity:0;
+  cursor:pointer;
+}
+.ui-check-box{
+  flex:0 0 auto;
+  width:58px;
+  height:58px;
+  background:url("../assets/ui/public/checkbox-box.png") center / 100% 100% no-repeat;
+  pointer-events:none;
+}
+.ui-check-tick{
+  position:absolute;
+  left:11px;
+  top:-6px;
+  width:56px;
+  height:49px;
+  background:url("../assets/ui/public/checkbox-tick.png") center / 100% 100% no-repeat;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .12s ease;
+}
+.ui-check input:checked ~ .ui-check-tick{opacity:1;}
+.ui-check input:focus-visible ~ .ui-check-box{outline:2px solid rgba(255,240,205,.65);outline-offset:3px;}
+.ui-check-text{
+  margin-left:10px;
+  font-family:var(--font);
+  font-size:30px;
+  font-weight:700;
+  line-height:1;
+  letter-spacing:.5px;
+  color:var(--ui-ink-2);
+  white-space:nowrap;
+  pointer-events:none;
+}
+
+/* ---------- 主按钮：九宫拉伸，按资源原尺寸 238×98 ---------- */
+.ui-btn{
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:238px;
+  height:98px;
+  padding:0;
+  border:0;
+  background:none;
+  color:#fff;
+  font-family:var(--font);
+  font-size:36px;
+  font-weight:800;
+  line-height:1;
+  letter-spacing:1px;
+  cursor:pointer;
+  -webkit-appearance:none;
+  appearance:none;
+  -webkit-text-stroke:1.5px #1b0a0d;
+  paint-order:stroke fill;
+  text-shadow:0 2px 3px rgba(0,0,0,.55);
+  transition:filter .14s ease, transform .08s ease;
+}
+.ui-btn::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-style:solid;
+  border-width:30px 40px;
+  pointer-events:none;
+}
+.ui-btn > span{position:relative;}
+.ui-btn-red::before{
+  border-image:url("../assets/ui/public/btn-primary-red.png") 30 40 30 40 fill stretch;
+}
+.ui-btn-brown::before{
+  border-image:url("../assets/ui/public/btn-primary-brown.png") 30 40 30 40 fill stretch;
+}
+.ui-btn:hover{filter:brightness(1.1);}
+.ui-btn:active{transform:translateY(1px);filter:brightness(.94);}
+.ui-btn:focus-visible{outline:2px solid rgba(255,240,205,.7);outline-offset:4px;}
+.ui-btn:disabled{filter:grayscale(.35) brightness(.8);cursor:not-allowed;}

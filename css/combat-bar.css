@@ -1,0 +1,382 @@
+/* 主城 / 副本共用的底部战斗条、功能图标反馈与图标特效。 */
+
+/* ---------- 底部战斗条（主城 / 副本共用） ---------- */
+.combat-bar{
+  position:relative;
+  height:220px;
+  display:flex;align-items:center;justify-content:center;
+}
+.combat-medal{
+  position:absolute;
+  /* 圆心对齐技能图标的水平中线（技能框含下方序号，几何中心略低） */
+  top:calc(50% - 9px);
+  width:200px;height:200px;
+  transform:translateY(-50%);
+  padding:0;border:0;background:none;cursor:pointer;
+  pointer-events:auto;
+  z-index:2;
+  transition:transform .14s, filter .16s;
+}
+.combat-medal:first-of-type{left:-31px;}
+.combat-medal:last-of-type{right:-31px;}
+.combat-medal img{
+  display:block;width:100%;height:100%;object-fit:contain;
+  filter:drop-shadow(0 6px 14px rgba(0,0,0,.55));
+}
+/* 尚未配置专属图标的职业：黑金圆盘 + 金色篆字，占位与图标位一致 */
+.combat-medal:not(.quest-medal) .medal-glyph{
+  display:flex;align-items:center;justify-content:center;
+  width:70%;height:70%;margin:15%;
+  border-radius:50%;
+  border:3px solid var(--gold-dim);
+  background:
+    radial-gradient(circle at 38% 30%, rgba(201,162,95,.28), rgba(16,13,8,.96) 68%),
+    #16120b;
+  box-shadow:0 8px 20px rgba(0,0,0,.62), inset 0 0 16px rgba(201,162,95,.18);
+  font-size:58px;transform:none;
+}
+/* 白色文字 + 深色描边，保证在背景上清晰可读 */
+.medal-label{
+  position:absolute;left:50%;bottom:12px;
+  transform:translateX(-50%);
+  white-space:nowrap;
+  font-size:25px;font-weight:700;letter-spacing:2px;
+  color:#fff;line-height:1;
+  pointer-events:none;
+  z-index:3;
+}
+.medal-label::before{
+  content:attr(data-label);
+  position:absolute;left:0;top:0;
+  color:#191008;
+  -webkit-text-stroke:5px #191008;
+  z-index:-1;
+}
+.combat-medal:hover{transform:translateY(calc(-50% - 2px));filter:brightness(1.08);}
+.combat-medal:active{transform:translateY(-50%);}
+.combat-medal:focus-visible{outline:2px solid var(--gold-2);outline-offset:2px;border-radius:50%;}
+
+/* ---------- 功能图标点击反馈：按下缩放 + 金色闪光（主城与副本共用） ---------- */
+@keyframes tap-press{
+  0%{scale:1;filter:brightness(1);}
+  30%{scale:.95;filter:brightness(1.3) saturate(1.1);}
+  100%{scale:1;filter:brightness(1);}
+}
+@keyframes tap-glow{
+  0%{opacity:0;}
+  35%{opacity:.9;}
+  100%{opacity:0;}
+}
+.combat-medal,.town-portal,.town-corner-btn,.strip-slot{
+  -webkit-tap-highlight-color:transparent;
+}
+.combat-medal .medal-label,.town-portal .tp-label{
+  transition:scale .18s ease-out;
+}
+.tap-on{animation:tap-press .34s ease-out;}
+.tap-on .medal-label,.tap-on .tp-label{scale:1.08;}
+.tap-on::after{
+  content:"";position:absolute;inset:0;border-radius:inherit;
+  background:radial-gradient(circle at 50% 50%,
+    rgba(255,238,196,.5), rgba(255,214,138,.18) 46%, rgba(255,214,138,0) 68%);
+  pointer-events:none;
+  z-index:3;
+  animation:tap-glow .34s ease-out;
+}
+/* 顶栏设置键是方钮，闪光按圆角矩形裁切 */
+.town-corner-btn{position:relative;}
+.town-corner-btn.tap-on::after{border-radius:6px;}
+
+/* ---------- 装备 / 技能图标：火星升腾特效（仅 transform / opacity，随图标尺寸自适应） ---------- */
+.medal-fire{
+  position:absolute;inset:0;z-index:1;
+  pointer-events:none;overflow:hidden;border-radius:50%;
+  /* 火星限制在图标圆盘内，向外自然淡出，不超出图标外圈 */
+  -webkit-mask-image:radial-gradient(circle closest-side at 50% 50%,#000 84%,rgba(0,0,0,0) 100%);
+  mask-image:radial-gradient(circle closest-side at 50% 50%,#000 84%,rgba(0,0,0,0) 100%);
+}
+/* 底部暖光只是点缀，保持小范围、始终收在按钮圆圈内 */
+.medal-fire::before{
+  content:"";position:absolute;left:50%;bottom:6%;
+  width:52%;height:34%;transform:translateX(-50%);
+  background:radial-gradient(ellipse at 50% 100%,
+    rgba(255,150,44,.34), rgba(255,104,20,.14) 52%, rgba(255,96,18,0) 74%);
+  animation:ember-heat 3.4s ease-in-out infinite;
+}
+/* 火星粒子本身放大加亮，强化的是粒子表现而不是底层光晕 */
+.medal-fire i{
+  position:absolute;bottom:16%;
+  width:18px;height:18px;border-radius:50%;
+  background:radial-gradient(circle,
+    #ffffff 0%, #ffe7a0 30%, #ffab35 58%, rgba(255,104,18,0) 82%);
+  opacity:0;
+  animation:ember-rise 2.8s linear infinite;
+}
+.medal-fire i:nth-child(1){left:24%;width:24px;height:24px;animation-delay:-.15s;animation-duration:2.5s;--dx:-20px;}
+.medal-fire i:nth-child(2){left:40%;width:16px;height:16px;animation-delay:-1.3s;animation-duration:3.1s;--dx:12px;}
+.medal-fire i:nth-child(3){left:55%;width:24px;height:24px;animation-delay:-2.1s;animation-duration:2.7s;--dx:24px;}
+.medal-fire i:nth-child(4){left:68%;width:16px;height:16px;animation-delay:-.8s;animation-duration:3.3s;--dx:16px;}
+.medal-fire i:nth-child(5){left:33%;width:20px;height:20px;animation-delay:-2.6s;animation-duration:2.9s;--dx:-12px;}
+.medal-fire i:nth-child(6){left:49%;width:20px;height:20px;animation-delay:-1.8s;animation-duration:2.6s;--dx:-26px;}
+.medal-fire i:nth-child(7){left:29%;width:16px;height:16px;animation-delay:-.45s;animation-duration:2.8s;--dx:-16px;}
+.medal-fire i:nth-child(8){left:45%;width:26px;height:26px;animation-delay:-2.4s;animation-duration:3.4s;--dx:8px;}
+.medal-fire i:nth-child(9){left:61%;width:19px;height:19px;animation-delay:-1.05s;animation-duration:2.6s;--dx:20px;}
+.medal-fire i:nth-child(10){left:71%;width:16px;height:16px;animation-delay:-3s;animation-duration:3.2s;--dx:26px;}
+.medal-fire i:nth-child(11){left:35%;width:19px;height:19px;animation-delay:-1.65s;animation-duration:2.4s;--dx:-8px;}
+.medal-fire i:nth-child(12){left:53%;width:22px;height:22px;animation-delay:-.95s;animation-duration:3s;--dx:-18px;}
+@keyframes ember-rise{
+  0%{opacity:0;transform:translate3d(0,10px,0) scale(.45);}
+  10%{opacity:1;}
+  55%{opacity:.9;}
+  100%{opacity:0;transform:translate3d(var(--dx,-12px),-112px,0) scale(.14);}
+}
+@keyframes ember-heat{
+  0%,100%{opacity:.3;}
+  50%{opacity:.55;}
+}
+
+/* ---------- 秘境副本按钮：强化火星 + 闪电特效（全部收在图标圆盘内） ---------- */
+.portal-fx{
+  position:absolute;left:0;top:0;width:100%;
+  aspect-ratio:145 / 158;
+  z-index:2;pointer-events:none;
+  overflow:hidden;
+  -webkit-mask-image:radial-gradient(circle closest-side at 50% 50%,#000 86%,rgba(0,0,0,0) 100%);
+  mask-image:radial-gradient(circle closest-side at 50% 50%,#000 86%,rgba(0,0,0,0) 100%);
+}
+/* 比普通功能图标更旺的底部火光 */
+.portal-fire{position:absolute;inset:0;z-index:1;pointer-events:none;}
+.portal-fire::before{
+  content:"";position:absolute;left:50%;bottom:4%;
+  width:66%;height:46%;transform:translateX(-50%);
+  background:radial-gradient(ellipse at 50% 100%,
+    rgba(255,170,60,.55), rgba(255,104,20,.22) 52%, rgba(255,96,18,0) 76%);
+  animation:ember-heat 3.2s ease-in-out infinite;
+}
+.portal-fire i{
+  position:absolute;bottom:12%;
+  width:16px;height:16px;border-radius:50%;
+  background:radial-gradient(circle,
+    #ffffff 0%, #ffe7a0 30%, #ffab35 58%, rgba(255,104,18,0) 82%);
+  opacity:0;
+  animation:portal-ember-rise 2.6s linear infinite;
+}
+.portal-fire i:nth-child(1){left:22%;width:19px;height:19px;animation-delay:-.1s;animation-duration:2.4s;--dx:-14px;}
+.portal-fire i:nth-child(2){left:35%;width:14px;height:14px;animation-delay:-1.05s;animation-duration:2.9s;--dx:8px;}
+.portal-fire i:nth-child(3){left:47%;width:22px;height:22px;animation-delay:-1.9s;animation-duration:2.5s;--dx:14px;}
+.portal-fire i:nth-child(4){left:58%;width:14px;height:14px;animation-delay:-.55s;animation-duration:3s;--dx:10px;}
+.portal-fire i:nth-child(5){left:68%;width:19px;height:19px;animation-delay:-2.35s;animation-duration:2.7s;--dx:16px;}
+.portal-fire i:nth-child(6){left:30%;width:16px;height:16px;animation-delay:-1.6s;animation-duration:2.6s;--dx:-10px;}
+.portal-fire i:nth-child(7){left:52%;width:16px;height:16px;animation-delay:-2.7s;animation-duration:2.8s;--dx:-16px;}
+.portal-fire i:nth-child(8){left:41%;width:20px;height:20px;animation-delay:-.35s;animation-duration:2.3s;--dx:-6px;}
+.portal-fire i:nth-child(9){left:63%;width:15px;height:15px;animation-delay:-1.35s;animation-duration:3.1s;--dx:12px;}
+.portal-fire i:nth-child(10){left:26%;width:14px;height:14px;animation-delay:-2.05s;animation-duration:2.5s;--dx:-16px;}
+.portal-fire i:nth-child(11){left:38%;width:18px;height:18px;animation-delay:-.8s;animation-duration:2.7s;--dx:-4px;}
+.portal-fire i:nth-child(12){left:55%;width:19px;height:19px;animation-delay:-2.5s;animation-duration:2.9s;--dx:10px;}
+.portal-fire i:nth-child(13){left:45%;width:15px;height:15px;animation-delay:-1.75s;animation-duration:2.4s;--dx:4px;}
+.portal-fire i:nth-child(14){left:72%;width:14px;height:14px;animation-delay:-.25s;animation-duration:2.8s;--dx:18px;}
+@keyframes portal-ember-rise{
+  0%{opacity:0;transform:translate3d(0,8px,0) scale(.45);}
+  10%{opacity:1;}
+  55%{opacity:.9;}
+  100%{opacity:0;transform:translate3d(var(--dx,-8px),-72px,0) scale(.15);}
+}
+/* 闪电：外扩冷光 + 白色电弧芯，分段闪烁，只在爆发瞬间点亮 */
+.portal-bolt{position:absolute;inset:0;width:100%;height:100%;z-index:2;}
+.portal-bolt path{fill:none;stroke-linecap:round;stroke-linejoin:round;}
+.portal-bolt .pb-glow{stroke:rgba(86,186,255,.6);stroke-width:8;}
+.portal-bolt .pb-core{stroke:#f2fdff;stroke-width:2.6;}
+.portal-bolt .pb{animation:portal-bolt-flicker 2.8s linear infinite;}
+.portal-bolt .pb-a{animation-delay:.15s;}
+.portal-bolt .pb-b{animation-delay:1.05s;}
+.portal-bolt .pb-c{animation-delay:1.85s;}
+@keyframes portal-bolt-flicker{
+  0%{opacity:.45;}
+  6%{opacity:.55;}
+  8%{opacity:1;}
+  10%{opacity:.2;}
+  12%{opacity:.9;}
+  16%{opacity:.4;}
+  40%{opacity:.5;}
+  42%{opacity:.85;}
+  44%{opacity:.35;}
+  100%{opacity:.45;}
+}
+/* 主城功能按钮：装备在左、技能在右；任务为独立小圆钮，浮在装备上方 */
+.town-screen [data-act="equipment"]{left:-31px;}
+.town-screen [data-act="skills"]{right:-31px;}
+.town-screen .quest-medal{
+  top:260px;bottom:auto;left:auto;right:54px;z-index:22;
+  width:96px;height:96px;transform:none;
+  display:flex;align-items:center;justify-content:center;
+  border-radius:50%;
+  border:2px solid var(--gold-dim);
+  background:
+    radial-gradient(circle at 38% 30%, rgba(201,162,95,.28), rgba(16,13,8,.96) 68%),
+    #16120b;
+  box-shadow:0 8px 20px rgba(0,0,0,.62), inset 0 0 16px rgba(201,162,95,.18);
+}
+.town-screen .quest-medal:hover{transform:translateY(-2px);filter:brightness(1.08);}
+.town-screen .quest-medal:active{transform:translateY(0);}
+.medal-glyph{
+  font-size:40px;font-weight:700;line-height:1;
+  color:var(--gold-2);
+  text-shadow:0 2px 6px rgba(0,0,0,.8), 0 0 14px rgba(201,162,95,.35);
+  transform:translateY(-8px);
+}
+.quest-medal .medal-label{font-size:15px;bottom:12px;letter-spacing:1px;}
+/* 装备图标左下的角色等级标牌：底板素材 + 数字（32px / #a7520e），点击查看角色信息 */
+.lvl-badge{
+  position:absolute;left:-13px;top:108px;z-index:3;
+  width:74px;height:40px;
+  border:0;padding:0 0 2px;margin:0;
+  background:url("../assets/ui/common/level-badge.png") center/100% 100% no-repeat;
+  display:flex;align-items:center;justify-content:center;
+  font-family:inherit;
+  font-size:32px;font-weight:700;line-height:1;color:#a7520e;
+  pointer-events:auto;
+  cursor:pointer;
+}
+.medal-dot{
+  position:absolute;top:6px;right:8px;
+  width:14px;height:14px;border-radius:50%;
+  background:radial-gradient(circle at 36% 30%, #ff8a7d, #c33a2e 70%);
+  border:1px solid #2a0b08;
+  box-shadow:0 0 8px rgba(220,70,55,.7);
+}
+.medal-dot.hidden{display:none;}
+/* 经验条：收窄后放在序号下方，压在技能框下沿 */
+.combat-bar .combat-exp{
+  position:absolute;left:50%;bottom:25px;
+  width:396px;
+  transform:translateX(-50%);
+}
+.combat-exp .exp-text{
+  justify-content:center;padding:0 8px;
+  font-size:16px;letter-spacing:1px;
+}
+.combat-strip{
+  position:relative;flex:0 0 536px;width:536px;margin:0;
+  aspect-ratio:548 / 126;
+  background:url("../assets/ui/skill-frame.png") center/100% 100% no-repeat;
+  filter:drop-shadow(0 8px 18px rgba(0,0,0,.5));
+}
+.strip-slots{position:absolute;inset:0;}
+.strip-slot{
+  position:absolute;top:11.29%;height:auto;aspect-ratio:1;width:13.0597%;
+  padding:0;border:0;background:none;cursor:default;
+  font-family:var(--font);
+}
+.strip-slot:nth-child(1){left:15.146%;}
+.strip-slot:nth-child(2){left:29.197%;}
+.strip-slot:nth-child(3){left:43.431%;}
+.strip-slot:nth-child(4){left:57.664%;}
+.strip-slot:nth-child(5){left:71.898%;}
+.strip-slot img{
+  display:block;width:100%;height:100%;object-fit:cover;
+  border-radius:4px;
+  transition:filter .15s, transform .15s;
+}
+.strip-slot:hover img{filter:brightness(1.12);}
+.strip-glyph{
+  display:flex;align-items:center;justify-content:center;
+  width:100%;height:100%;border-radius:4px;
+  font-size:24px;font-weight:700;color:#cdbb8e;
+  background:linear-gradient(160deg,#262a32,#111318);
+  box-shadow:inset 0 0 12px rgba(0,0,0,.6);
+}
+.strip-slot .cd{
+  position:absolute;inset:0;border-radius:4px;
+  background:rgba(0,0,0,.66);
+  transform-origin:bottom;transform:scaleY(0);
+  pointer-events:none;
+}
+.strip-slot .cdtext{
+  position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:30px;color:#fff;font-weight:800;line-height:1;
+  -webkit-text-stroke:2px #000;
+  text-shadow:0 0 4px rgba(0,0,0,.95), 0 2px 0 #000, 0 -2px 0 #000, 2px 0 0 #000, -2px 0 0 #000;
+}
+/* 经验条：底图 + 填充图 */
+.exp-bar{
+  position:relative;width:100%;
+  aspect-ratio:517 / 26;
+  background:url("../assets/ui/exp-track.png") center/100% 100% no-repeat;
+}
+.exp-bar .exp-fill{
+  position:absolute;left:1.16%;top:50%;transform:translateY(-50%);
+  height:54%;width:0;max-width:97.68%;
+  background:url("../assets/ui/exp-fill.png") center/100% 100% no-repeat;
+  border-radius:999px;
+  transition:width .25s;
+}
+.exp-text{
+  position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 14px;
+  font-size:10.5px;color:#f2e6c9;letter-spacing:.5px;
+  text-shadow:0 1px 2px rgba(0,0,0,.9);
+  pointer-events:none;
+}
+
+/* 主城底部：圆钮压在技能栏两端，经验条在序号下方 */
+.town-screen .town-combat{
+  position:absolute;left:18px;right:18px;bottom:45px;z-index:3;
+}
+
+/* 主城右下：秘境副本入口 */
+.town-screen .town-portal{
+  position:absolute;right:45px;bottom:292px;z-index:22;
+  display:flex;flex-direction:column;align-items:center;
+  width:113px;padding:0;border:0;background:none;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+  transition:transform .14s, filter .16s;
+}
+.town-portal img{
+  display:block;width:100%;height:auto;
+  filter:drop-shadow(0 8px 16px rgba(0,0,0,.6));
+}
+.tp-label{
+  position:relative;
+  z-index:3;
+  margin-top:2px;
+  transform:translateY(-10px);
+  font-size:22px;font-weight:700;letter-spacing:1px;line-height:1;
+  color:#fff;white-space:nowrap;pointer-events:none;
+}
+.tp-label::before{
+  content:attr(data-label);
+  position:absolute;left:0;top:0;
+  color:#000;
+  -webkit-text-stroke:4px #000;
+  z-index:-1;
+}
+.town-portal:hover{transform:translateY(-2px);filter:brightness(1.06);}
+.town-portal:active{transform:translateY(0);}
+.town-portal:focus-visible{outline:2px solid var(--gold-2);outline-offset:4px;border-radius:8px;}
+
+/* 浮动摇杆（主城 / 战斗共用一套资源）：固定在屏幕中间靠下，点击屏幕后才出现 */
+.town-screen,.dungeon-ui{touch-action:none;}
+.touch-ui{
+  position:absolute;inset:auto;left:50%;top:calc(62.5% + 150px);
+  width:0;height:0;pointer-events:none;z-index:var(--z-touch);
+}
+.touch-ui .stick-base{
+  position:absolute;left:0;top:0;width:200px;height:200px;margin:-100px 0 0 -100px;
+  border-radius:50%;
+  border:1px solid rgba(201,162,95,.30);
+  background:radial-gradient(circle at 46% 40%, rgba(30,34,42,.42), rgba(8,10,13,.30));
+  box-shadow:inset 0 0 26px rgba(0,0,0,.40);
+  opacity:0;transition:opacity .12s;
+}
+.touch-ui .stick-knob{
+  position:absolute;left:0;top:0;width:84px;height:84px;margin:-42px 0 0 -42px;
+  border-radius:50%;
+  border:1px solid rgba(201,162,95,.62);
+  background:radial-gradient(circle at 40% 32%, rgba(227,200,142,.34), rgba(74,60,36,.46));
+  box-shadow:0 4px 14px rgba(0,0,0,.45);
+  opacity:0;transition:opacity .12s;
+}
+.touch-ui.on .stick-base,
+.touch-ui.on .stick-knob{opacity:.6;}

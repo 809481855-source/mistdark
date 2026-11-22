@@ -1,0 +1,171 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="format-detection" content="telephone=no,email=no,address=no">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0b0d12">
+<meta name="description" content="迷雾暗黑 · 竖版暗黑探索 RPG，手机浏览器打开链接即点即玩。">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<!-- 分享卡片（微信 / QQ 等读取 og 标签；完整自定义卡片需公众号 JS-SDK 签名） -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="迷雾暗黑 · MISTDARK">
+<meta property="og:description" content="竖版暗黑探索 RPG，手机浏览器打开链接即点即玩。">
+<meta property="og:site_name" content="迷雾暗黑">
+<title>迷雾暗黑 · MISTDARK</title>
+<link rel="icon" href="data:,">
+<!-- 首屏关键背景图提前请求，避免登录页背景出现长时间黑屏 -->
+<link rel="preload" as="image" href="assets/login-bg.jpg">
+<link rel="prefetch" as="image" href="assets/char-bg.jpg">
+<link rel="prefetch" as="image" href="assets/town-map.jpg">
+<!-- 启动画面内联样式：不依赖外部 CSS，页面一打开就能看到，不会先黑屏 -->
+<style>
+  #boot{
+    position:fixed;inset:0;z-index:9999;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+    background:
+      radial-gradient(ellipse at 50% 36%, #2a303c 0%, #141821 46%, #07080b 100%);
+    color:#e3d6b8;font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    transition:opacity .32s ease;opacity:1;
+  }
+  #boot.boot-out{opacity:0;pointer-events:none;}
+  #boot .boot-logo{font-size:34px;letter-spacing:10px;font-weight:600;color:#d8b978;text-indent:10px;}
+  #boot .boot-sub{font-size:15px;letter-spacing:6px;color:#8d8574;}
+  #boot .boot-bar{width:150px;height:3px;border-radius:2px;background:rgba(201,162,95,.18);overflow:hidden;margin-top:8px;}
+  #boot .boot-bar i{display:block;width:42%;height:100%;border-radius:2px;background:#c9a25f;animation:boot-slide 1.1s ease-in-out infinite;}
+  #boot .boot-tip{font-size:13px;color:#6f6a5e;letter-spacing:2px;}
+  @keyframes boot-slide{0%{transform:translateX(-110%)}100%{transform:translateX(260%)}}
+</style>
+<!--
+  样式模块（一个界面一个文件，互不覆盖；顺序不可调整）：
+    base       → 变量、通用控件（按钮 / 输入框 / 滚动条）
+    ui-kit     → 公用 UI 套件（公共弹框 / 内容底 / 输入框 / 按钮 / 勾选）
+    login      → 登录弹窗（保留黑色遮罩）
+    entry      → 入场确认页（原画直出，不压暗）
+    character  → 选角
+    town       → 主城
+    combat-bar → 主城 / 副本共用底栏、摇杆、图标反馈与特效
+    panels     → 通用弹窗与功能面板
+    battle     → 副本战斗 HUD
+    adapt      → 移动端放大，永远最后
+  修改规则：只改对应界面文件；共用件只放 base / panels / combat-bar。
+-->
+<!-- 样式按层级拆分，加载顺序不可调整（后层覆盖前层） -->
+<link rel="stylesheet" href="css/base.css?v=20261122h">
+<!-- 公用 UI 套件：公共弹框 / 输入框 / 按钮 / 勾选，所有界面共用 -->
+<link rel="stylesheet" href="css/ui-kit.css?v=20261122h">
+<!-- 界面样式：一个界面一个文件，只改所属界面文件 -->
+<link rel="stylesheet" href="css/login.css?v=20261122h">
+<link rel="stylesheet" href="css/entry.css?v=20261122h">
+<link rel="stylesheet" href="css/character.css?v=20261122h">
+<link rel="stylesheet" href="css/town.css?v=20261122h">
+<link rel="stylesheet" href="css/combat-bar.css?v=20261122h">
+<link rel="stylesheet" href="css/panels.css?v=20261122h">
+<link rel="stylesheet" href="css/battle.css?v=20261122h">
+<link rel="stylesheet" href="css/adapt.css?v=20261122h">
+</head>
+<body>
+<div id="app">
+  <div id="boot" aria-hidden="true">
+    <div class="boot-logo">MISTDARK</div>
+    <div class="boot-sub">迷 雾 暗 黑</div>
+    <div class="boot-bar"><i></i></div>
+    <div class="boot-tip">正在进入迷雾…</div>
+  </div>
+  <div id="stage">
+    <canvas id="game" width="720" height="1440"></canvas>
+    <div id="ui" class="ui-layer"></div>
+    <div id="toast-wrap" class="toast-wrap"></div>
+  </div>
+</div>
+
+<!--
+  模块分层（依赖只能自上向下，禁止反向引用）：
+    data   → 纯静态配置与数值表，不引用其它模块
+    art    → 纯绘制资源（矢量角色 / 怪物 / 首领 / 地形道具），不引用 core、ui
+    core   → 通用能力：存档、设置、角色成长、属性、掉落
+    ui     → 通用弹窗 / 各功能面板，只读写 DG.data、DG.core
+    scenes → 场景表现，组合 core 与 ui；不直接被 core 引用
+    game   → 入口与场景切换，唯一持有运行期全局状态的模块
+  新增功能：先确定所属层，再在对应目录新建独立文件，并在下方按依赖顺序挂载。
+  修改规则：只改所属层文件；跨层调用单向向下，禁止下层反向引用上层。
+-->
+<!-- 核心 -->
+<script src="js/core/utils.js?v=20261122h"></script>
+<script src="js/core/storage.js?v=20261122h"></script>
+<script src="js/core/settings.js?v=20261122h"></script>
+<script src="js/core/audio.js?v=20261122h"></script>
+<!-- 数据注册表（只建容器，具体内容由下层文件注册） -->
+<script src="js/data/config.js?v=20261122h"></script>
+<script src="js/data/skills.js?v=20261122h"></script>
+<script src="js/data/talents.js?v=20261122h"></script>
+<script src="js/data/classes.js?v=20261122h"></script>
+<!-- 角色独立模块：一个角色一个文件，新增角色只加文件 -->
+<script src="js/data/classes/warrior.js?v=20261122h"></script>
+<script src="js/data/classes/ranger.js?v=20261122h"></script>
+<script src="js/data/classes/mage.js?v=20261122h"></script>
+<script src="js/data/items.js?v=20261122h"></script>
+<script src="js/data/skill-tree.js?v=20261122h"></script>
+<script src="js/data/quests.js?v=20261122h"></script>
+<!-- 怪物 / 首领注册表：普通、精英、首领分组，新增条目只改对应文件 -->
+<script src="js/data/monsters/index.js?v=20261122h"></script>
+<script src="js/data/monsters/normal.js?v=20261122h"></script>
+<script src="js/data/monsters/elite.js?v=20261122h"></script>
+<script src="js/data/monsters/bosses.js?v=20261122h"></script>
+<script src="js/data/chunks.js?v=20261122h"></script>
+<!-- 美术资源（纯矢量绘制 + 首领贴图缓存） -->
+<script src="js/art/hero-ranger.js?v=20261122h"></script>
+<script src="js/art/heroes/base.js?v=20261122h"></script>
+<script src="js/art/heroes/barbarian.js?v=20261122h"></script>
+<script src="js/art/heroes/mage.js?v=20261122h"></script>
+<script src="js/art/heroes/ranger.js?v=20261122h"></script>
+<script src="js/art/bosses.js?v=20261122h"></script>
+<script src="js/art/monsters.js?v=20261122h"></script>
+<script src="js/art/terrain-decor.js?v=20261122h"></script>
+<script src="js/art/bones.js?v=20261122h"></script>
+<script src="js/art/preload.js?v=20261122h"></script>
+<!-- 角色 / 战斗核心 -->
+<script src="js/core/character.js?v=20261122h"></script>
+<script src="js/core/talents.js?v=20261122h"></script>
+<script src="js/core/skill-tree.js?v=20261122h"></script>
+<script src="js/core/quests.js?v=20261122h"></script>
+<script src="js/core/stats.js?v=20261122h"></script>
+<script src="js/core/loot.js?v=20261122h"></script>
+<!-- UI 基座 -->
+<script src="js/ui/base.js?v=20261122h"></script>
+<script src="js/ui/stick.js?v=20261122h"></script>
+<!-- UI 面板：一个面板一个文件 -->
+<script src="js/ui/panels/equipment.js?v=20261122h"></script>
+<script src="js/ui/panels/skills.js?v=20261122h"></script>
+<script src="js/ui/panels/quests.js?v=20261122h"></script>
+<script src="js/ui/panels/dungeon-select.js?v=20261122h"></script>
+<script src="js/ui/panels/settlement.js?v=20261122h"></script>
+<script src="js/ui/panels/character-info.js?v=20261122h"></script>
+<script src="js/ui/panels/controls.js?v=20261122h"></script>
+<!-- 场景 -->
+<script src="js/scenes/login.js?v=20261122h"></script>
+<script src="js/scenes/entry.js?v=20261122h"></script>
+<script src="js/scenes/character.js?v=20261122h"></script>
+<script src="js/scenes/town.js?v=20261122h"></script>
+<!-- 副本战斗：index 定义场景类，其余文件向原型挂载职责 -->
+<script src="js/scenes/dungeon/index.js?v=20261122h"></script>
+<script src="js/scenes/dungeon/talents.js?v=20261122h"></script>
+<script src="js/scenes/dungeon/terrain.js?v=20261122h"></script>
+<script src="js/scenes/dungeon/input.js?v=20261122h"></script>
+<script src="js/scenes/dungeon/hud.js?v=20261122h"></script>
+<script src="js/scenes/dungeon/world.js?v=20261122h"></script>
+<script src="js/scenes/dungeon/effects.js?v=20261122h"></script>
+<script src="js/scenes/dungeon/weather.js?v=20261122h"></script>
+<script src="js/scenes/dungeon/blood.js?v=20261122h"></script>
+<script src="js/scenes/dungeon/bones.js?v=20261122h"></script>
+<script src="js/scenes/dungeon/combat.js?v=20261122h"></script>
+<script src="js/scenes/dungeon/boss.js?v=20261122h"></script>
+<script src="js/scenes/dungeon/skills.js?v=20261122h"></script>
+<script src="js/scenes/dungeon/drops.js?v=20261122h"></script>
+<script src="js/scenes/dungeon/render.js?v=20261122h"></script>
+<!-- 入口 -->
+<script src="js/game.js?v=20261122h"></script>
+</body>
+</html>
