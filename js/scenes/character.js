@@ -11,7 +11,7 @@
     if (townMapWarmed) return;
     townMapWarmed = true;
     const img = new Image();
-    img.src = 'assets/town-map.jpg';
+    DG.assets.assign(img, 'assets/town-map.jpg');
     if (img.decode) img.decode().catch(() => {});
   }
 

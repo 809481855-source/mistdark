@@ -53,7 +53,7 @@
       p._retried = true;
       img.src = url + '&retry=1';
     };
-    img.src = url;
+    DG.assets.assign(img, url);
   }
   Object.keys(parts).forEach(id => loadImg(parts[id], BASE + parts[id].file + VERSION));
   [weapon, hand].forEach(p => loadImg(p, BASE + p.file + VERSION));
@@ -86,7 +86,7 @@
     const img = new Image();
     img.onload = () => { whirlFx.img = img; pending--; };
     img.onerror = () => { pending--; };
-    img.src = 'assets/fx/barb-whirl.png?v=white-20261122b';
+    DG.assets.assign(img, 'assets/fx/barb-whirl.png?v=white-20261122b');
   }
 
   // 头部眼睛位置（head.png 图像坐标，头部当前按 1.43 倍绘制），眨眼时用暗色椭圆遮住

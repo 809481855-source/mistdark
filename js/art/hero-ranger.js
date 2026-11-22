@@ -30,13 +30,13 @@
     const image = new Image();
     image.onload = () => { part.img = image; pending--; };
     image.onerror = () => { pending--; };
-    image.src = BASE + part.file + VERSION;
+    DG.assets.assign(image, BASE + part.file + VERSION);
   });
 
   const arrowImage = new Image();
   arrowImage.onload = () => { arrowSprite.img = arrowImage; arrowPending--; };
   arrowImage.onerror = () => { arrowPending--; };
-  arrowImage.src = BASE + 'attack-arrow.png' + VERSION;
+  DG.assets.assign(arrowImage, BASE + 'attack-arrow.png' + VERSION);
 
   const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
   const smooth = value => value * value * (3 - 2 * value);

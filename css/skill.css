@@ -3,6 +3,8 @@
   position:absolute;inset:0;z-index:56;overflow:hidden;
   background:#b0a086;pointer-events:auto;
   -webkit-tap-highlight-color:transparent;
+  /* 与装备/副本面板统一：合成器入场，避免硬切 */
+  animation:screenIn .26s cubic-bezier(.22,1,.36,1);
 }
 .sk-canvas{
   position:absolute;left:0;top:0;width:720px;height:1440px;

@@ -371,8 +371,11 @@
     this.announce(`等级提升 · Lv.${now}`, 1900);
     this.syncLevelBadge(now, true);
     if (DG.audio) {
-      DG.audio.play('stageLevelup', { vol: 0.85 });
-      DG.audio.play('uiLevelup', { vol: 0.6, gap: 0.18 });
+      // 升级号角立刻起，清脆的 UI 升级音稍后叠上，两声错开避免糊在一起
+      DG.audio.play('stageLevelup', { vol: 1 });
+      setTimeout(() => {
+        if (!this.finished && DG.audio) DG.audio.play('uiLevelup', { vol: 0.7 });
+      }, 110);
     }
   },
   onMonsterDeath(m) {
@@ -387,6 +390,7 @@
     // 分裂出的小体不计击杀、不给经验金币，避免刷资源与提前触发首领
     if (!m.noLoot) {
       this.kills++;
+      this.lastKillTime = this.time;
       this.gainXp(m.xp);
       this.goldEarned += m.gold;
       this.updateWaveText();
@@ -709,6 +713,13 @@
     const curChunk = this.currentChunk();
     for (const m of this.monsters) {
       if (m.dead) continue;
+      // 记录上一帧位移：自动战斗的远程预判需要目标速度
+      if (dt > 0 && m._px != null) {
+        m._vx = (m.x - m._px) / dt;
+        m._vy = (m.y - m._py) / dt;
+      }
+      m._px = m.x;
+      m._py = m.y;
       m.flash = Math.max(0, m.flash - dt);
       m.atkTimer = Math.max(0, m.atkTimer - dt);
       m.shootTimer = Math.max(0, m.shootTimer - dt);

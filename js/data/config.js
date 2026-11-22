@@ -4,7 +4,7 @@
   DG.data = DG.data || {};
 
   DG.CONFIG = {
-    BAG_SIZE: 24,
+    BAG_SIZE: 100,
     MAX_SKILL_LEVEL: 10,
     MAX_LEVEL: 60,
     // 装备槽位：与装备界面 PSD 的 10 个格子一一对应
@@ -115,7 +115,7 @@
       bossPool: ['eyehorror', 'mummyking', 'croc', 'slimeking'],
       mapStyle: 'crypt',
       map: { minRooms: 8, maxRooms: 11 },
-      desc: '窄长的墓道里缠尸卫士排成阵列，火烛无风自动，灰发女妖的长发在阴影里拖出一道痕。'
+      desc: '窄长的墓道里缠尸卫士排成阵列，火烛无风自动，深处有什么东西在阴影里拖出一道长痕。'
     },
 
     // ---------- 第二章 · 腐化荒野 ----------
@@ -129,7 +129,7 @@
       bossPool: ['cauldron', 'golem', 'blueogre', 'mushroomgun'],
       mapStyle: 'abyss',
       map: { minRooms: 9, maxRooms: 12 },
-      desc: '灰烬没到脚踝，赤棘龙在余烬中穿行，魔锅法师的药汤在远处翻滚出紫色气泡。'
+      desc: '灰烬没到脚踝，赤棘龙在余烬中穿行，远处的药汤一直在翻滚，冒出紫色气泡。'
     },
     {
       id: 'abyss', act: 2, name: '腐化深渊',
@@ -141,7 +141,7 @@
       bossPool: ['abysseye', 'cauldron', 'goatbrute', 'mushroomgun'],
       mapStyle: 'abyss',
       map: { minRooms: 8, maxRooms: 11 },
-      desc: '深渊的裂隙不断涌出腐化之物，暗渊史莱姆、深渊主教与触手蠕虫王在裂隙另一侧注视着你。'
+      desc: '深渊的裂隙不断涌出腐化之物，裂隙另一侧有什么在注视着你，一动不动。'
     },
     {
       id: 'rift', act: 2, name: '裂隙回廊',
@@ -153,7 +153,7 @@
       bossPool: ['golem', 'blueogre', 'goatbrute', 'mushroomgun'],
       mapStyle: 'abyss',
       map: { minRooms: 8, maxRooms: 11 },
-      desc: '回廊在眼前折叠，脚下的石板翻出另一片天空，冰晶魔像在错位的尽头缓缓抬头。'
+      desc: '回廊在眼前折叠，脚下的石板翻出另一片天空，错位的尽头有巨大的影子缓缓抬头。'
     },
     {
       id: 'furnace', act: 2, name: '熔火工坊',
@@ -165,7 +165,7 @@
       bossPool: ['blueogre', 'cauldron', 'golem', 'mushroomgun'],
       mapStyle: 'abyss',
       map: { minRooms: 8, maxRooms: 11 },
-      desc: '熔炉昼夜不熄，铁背野猪的甲片被炉火烤得发亮，魔锅法师的药汤在炉口翻滚。'
+      desc: '熔炉昼夜不熄，铁背野猪的甲片被炉火烤得发亮，炉口的药汤一刻不停地翻滚。'
     },
     {
       id: 'plague', act: 2, name: '疫病巢穴',
@@ -203,7 +203,7 @@
       bossPool: ['octoking', 'piratecrab', 'silverknight', 'wormking'],
       mapStyle: 'abyss',
       map: { minRooms: 8, maxRooms: 11 },
-      desc: '潮水在洞窟里涨落，幽蓝喙兽贴着水面滑行，触手蠕虫王的触须在深处缓慢张开。'
+      desc: '潮水在洞窟里涨落，幽蓝喙兽贴着水面滑行，深处的触须在黑暗里缓慢张开。'
     },
     {
       id: 'frostkeep', act: 3, name: '霜封要塞',
@@ -277,7 +277,7 @@
       bossPool: ['shadowdemon', 'hierophant', 'crystalcrab', 'hornedfiend'],
       mapStyle: 'abyss',
       map: { minRooms: 8, maxRooms: 11 },
-      desc: '回廊两侧站满石像，每一尊的影子里都多站着一个影子，深渊主教在尽头等你抬头。'
+      desc: '回廊两侧站满石像，每一尊的影子里都多站着一个影子，尽头有什么在等你抬头。'
     },
     {
       id: 'worldscar', act: 4, name: '世界之痕',
@@ -289,7 +289,7 @@
       bossPool: ['hierophant', 'shadowdemon', 'crystalcrab', 'mushroommaw'],
       mapStyle: 'abyss',
       map: { minRooms: 8, maxRooms: 11 },
-      desc: '大地在这里裂开一道看不到底的痕，深渊主教从裂缝里走出，袍角还挂着别的世界。'
+      desc: '大地在这里裂开一道看不到底的痕，有什么从裂缝里走出，袍角还挂着别的世界。'
     },
     {
       id: 'finalgate', act: 4, name: '终焉之门',
@@ -449,6 +449,27 @@
     d.index = i + 1;
     d.actName = (DG.data.acts[d.act - 1] || {}).name || '';
     DG.data.dungeonById[d.id] = d;
+  });
+
+  // 首领投放：每章按固定顺序轮换已拆件重做的首领，逐关穿插，
+  // 保证相邻关卡不会出现同一个首领，也不会出现连续多关只有一个首领的情况。
+  // 首领名与新版拆件美术一一对应（见 js/data/monsters/bosses.js）。
+  const BOSS_ROTATION = {
+    1: ['mummyking', 'croc', 'eyehorror'],
+    2: ['golem', 'mushroomgun', 'goatbrute', 'cauldron'],
+    3: ['octoking', 'mawflowerking', 'crystalcrab', 'mummyking'],
+    4: ['reaper', 'crystalcrab', 'pinkdemon', 'pumpkinlord']
+  };
+  const actCursor = {};
+  DG.data.dungeons.forEach((d) => {
+    const rot = BOSS_ROTATION[d.act];
+    if (!rot || !rot.length) return;
+    const k = actCursor[d.act] || 0;
+    actCursor[d.act] = k + 1;
+    const boss = rot[k % rot.length];
+    d.bossId = boss;
+    // 首领池只保留本关首领，避免旧配置继续被随机逻辑选中
+    d.bossPool = [boss];
   });
 
   // 关卡解锁：等级达标 + 通关上一关

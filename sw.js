@@ -8,16 +8,18 @@
  *   页面导航    → stale-while-revalidate：有缓存立即出画面，后台静默更新；
  *   CSS / JS    → 缓存优先（文件名带内容哈希，发版自动换名）；
  *   图片 / 音频 → 缓存优先；
+ *   资源包 .pk  → 缓存优先（一个包内含上百张散图，命中后整套贴图零请求）；
  *   音频 Range  → 命中完整缓存时本地切片返回 206，BGM 可秒播、可拖动；
  *   后台预热    → 首屏完成后由页面发消息，按清单把未访问过的资源补进缓存。
  */
-const CORE_VERSION = 'c4';             // 脚本 / 样式更新策略变化时 +1
+const CORE_VERSION = 'c5';             // 脚本 / 样式更新策略变化时 +1
 const ASSET_VERSION = 'r4';            // 美术 / 音频有改动时 +1
 const CORE_CACHE = 'mistdark-core-' + CORE_VERSION;
 const ASSET_CACHE = 'mistdark-asset-' + ASSET_VERSION;
 const MANIFEST_URL = 'precache-manifest.json';
 
 const ASSET_RE = /\.(png|jpe?g|webp|gif|svg|mp3|ogg|wav)$/i;
+const PACK_RE = /\.pk$/i;
 const CODE_RE = /\.(css|js)$/i;
 
 // 预热只跑一次：性能与流量都有限，重复消息直接忽略
@@ -70,6 +72,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   if (CODE_RE.test(url.pathname)) {
+    event.respondWith(cacheFirst(event, CORE_CACHE));
+    return;
+  }
+  // 资源包跟版本走：放在 core 缓存里，随 CORE_VERSION 一起更新，
+  // 避免「旧索引配新包」或「新索引配旧包」，同时不牵连图片 / 音频缓存
+  if (PACK_RE.test(url.pathname)) {
     event.respondWith(cacheFirst(event, CORE_CACHE));
     return;
   }
@@ -190,10 +198,11 @@ async function warmCache(delay) {
   async function worker() {
     while (cursor < list.length) {
       const url = list[cursor++];
-      if (await assets.match(url, { ignoreSearch: true })) continue;
+      const target = PACK_RE.test(url) ? core : assets;
+      if (await target.match(url, { ignoreSearch: true })) continue;
       try {
         const res = await fetch(url);
-        if (res && res.ok) await assets.put(url, res);
+        if (res && res.ok) await target.put(url, res);
       } catch (e) { /* 单个失败不影响其它 */ }
     }
   }

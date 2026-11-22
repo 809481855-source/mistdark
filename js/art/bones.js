@@ -89,7 +89,7 @@
       slice(img);
     };
     img.onerror = () => { state.ready = true; };
-    img.src = SRC;
+    DG.assets.assign(img, SRC);
   };
 
   DG.art = DG.art || {};

@@ -851,7 +851,7 @@
     s = { src, img: new Image(), ready: false, failed: false, canvas: null, flash: null, tints: {} };
     s.img.onload = () => build(s);
     s.img.onerror = () => { s.failed = true; };
-    s.img.src = src;
+    DG.assets.assign(s.img, src);
     cache[src] = s;
     return s;
   }

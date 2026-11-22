@@ -528,6 +528,12 @@ input::placeholder{color:#6b675e;}
 .ui-btn:focus-visible{outline:2px solid rgba(255,240,205,.7);outline-offset:4px;}
 .ui-btn:disabled{filter:grayscale(.35) brightness(.8);cursor:not-allowed;}
 
+/* 全屏面板入场：只改 transform/opacity，交给合成器，打开界面不触发重排重绘 */
+@keyframes screenIn{
+  from{opacity:0;transform:scale(.972);}
+  to{opacity:1;transform:none;}
+}
+
 
 /* ==== css/login.css ==== */
 /* 登录界面：严格按 720×1440 设计稿还原（登录弹框.psb）
@@ -1768,7 +1774,7 @@ input::placeholder{color:#6b675e;}
   overflow:auto;
   z-index:var(--z-modal);
   pointer-events:auto;
-  animation:fadeIn .14s ease-out;
+  animation:fadeIn .18s ease-out;
 }
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 .modal{
@@ -1791,9 +1797,9 @@ input::placeholder{color:#6b675e;}
   display:flex;
   flex-direction:column;
   color:#33291d;
-  animation:popIn .16s ease-out;
+  animation:popIn .22s cubic-bezier(.22,1,.36,1);
 }
-@keyframes popIn{from{transform:translateY(12px) scale(.99);opacity:.4}to{transform:none;opacity:1}}
+@keyframes popIn{from{transform:translateY(10px) scale(.985);opacity:.35}to{transform:none;opacity:1}}
 .modal-head{
   position:relative;
   flex:0 0 auto;
@@ -2348,9 +2354,8 @@ input::placeholder{color:#6b675e;}
   pointer-events:auto;
   /* 中段纯色取自 bg.png，上下美术由伪元素按效果图锚点拼接 */
   background:#381c18;
-  animation:secret-in .18s ease-out;
+  animation:screenIn .26s cubic-bezier(.22,1,.36,1);
 }
-@keyframes secret-in{from{opacity:0}to{opacity:1}}
 /* 顶部传送门 + 红色标题带：bg.png 整体上移 69px，让标题带落在 338-391，与效果图一致。
    原图 0-69px 为纯黑，裁切无可见损失；411 以下本身也是纯色，接缝不可见。 */
 .secret-screen::before{
@@ -2878,6 +2883,8 @@ input::placeholder{color:#6b675e;}
   position:absolute;inset:0;z-index:56;overflow:hidden;
   background:#b0a086;pointer-events:auto;
   -webkit-tap-highlight-color:transparent;
+  /* 整屏面板原本是硬切出现，视觉上像“闪一下”；这里用合成器动画平滑入场 */
+  animation:screenIn .26s cubic-bezier(.22,1,.36,1);
 }
 .eq-canvas{
   position:absolute;left:0;top:0;width:810px;height:1680px;
@@ -3345,6 +3352,8 @@ input::placeholder{color:#6b675e;}
   position:absolute;inset:0;z-index:56;overflow:hidden;
   background:#b0a086;pointer-events:auto;
   -webkit-tap-highlight-color:transparent;
+  /* 与装备/副本面板统一：合成器入场，避免硬切 */
+  animation:screenIn .26s cubic-bezier(.22,1,.36,1);
 }
 .sk-canvas{
   position:absolute;left:0;top:0;width:720px;height:1440px;
@@ -3819,7 +3828,7 @@ input::placeholder{color:#6b675e;}
   text-align:center;
   color:#33291d;
   box-shadow:0 30px 90px rgba(0,0,0,.8);
-  animation:popIn .16s ease-out;
+  animation:popIn .22s cubic-bezier(.22,1,.36,1);
 }
 .pause-card .modal-head h3{font-size:30px;}
 .pause-card .modal-head .sub{font-size:20px;}

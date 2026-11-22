@@ -139,9 +139,10 @@
       const dist = Math.hypot(dx, dy);
       if (dist < 1) return { x: 0, y: 0 };
       const x = dx / dist, y = dy / dist;
-      const steps = Math.ceil(dist / 72);
+      // 步长小于最薄墙体，避免“直线看起来通”而实际撞墙
+      const steps = Math.ceil(dist / 32);
       for (let i = 1; i <= steps; i++) {
-        const t = Math.min(dist, i * 72);
+        const t = Math.min(dist, i * 32);
         const px = this.player.x + x * t, py = this.player.y + y * t;
         if (this.circleWall(px, py, this.player.r) || this.circleProp(px, py, this.player.r)) return null;
       }
@@ -149,7 +150,9 @@
     },
     autoSmoothDirection(next, weight) {
       const old = this.autoSteer;
-      if (!old) {
+      // 方向发生大角度反转时直接切换而不是插值：否则左右相反的寻路结果会被
+      // 平滑成 (0,0)，角色在墙边原地抽搐、永远走不出拐角
+      if (!old || old.x * next.x + old.y * next.y < 0.2) {
         this.autoSteer = { x: next.x, y: next.y };
         return next;
       }
@@ -190,18 +193,20 @@
       }
       return true;
     },
-    // 视线检测：隔着墙/可破坏立件时不要站桩输出，先绕过去或打碎挡路的道具
+    // 视线检测：隔着墙/可破坏立件时不要站桩输出，先绕过去或打碎挡路的道具。
+    // 采样步长必须小于最薄墙体（32px）：24px 采样会从薄墙中间穿过去，
+    // 造成“看得见、站桩射、弹道全被墙挡住”的零输出死锁
     autoLineClear(target) {
       if (!target) return false;
       const dx = target.x - this.player.x, dy = target.y - this.player.y;
       const d = Math.hypot(dx, dy);
       if (d < 32) return true;
-      const steps = Math.ceil(d / 24);
+      const steps = Math.ceil(d / 12);
       for (let i = 1; i < steps; i++) {
         const t = d * i / steps;
         const px = this.player.x + dx / d * t, py = this.player.y + dy / d * t;
-        if (this.circleWall(px, py, 3)) return false;
-        if (this.circleProp(px, py, 4)) return false;
+        if (this.circleWall(px, py, 6)) return false;
+        if (this.circleProp(px, py, 6)) return false;
       }
       return true;
     },
@@ -263,6 +268,9 @@
       // 还有没激活的怪群时，只打当前/相邻区块的怪；
       // 怪群全部激活后，剩下的怪无论多远都要清掉，否则无法触发首领
       const pendingPacks = (this.chunkPacks || []).some(p => !p.spawned && p !== this.autoIgnorePack);
+      // 长时间没有击杀（疑似被地形/怪群卡住）时放开“只打当前区块”的限制，
+      // 让 AI 能直接去清掉地图上残留的怪，避免在空区块里反复打转
+      const stalled = now - (this.lastKillTime == null ? now : this.lastKillTime) > 45;
       let best = null, bestScore = Infinity, bestDist = Infinity;
       if (!exploring) {
         for (const m of this.monsters) {
@@ -274,7 +282,7 @@
             return { x: m.x, y: m.y, monster: m, kind: 'boss' };
           }
           const mch = m.chunkIndex != null ? this.chunks[m.chunkIndex] : null;
-          if (pendingPacks && mch && curCh && Math.abs(mch.col - curCh.col) + Math.abs(mch.row - curCh.row) > 1 && !m.aggro) continue;
+          if (!stalled && pendingPacks && mch && curCh && Math.abs(mch.col - curCh.col) + Math.abs(mch.row - curCh.row) > 1 && !m.aggro) continue;
           // 优先级：距离为主，残血目标（配合处决）、远程与精英更值得先处理
           let score = d - (1 - m.hp / m.maxHp) * 70;
           if (m.ranged) score -= 30;
@@ -597,6 +605,32 @@
         m.autoStuckT = 0;
         m.autoStuckHp = m.hp;
       }
+      // 兜底：自动模式长时间零击杀（>30s）时，把 AI 死磕的那只怪挪到玩家外围的开阔地。
+      // 极少数怪会被隔间/墙体锁死、永远走不过来，不兜底就会卡死通关进度
+      if (now - (this.lastKillTime == null ? now : this.lastKillTime) < 30) return;
+      const goalM = this.autoGoal && this.autoGoal.monster;
+      if (!goalM || goalM.dead || goalM.boss) return;
+      if (now < (this.autoRelocateAt || 0)) return;
+      if (U.dist(this.player, goalM) < 260) return;
+      this.autoRelocateAt = now + 4;
+      for (let i = 0; i < 16; i++) {
+        const a = Math.PI * 2 * i / 16;
+        const rr = 360 + (i % 4) * 30;
+        const x = this.player.x + Math.cos(a) * rr;
+        const y = this.player.y + Math.sin(a) * rr;
+        if (this.circleWall(x, y, goalM.r) || this.circleProp(x, y, goalM.r)) continue;
+        goalM.x = goalM._px = x;
+        goalM.y = goalM._py = y;
+        goalM.spawnX = x;
+        goalM.spawnY = y;
+        goalM.aggro = true;
+        this.autoTarget = null;
+        this.autoGoal = null;
+        this.autoPack = null;
+        this.autoDecision = null;
+        this.autoSteer = null;
+        break;
+      }
     },
     autoCast() {
       if (this.player.hp <= 0) return;
@@ -630,7 +664,16 @@
           }
         }
         if (target) {
-          this.player.facing = U.angle(this.player, target);
+          let face = U.angle(this.player, target);
+          // 高速移动目标按弹道飞行时间取提前量，否则远程 AI 会对着残影一直放空
+          if (this.autoMode && this.autoIsRanged()) {
+            const vx = target._vx || 0, vy = target._vy || 0;
+            if (Math.hypot(vx, vy) > 40) {
+              const fly = U.dist(this.player, target) / ((this.basicSkill && this.basicSkill.speed) || 800);
+              face = U.angle(this.player, { x: target.x + vx * fly * 0.7, y: target.y + vy * fly * 0.7 });
+            }
+          }
+          this.player.facing = face;
           this.doBasic(this.player.facing);
         } else if (this.autoMode) {
           // 自动战斗：前方挡路的可破坏道具直接砸碎，避免被卡在障碍前

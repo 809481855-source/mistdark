@@ -225,6 +225,7 @@
     gotoLogin() {
       this.stopDungeon();
       this.hideAssetMask();
+      if (DG.wake) DG.wake.disable();
       this.accountName = null;
       this.charIndex = -1;
       this.char = null;
@@ -234,6 +235,7 @@
 
     gotoCharacter() {
       this.stopDungeon();
+      if (DG.wake) DG.wake.disable();
       if (!this.account()) {
         this.gotoLogin();
         return;
@@ -293,6 +295,7 @@
         return;
       }
       // 镇内提示只在本次登录首次进入时出现，避免反复刷屏
+      if (DG.wake) DG.wake.enable();
       this.readyThen(() => DG.scenes.town.render(this.ui), '正在准备资源…');
     },
 
@@ -342,6 +345,8 @@
     startDungeon(def) {
       if (!this.char || !def) return;
       this.stopDungeon();
+      // 战斗中同样保持屏幕常亮
+      if (DG.wake) DG.wake.enable();
       // 每次进战斗都按当前设备像素比重置渲染倍率：
       // 既保证首帧角色清晰，也让上一次掉帧降档不会一直沿用
       this.setRenderScale(this.nativeRenderScale());

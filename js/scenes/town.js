@@ -130,9 +130,27 @@
     return { x: px, y: py };
   }
 
+  // 主城阶段预热面板底图：这些大图首次打开时才解码会在手机上造成一次卡顿
+  let panelArtWarmed = false;
+  function warmPanelArt() {
+    if (panelArtWarmed) return;
+    panelArtWarmed = true;
+    [
+      'assets/ui/equip/bg.png',
+      'assets/ui/skill/bg.png',
+      'assets/ui/secret/bg.png',
+      'assets/ui/public/dialog-frame.png'
+    ].forEach(src => {
+      const img = new Image();
+      img.src = src;
+      if (img.decode) img.decode().catch(() => {});
+    });
+  }
+
   DG.scenes.town = {
     render(root) {
       if (DG.audio) DG.audio.playBgm('lobby');
+      warmPanelArt();
       const char = DG.game.char;
       const cls = DG.data.classes[char.cls];
       // 主城阶段提前解码本职业技能音效，进副本第一击即可出声

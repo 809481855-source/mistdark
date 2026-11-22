@@ -3,7 +3,7 @@
   const DG = window.DG;
   Object.assign(DG.data.monsters, {
     eyehorror: {
-      id: 'eyehorror', name: '噬瞳典籍', art: 'eyehorror', artScale: 1,
+      id: 'eyehorror', name: '噬人魔典', art: 'eyehorror', artScale: 1,
       shape: 'hex', color: '#8a6a4a', r: 40,
       hp: 520, dmg: 16, speed: 56, attackRange: 108, attackCd: 2.2,
       xp: 120, gold: [60, 90], boss: true, preferRange: 150,
@@ -76,9 +76,9 @@
       ]
     },
 
-    /* 首领批次一 · 腐沼巨鳄：巨尾横扫 / 腐蚀吐息 / 沼底潜袭 / 泥沼孵化 */
+    /* 首领批次一 · 腐沼獠兽：巨尾横扫 / 腐蚀吐息 / 沼底潜袭 / 泥沼孵化 */
     croc: {
-      id: 'croc', name: '腐沼巨鳄', art: 'croc', artScale: 1,
+      id: 'croc', name: '腐沼獠兽', art: 'croc', artScale: 1,
       shape: 'hex', color: '#5f8f52', r: 44,
       hp: 780, dmg: 21, speed: 66, attackRange: 120, attackCd: 2.0,
       xp: 180, gold: [90, 140], boss: true, preferRange: 140,
@@ -234,9 +234,9 @@
       ]
     },
 
-    /* 獠牙猪王：裂地重斩 / 獠牙横扫 / 战吼震荡 / 野猪群 */
+    /* 巨剑恶魔：裂地重斩 / 獠牙横扫 / 战吼震荡 / 野猪群 */
     goatbrute: {
-      id: 'goatbrute', name: '獠牙猪王', art: 'goatbrute', artScale: 1,
+      id: 'goatbrute', name: '巨剑恶魔', art: 'goatbrute', artScale: 1,
       shape: 'hex', color: '#7a5a7a', r: 42,
       hp: 720, dmg: 21, speed: 88, attackRange: 118, attackCd: 2.0,
       xp: 150, gold: [75, 110], boss: true, preferRange: 125,
@@ -286,9 +286,9 @@
       ]
     },
 
-    /* 魔锅法师：沸火弹 / 熔金射线 / 护盾爆发 / 炉渣爬虫 */
+    /* 魔锅骑士：沸火弹 / 熔金射线 / 护盾爆发 / 炉渣爬虫 */
     cauldron: {
-      id: 'cauldron', name: '魔锅法师', art: 'cauldron', artScale: 1,
+      id: 'cauldron', name: '魔锅骑士', art: 'cauldron', artScale: 1,
       shape: 'hex', color: '#4a4f8f', r: 42,
       hp: 880, dmg: 22, speed: 56, attackRange: 124, attackCd: 2.0,
       xp: 210, gold: [115, 170], boss: true, preferRange: 190,
@@ -470,9 +470,9 @@
       ]
     },
 
-    /* 菌帽枪王：六连发 / 枪火射线 / 枪托横扫 / 菌兵应召 */
+    /* 仙人掌枪王：六连发 / 枪火射线 / 枪托横扫 / 菌兵应召 */
     mushroomgun: {
-      id: 'mushroomgun', name: '菌帽枪王', art: 'mushroomgun', artScale: 1,
+      id: 'mushroomgun', name: '仙人掌枪王', art: 'mushroomgun', artScale: 1,
       shape: 'hex', color: '#4a6f9e', r: 40,
       hp: 860, dmg: 22, speed: 72, attackRange: 122, attackCd: 2.0,
       xp: 210, gold: [115, 170], boss: true, preferRange: 185,

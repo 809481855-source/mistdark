@@ -67,7 +67,7 @@
     const image = new Image();
     image.onload = () => { images[atlas] = image; loading[atlas] = false; flush(); };
     image.onerror = () => { failed[atlas] = true; loading[atlas] = false; flush(); };
-    image.src = atlas === 'inside' ? INSIDE : OUTSIDE;
+    DG.assets.assign(image, atlas === 'inside' ? INSIDE : OUTSIDE);
   }
   function pick(list, h) { return list[Math.min(list.length - 1, Math.floor(h * list.length))]; }
 

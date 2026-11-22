@@ -209,6 +209,8 @@
         DG.audio.playBgm('battle');
         // 进副本即预热本职业技能音效，保证第一击就有声
         DG.audio.preloadClass(this.cls.id);
+        // 升级音效提前解码：首次升级往往发生在开打后不久，避免因未解码被丢弃
+        DG.audio.preloadKeys(['stageLevelup', 'uiLevelup']);
       }
       this.announce(`${this.def.name} · 开始探索`, 2000);
       if (this.wxRule && this.wxRule.desc) {

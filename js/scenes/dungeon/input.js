@@ -48,15 +48,8 @@
       this.mouse.moved = true;
       this.lastInput = 'mouse';
       if (e.button === 0) {
-        this.autoMode = false;
-        this.autoTarget = null;
-        this.autoPack = null;
-        this.autoSteer = null;
-        this.autoEvade = null;
-        this.autoBlocked = 0;
-        this.autoDetour = null;
-        this.autoDecision = null;
-        this.syncAutoButton();
+        // 自动战斗期间点击屏幕不取消自动：关闭自动只认自动战斗按钮
+        if (this.autoMode) return;
         // 小地图区域不参与走位；首领阶段小地图已屏蔽，不能再拦截点击
         const bossUp = this.monsters.some(m => m.boss && !m.dead);
         const R = this.minimapRectNow();
@@ -116,15 +109,8 @@
     this._stick = DG.ui.stick(document.getElementById('stage'), {
       ignore: '.dg-top, .combat-bar, .auto-battle-btn, .pause-mask, .toast-wrap, .boss-wrap',
       onMove: (x, y) => {
-        this.autoMode = false;
-        this.autoTarget = null;
-        this.autoPack = null;
-        this.autoSteer = null;
-        this.autoEvade = null;
-        this.autoBlocked = 0;
-        this.autoDetour = null;
-        this.autoDecision = null;
-        this.syncAutoButton();
+        // 自动战斗期间拖动摇杆不打断自动战斗（关闭只认自动按钮）
+        if (this.autoMode) return;
         this.moveVec.x = x;
         this.moveVec.y = y;
         this.moveTarget = null;

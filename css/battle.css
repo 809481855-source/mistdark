@@ -354,7 +354,7 @@
   text-align:center;
   color:#33291d;
   box-shadow:0 30px 90px rgba(0,0,0,.8);
-  animation:popIn .16s ease-out;
+  animation:popIn .22s cubic-bezier(.22,1,.36,1);
 }
 .pause-card .modal-head h3{font-size:30px;}
 .pause-card .modal-head .sub{font-size:20px;}

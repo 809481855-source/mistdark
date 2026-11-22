@@ -91,6 +91,8 @@
   let wakeSeq = 0;
   let rebuilding = false;
   let lastRebuildAt = 0;
+  // 连续重建次数：上下文被系统反复拒绝恢复时限流，避免一直新建音频图耗电
+  let rebuildStreak = 0;
 
   function suspendAudio() {
     if (ctx && unlocked && ctx.state === 'running') {
@@ -102,8 +104,9 @@
   }
 
   // 恢复成功后，确认背景音乐与环境音确实在响
-  function hardRecover() {
-    if (!ctx || document.hidden || ctx.state !== 'running') return;
+  function hardRecover(force) {
+    if (!ctx || (!force && document.hidden) || ctx.state !== 'running') return;
+    rebuildStreak = 0;
     // 主音量被异常事件压死（来电 / 蓝牙切换中途）时补回，避免“上下文在跑却没声”
     if (master && enabled && master.gain.value < 0.05) {
       const t = ctx.currentTime;
@@ -129,12 +132,19 @@
     }
     if (current) {
       if (!amb) buildAmbient(current);
-      else if (!battlePaused) fadeGain(amb.gain.gain, ambLevel(), 300);
+      else if (!battlePaused) {
+        const g = amb.gain.gain;
+        // 只在环境音明显偏低时补拉，避免看门狗每轮都重排渐变
+        if (g.value < ambLevel() * 0.5) fadeGain(g, ambLevel(), 300);
+      }
     }
   }
 
-  function wakeAudio() {
-    if (document.hidden) return;
+  function wakeAudio(force) {
+    // force=true 来自用户手势：此时用户就在前台操作，即使 visibility 状态还没刷新
+    // （部分手机内核回到前台时先派发 focus 再更新 visible）也必须立刻恢复
+    const blocked = () => !force && document.hidden;
+    if (blocked()) return;
     if (!ctx) {
       // 上下文丢失但曾经解锁过：直接重建，保证下一次音效有输出
       if (unlocked) rebuild();
@@ -151,29 +161,33 @@
     const token = ++wakeSeq;
     const pending = suspendPromise;
     suspendPromise = null;
-    const wait = pending || Promise.resolve();
+    // 页面被冻结时 suspend() 的 Promise 可能永远不落地，最多等 500ms 就继续尝试恢复
+    const wait = pending
+      ? Promise.race([pending, new Promise(r => setTimeout(r, 500))])
+      : Promise.resolve();
     wait.then(() => {
-      if (token !== wakeSeq || document.hidden) return;
+      if (token !== wakeSeq || blocked()) return;
       if (!ctx) return;
       if (ctx.state === 'closed') { rebuild(); return; }
       let tries = 0;
       const attempt = () => {
-        if (token !== wakeSeq || document.hidden) return;
+        if (token !== wakeSeq || blocked()) return;
         if (!ctx) return;
         if (ctx.state === 'closed') { rebuild(); return; }
-        if (ctx.state === 'running') { hardRecover(); return; }
+        if (ctx.state === 'running') { hardRecover(force); return; }
         // 不能依赖 resume() 的 Promise：页面被冻结 / 音频焦点被抢占时
         // 该 Promise 可能永远不落地，必须靠定时器自己重试
         try {
           const p = ctx.resume();
           if (p && p.then) p.then(() => {
-            if (token === wakeSeq && !document.hidden && ctx && ctx.state === 'running') hardRecover();
+            if (token === wakeSeq && !blocked() && ctx && ctx.state === 'running') hardRecover(force);
           }, () => {});
         } catch (e) { /* 旧内核没有 resume */ }
         tries++;
-        if (tries <= 3) {
+        if (tries <= 5) {
           setTimeout(attempt, 160 * tries);
-        } else if (!document.hidden && Date.now() - lastRebuildAt > 10000) {
+        } else if (!blocked() && Date.now() - lastRebuildAt > 2500 &&
+                   (rebuildStreak < 4 || Date.now() - lastRebuildAt > 30000)) {
           // 重试仍拿不回来：上下文已卡死，换一张新的音频图（含 BGM / 环境音补播）
           rebuild();
         }
@@ -187,6 +201,7 @@
     if (rebuilding) return;
     rebuilding = true;
     lastRebuildAt = Date.now();
+    rebuildStreak++;
     try {
       if (ctx && ctx.close) {
         const p = ctx.close();
@@ -227,7 +242,8 @@
   // 已解锁后，每次手势都顺手检查一次：避免中断后一直静音
   function onGesture() {
     if (!unlocked) { unlock(); return; }
-    wakeAudio();
+    // 手势即代表用户在前台操作，强制恢复，避免 visibility 状态滞后导致一直静音
+    wakeAudio(true);
     healBgm(true);
   }
   window.addEventListener('pointerdown', onGesture, { passive: true });
@@ -838,7 +854,7 @@
   let lastHeal = 0;
   // 看门狗：处理「放着放着没声」——上下文被挂起、节点增益卡在 0、节点意外丢失
   function healBgm(force) {
-    if (!bgmKey || !enabled || !musicOn || !unlocked || document.hidden) return;
+    if (!bgmKey || !enabled || !musicOn || !unlocked || (!force && document.hidden)) return;
     const now = Date.now();
     if (!force && now - lastHeal < 1200) return;
     lastHeal = now;
@@ -862,7 +878,10 @@
   }
   // 前台看门狗：即使没收到 visibility / focus 事件，也定期把被系统挂起的上下文拉回来
   setInterval(() => {
-    if (!document.hidden && ctx && ctx.state !== 'running') wakeAudio();
+    if (document.hidden) return;
+    // 上下文被内核对掉（页面被冻结回收）：直接重建音频图
+    if (!ctx) { if (unlocked) rebuild(); return; }
+    if (ctx.state !== 'running') wakeAudio();
     healBgm(false);
   }, 2500);
 

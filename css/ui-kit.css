@@ -247,3 +247,9 @@
 .ui-btn:active{transform:translateY(1px);filter:brightness(.94);}
 .ui-btn:focus-visible{outline:2px solid rgba(255,240,205,.7);outline-offset:4px;}
 .ui-btn:disabled{filter:grayscale(.35) brightness(.8);cursor:not-allowed;}
+
+/* 全屏面板入场：只改 transform/opacity，交给合成器，打开界面不触发重排重绘 */
+@keyframes screenIn{
+  from{opacity:0;transform:scale(.972);}
+  to{opacity:1;transform:none;}
+}

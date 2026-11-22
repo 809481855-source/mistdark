@@ -99,6 +99,117 @@
 
 
 ;
+/* ==== js/core/assets.js ==== */
+/* 资源包：把大量散图合并成少数几个 .pk 包，首屏只发几次请求。
+   构建期由 tools/pack-assets.py 生成索引（build-static 内联进 index.html）：
+     { packs: { 名称: { f: 包路径, s: 字节数 } },
+       files: { 'assets/monsters/wolf.png': { p: 包名, o: 偏移, l: 长度, t: 'png'|'webp'|'jpg' } } }
+   运行时把包内切片包成 Blob，再转 blob: URL 交给 Image：
+     · 请求数从「每张图一次」降到「每个包一次」
+     · 图片仍是标准图片流，naturalWidth / drawImage / decode 行为完全不变
+   file:// 双击打开时不能 fetch，自动回落到原始散图，开发体验不变。 */
+(function () {
+  const DG = window.DG;
+  const IDX = window.__DG_PACKS__ || null;
+  const enabled = !!(IDX && IDX.packs && IDX.files && location.protocol !== 'file:');
+
+  const packs = {};   // 包名 -> { buf, loading, failed, waiters }
+  const urls = {};    // 规范化路径 -> blob url
+
+  // 包文件前 16 字节是内容指纹：旧索引（页面缓存）+ 新包时必须能立刻识别出来
+  const HEAD = 16;
+
+  const norm = (p) => String(p).split('?')[0].split('#')[0];
+  const mimeOf = (t) => t === 'webp' ? 'image/webp'
+    : (t === 'jpg' || t === 'jpeg') ? 'image/jpeg' : 'image/png';
+
+  function headOf(buf) {
+    const view = new Uint8Array(buf, 0, HEAD);
+    let s = '';
+    for (let i = 0; i < view.length; i++) s += String.fromCharCode(view[i]);
+    return s;
+  }
+
+  function slot(name) {
+    return packs[name] || (packs[name] = { buf: null, loading: false, failed: false, waiters: [] });
+  }
+
+  function flush(s) {
+    const list = s.waiters.splice(0);
+    for (const fn of list) {
+      try { fn(); } catch (e) { /* 单个回调失败不影响其它 */ }
+    }
+  }
+
+  function loadPack(name) {
+    if (!enabled) return;
+    const def = IDX.packs[name];
+    if (!def) return;
+    const s = slot(name);
+    if (s.buf || s.loading || s.failed) return;
+    s.loading = true;
+    fetch(def.f).then((r) => {
+      if (!r.ok) throw new Error('pack ' + name + ' ' + r.status);
+      return r.arrayBuffer();
+    }).then((buf) => {
+      if (!def.tag || buf.byteLength <= HEAD || headOf(buf) !== def.tag) {
+        throw new Error('pack ' + name + ' tag mismatch');
+      }
+      s.buf = buf;
+      s.loading = false;
+      flush(s);
+    }).catch(() => {
+      // 取包失败（弱网 / 离线）：回落到原始图片文件，玩法不受影响
+      s.loading = false;
+      s.failed = true;
+      flush(s);
+    });
+  }
+
+  // 已就绪返回可用地址；未就绪返回空串（并顺手开始拉包）
+  function urlOf(path) {
+    if (!enabled) return path;
+    const key = norm(path);
+    const cached = urls[key];
+    if (cached) return cached;
+    const e = IDX.files[key];
+    if (!e) return path;            // 不在包内（CSS / 内联 HTML 直接用原图）
+    const s = packs[e.p];
+    if (s && s.failed) return path;
+    if (!s || !s.buf) { loadPack(e.p); return ''; }
+    const blob = new Blob([s.buf.slice(HEAD + e.o, HEAD + e.o + e.l)], { type: mimeOf(e.t) });
+    urls[key] = URL.createObjectURL(blob);
+    return urls[key];
+  }
+
+  DG.assets = {
+    packEnabled: enabled,
+
+    // 给已有 Image 设置地址：包就绪前不赋值，避免先打一次散图请求
+    assign(img, path) {
+      const u = urlOf(path);
+      if (u) { img.src = u; return; }
+      const e = IDX.files[norm(path)];
+      slot(e.p).waiters.push(() => {
+        const ready = urlOf(path);
+        img.src = ready || path;
+      });
+      loadPack(e.p);
+    },
+
+    // 提前拉某个资源所在的包：进场景前预热，避免集中解码
+    preload(path) {
+      if (!enabled) return;
+      const e = IDX.files[norm(path)];
+      if (e) loadPack(e.p);
+    },
+
+    packNames() { return enabled ? Object.keys(IDX.packs) : []; }
+  };
+})();
+
+
+;
 /* ==== js/core/storage.js ==== */
 /* 本地存档：账号 / 角色数据（localStorage） */
 (function () {
@@ -353,6 +464,8 @@
   let wakeSeq = 0;
   let rebuilding = false;
   let lastRebuildAt = 0;
+  // 连续重建次数：上下文被系统反复拒绝恢复时限流，避免一直新建音频图耗电
+  let rebuildStreak = 0;
 
   function suspendAudio() {
     if (ctx && unlocked && ctx.state === 'running') {
@@ -364,8 +477,9 @@
   }
 
   // 恢复成功后，确认背景音乐与环境音确实在响
-  function hardRecover() {
-    if (!ctx || document.hidden || ctx.state !== 'running') return;
+  function hardRecover(force) {
+    if (!ctx || (!force && document.hidden) || ctx.state !== 'running') return;
+    rebuildStreak = 0;
     // 主音量被异常事件压死（来电 / 蓝牙切换中途）时补回，避免“上下文在跑却没声”
     if (master && enabled && master.gain.value < 0.05) {
       const t = ctx.currentTime;
@@ -391,12 +505,19 @@
     }
     if (current) {
       if (!amb) buildAmbient(current);
-      else if (!battlePaused) fadeGain(amb.gain.gain, ambLevel(), 300);
+      else if (!battlePaused) {
+        const g = amb.gain.gain;
+        // 只在环境音明显偏低时补拉，避免看门狗每轮都重排渐变
+        if (g.value < ambLevel() * 0.5) fadeGain(g, ambLevel(), 300);
+      }
     }
   }
 
-  function wakeAudio() {
-    if (document.hidden) return;
+  function wakeAudio(force) {
+    // force=true 来自用户手势：此时用户就在前台操作，即使 visibility 状态还没刷新
+    // （部分手机内核回到前台时先派发 focus 再更新 visible）也必须立刻恢复
+    const blocked = () => !force && document.hidden;
+    if (blocked()) return;
     if (!ctx) {
       // 上下文丢失但曾经解锁过：直接重建，保证下一次音效有输出
       if (unlocked) rebuild();
@@ -413,29 +534,33 @@
     const token = ++wakeSeq;
     const pending = suspendPromise;
     suspendPromise = null;
-    const wait = pending || Promise.resolve();
+    // 页面被冻结时 suspend() 的 Promise 可能永远不落地，最多等 500ms 就继续尝试恢复
+    const wait = pending
+      ? Promise.race([pending, new Promise(r => setTimeout(r, 500))])
+      : Promise.resolve();
     wait.then(() => {
-      if (token !== wakeSeq || document.hidden) return;
+      if (token !== wakeSeq || blocked()) return;
       if (!ctx) return;
       if (ctx.state === 'closed') { rebuild(); return; }
       let tries = 0;
       const attempt = () => {
-        if (token !== wakeSeq || document.hidden) return;
+        if (token !== wakeSeq || blocked()) return;
         if (!ctx) return;
         if (ctx.state === 'closed') { rebuild(); return; }
-        if (ctx.state === 'running') { hardRecover(); return; }
+        if (ctx.state === 'running') { hardRecover(force); return; }
         // 不能依赖 resume() 的 Promise：页面被冻结 / 音频焦点被抢占时
         // 该 Promise 可能永远不落地，必须靠定时器自己重试
         try {
           const p = ctx.resume();
           if (p && p.then) p.then(() => {
-            if (token === wakeSeq && !document.hidden && ctx && ctx.state === 'running') hardRecover();
+            if (token === wakeSeq && !blocked() && ctx && ctx.state === 'running') hardRecover(force);
           }, () => {});
         } catch (e) { /* 旧内核没有 resume */ }
         tries++;
-        if (tries <= 3) {
+        if (tries <= 5) {
           setTimeout(attempt, 160 * tries);
-        } else if (!document.hidden && Date.now() - lastRebuildAt > 10000) {
+        } else if (!blocked() && Date.now() - lastRebuildAt > 2500 &&
+                   (rebuildStreak < 4 || Date.now() - lastRebuildAt > 30000)) {
           // 重试仍拿不回来：上下文已卡死，换一张新的音频图（含 BGM / 环境音补播）
           rebuild();
         }
@@ -449,6 +574,7 @@
     if (rebuilding) return;
     rebuilding = true;
     lastRebuildAt = Date.now();
+    rebuildStreak++;
     try {
       if (ctx && ctx.close) {
         const p = ctx.close();
@@ -489,7 +615,8 @@
   // 已解锁后，每次手势都顺手检查一次：避免中断后一直静音
   function onGesture() {
     if (!unlocked) { unlock(); return; }
-    wakeAudio();
+    // 手势即代表用户在前台操作，强制恢复，避免 visibility 状态滞后导致一直静音
+    wakeAudio(true);
     healBgm(true);
   }
   window.addEventListener('pointerdown', onGesture, { passive: true });
@@ -1100,7 +1227,7 @@
   let lastHeal = 0;
   // 看门狗：处理「放着放着没声」——上下文被挂起、节点增益卡在 0、节点意外丢失
   function healBgm(force) {
-    if (!bgmKey || !enabled || !musicOn || !unlocked || document.hidden) return;
+    if (!bgmKey || !enabled || !musicOn || !unlocked || (!force && document.hidden)) return;
     const now = Date.now();
     if (!force && now - lastHeal < 1200) return;
     lastHeal = now;
@@ -1124,7 +1251,10 @@
   }
   // 前台看门狗：即使没收到 visibility / focus 事件，也定期把被系统挂起的上下文拉回来
   setInterval(() => {
-    if (!document.hidden && ctx && ctx.state !== 'running') wakeAudio();
+    if (document.hidden) return;
+    // 上下文被内核对掉（页面被冻结回收）：直接重建音频图
+    if (!ctx) { if (unlocked) rebuild(); return; }
+    if (ctx.state !== 'running') wakeAudio();
     healBgm(false);
   }, 2500);
 
@@ -1274,7 +1404,7 @@
   DG.data = DG.data || {};
 
   DG.CONFIG = {
-    BAG_SIZE: 24,
+    BAG_SIZE: 100,
     MAX_SKILL_LEVEL: 10,
     MAX_LEVEL: 60,
     // 装备槽位：与装备界面 PSD 的 10 个格子一一对应
@@ -1385,7 +1515,7 @@
       bossPool: ['eyehorror', 'mummyking', 'croc', 'slimeking'],
       mapStyle: 'crypt',
       map: { minRooms: 8, maxRooms: 11 },
-      desc: '窄长的墓道里缠尸卫士排成阵列，火烛无风自动，灰发女妖的长发在阴影里拖出一道痕。'
+      desc: '窄长的墓道里缠尸卫士排成阵列，火烛无风自动，深处有什么东西在阴影里拖出一道长痕。'
     },
 
     // ---------- 第二章 · 腐化荒野 ----------
@@ -1399,7 +1529,7 @@
       bossPool: ['cauldron', 'golem', 'blueogre', 'mushroomgun'],
       mapStyle: 'abyss',
       map: { minRooms: 9, maxRooms: 12 },
-      desc: '灰烬没到脚踝，赤棘龙在余烬中穿行，魔锅法师的药汤在远处翻滚出紫色气泡。'
+      desc: '灰烬没到脚踝，赤棘龙在余烬中穿行，远处的药汤一直在翻滚，冒出紫色气泡。'
     },
     {
       id: 'abyss', act: 2, name: '腐化深渊',
@@ -1411,7 +1541,7 @@
       bossPool: ['abysseye', 'cauldron', 'goatbrute', 'mushroomgun'],
       mapStyle: 'abyss',
       map: { minRooms: 8, maxRooms: 11 },
-      desc: '深渊的裂隙不断涌出腐化之物，暗渊史莱姆、深渊主教与触手蠕虫王在裂隙另一侧注视着你。'
+      desc: '深渊的裂隙不断涌出腐化之物，裂隙另一侧有什么在注视着你，一动不动。'
     },
     {
       id: 'rift', act: 2, name: '裂隙回廊',
@@ -1423,7 +1553,7 @@
       bossPool: ['golem', 'blueogre', 'goatbrute', 'mushroomgun'],
       mapStyle: 'abyss',
       map: { minRooms: 8, maxRooms: 11 },
-      desc: '回廊在眼前折叠，脚下的石板翻出另一片天空，冰晶魔像在错位的尽头缓缓抬头。'
+      desc: '回廊在眼前折叠，脚下的石板翻出另一片天空，错位的尽头有巨大的影子缓缓抬头。'
     },
     {
       id: 'furnace', act: 2, name: '熔火工坊',
@@ -1435,7 +1565,7 @@
       bossPool: ['blueogre', 'cauldron', 'golem', 'mushroomgun'],
       mapStyle: 'abyss',
       map: { minRooms: 8, maxRooms: 11 },
-      desc: '熔炉昼夜不熄，铁背野猪的甲片被炉火烤得发亮，魔锅法师的药汤在炉口翻滚。'
+      desc: '熔炉昼夜不熄，铁背野猪的甲片被炉火烤得发亮，炉口的药汤一刻不停地翻滚。'
     },
     {
       id: 'plague', act: 2, name: '疫病巢穴',
@@ -1473,7 +1603,7 @@
       bossPool: ['octoking', 'piratecrab', 'silverknight', 'wormking'],
       mapStyle: 'abyss',
       map: { minRooms: 8, maxRooms: 11 },
-      desc: '潮水在洞窟里涨落，幽蓝喙兽贴着水面滑行，触手蠕虫王的触须在深处缓慢张开。'
+      desc: '潮水在洞窟里涨落，幽蓝喙兽贴着水面滑行，深处的触须在黑暗里缓慢张开。'
     },
     {
       id: 'frostkeep', act: 3, name: '霜封要塞',
@@ -1547,7 +1677,7 @@
       bossPool: ['shadowdemon', 'hierophant', 'crystalcrab', 'hornedfiend'],
       mapStyle: 'abyss',
       map: { minRooms: 8, maxRooms: 11 },
-      desc: '回廊两侧站满石像，每一尊的影子里都多站着一个影子，深渊主教在尽头等你抬头。'
+      desc: '回廊两侧站满石像，每一尊的影子里都多站着一个影子，尽头有什么在等你抬头。'
     },
     {
       id: 'worldscar', act: 4, name: '世界之痕',
@@ -1559,7 +1689,7 @@
       bossPool: ['hierophant', 'shadowdemon', 'crystalcrab', 'mushroommaw'],
       mapStyle: 'abyss',
       map: { minRooms: 8, maxRooms: 11 },
-      desc: '大地在这里裂开一道看不到底的痕，深渊主教从裂缝里走出，袍角还挂着别的世界。'
+      desc: '大地在这里裂开一道看不到底的痕，有什么从裂缝里走出，袍角还挂着别的世界。'
     },
     {
       id: 'finalgate', act: 4, name: '终焉之门',
@@ -1719,6 +1849,27 @@
     d.index = i + 1;
     d.actName = (DG.data.acts[d.act - 1] || {}).name || '';
     DG.data.dungeonById[d.id] = d;
+  });
+
+  // 首领投放：每章按固定顺序轮换已拆件重做的首领，逐关穿插，
+  // 保证相邻关卡不会出现同一个首领，也不会出现连续多关只有一个首领的情况。
+  // 首领名与新版拆件美术一一对应（见 js/data/monsters/bosses.js）。
+  const BOSS_ROTATION = {
+    1: ['mummyking', 'croc', 'eyehorror'],
+    2: ['golem', 'mushroomgun', 'goatbrute', 'cauldron'],
+    3: ['octoking', 'mawflowerking', 'crystalcrab', 'mummyking'],
+    4: ['reaper', 'crystalcrab', 'pinkdemon', 'pumpkinlord']
+  };
+  const actCursor = {};
+  DG.data.dungeons.forEach((d) => {
+    const rot = BOSS_ROTATION[d.act];
+    if (!rot || !rot.length) return;
+    const k = actCursor[d.act] || 0;
+    actCursor[d.act] = k + 1;
+    const boss = rot[k % rot.length];
+    d.bossId = boss;
+    // 首领池只保留本关首领，避免旧配置继续被随机逻辑选中
+    d.bossPool = [boss];
   });
 
   // 关卡解锁：等级达标 + 通关上一关
@@ -3060,7 +3211,7 @@
   const DG = window.DG;
   Object.assign(DG.data.monsters, {
     eyehorror: {
-      id: 'eyehorror', name: '噬瞳典籍', art: 'eyehorror', artScale: 1,
+      id: 'eyehorror', name: '噬人魔典', art: 'eyehorror', artScale: 1,
       shape: 'hex', color: '#8a6a4a', r: 40,
       hp: 520, dmg: 16, speed: 56, attackRange: 108, attackCd: 2.2,
       xp: 120, gold: [60, 90], boss: true, preferRange: 150,
@@ -3133,9 +3284,9 @@
       ]
     },
 
-    /* 首领批次一 · 腐沼巨鳄：巨尾横扫 / 腐蚀吐息 / 沼底潜袭 / 泥沼孵化 */
+    /* 首领批次一 · 腐沼獠兽：巨尾横扫 / 腐蚀吐息 / 沼底潜袭 / 泥沼孵化 */
     croc: {
-      id: 'croc', name: '腐沼巨鳄', art: 'croc', artScale: 1,
+      id: 'croc', name: '腐沼獠兽', art: 'croc', artScale: 1,
       shape: 'hex', color: '#5f8f52', r: 44,
       hp: 780, dmg: 21, speed: 66, attackRange: 120, attackCd: 2.0,
       xp: 180, gold: [90, 140], boss: true, preferRange: 140,
@@ -3291,9 +3442,9 @@
       ]
     },
 
-    /* 獠牙猪王：裂地重斩 / 獠牙横扫 / 战吼震荡 / 野猪群 */
+    /* 巨剑恶魔：裂地重斩 / 獠牙横扫 / 战吼震荡 / 野猪群 */
     goatbrute: {
-      id: 'goatbrute', name: '獠牙猪王', art: 'goatbrute', artScale: 1,
+      id: 'goatbrute', name: '巨剑恶魔', art: 'goatbrute', artScale: 1,
       shape: 'hex', color: '#7a5a7a', r: 42,
       hp: 720, dmg: 21, speed: 88, attackRange: 118, attackCd: 2.0,
       xp: 150, gold: [75, 110], boss: true, preferRange: 125,
@@ -3343,9 +3494,9 @@
       ]
     },
 
-    /* 魔锅法师：沸火弹 / 熔金射线 / 护盾爆发 / 炉渣爬虫 */
+    /* 魔锅骑士：沸火弹 / 熔金射线 / 护盾爆发 / 炉渣爬虫 */
     cauldron: {
-      id: 'cauldron', name: '魔锅法师', art: 'cauldron', artScale: 1,
+      id: 'cauldron', name: '魔锅骑士', art: 'cauldron', artScale: 1,
       shape: 'hex', color: '#4a4f8f', r: 42,
       hp: 880, dmg: 22, speed: 56, attackRange: 124, attackCd: 2.0,
       xp: 210, gold: [115, 170], boss: true, preferRange: 190,
@@ -3527,9 +3678,9 @@
       ]
     },
 
-    /* 菌帽枪王：六连发 / 枪火射线 / 枪托横扫 / 菌兵应召 */
+    /* 仙人掌枪王：六连发 / 枪火射线 / 枪托横扫 / 菌兵应召 */
     mushroomgun: {
-      id: 'mushroomgun', name: '菌帽枪王', art: 'mushroomgun', artScale: 1,
+      id: 'mushroomgun', name: '仙人掌枪王', art: 'mushroomgun', artScale: 1,
       shape: 'hex', color: '#4a6f9e', r: 40,
       hp: 860, dmg: 22, speed: 72, attackRange: 122, attackCd: 2.0,
       xp: 210, gold: [115, 170], boss: true, preferRange: 185,
@@ -3918,13 +4069,13 @@
     const image = new Image();
     image.onload = () => { part.img = image; pending--; };
     image.onerror = () => { pending--; };
-    image.src = BASE + part.file + VERSION;
+    DG.assets.assign(image, BASE + part.file + VERSION);
   });
 
   const arrowImage = new Image();
   arrowImage.onload = () => { arrowSprite.img = arrowImage; arrowPending--; };
   arrowImage.onerror = () => { arrowPending--; };
-  arrowImage.src = BASE + 'attack-arrow.png' + VERSION;
+  DG.assets.assign(arrowImage, BASE + 'attack-arrow.png' + VERSION);
 
   const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
   const smooth = value => value * value * (3 - 2 * value);
@@ -4379,7 +4530,7 @@
       p._retried = true;
       img.src = url + '&retry=1';
     };
-    img.src = url;
+    DG.assets.assign(img, url);
   }
   Object.keys(parts).forEach(id => loadImg(parts[id], BASE + parts[id].file + VERSION));
   [weapon, hand].forEach(p => loadImg(p, BASE + p.file + VERSION));
@@ -4412,7 +4563,7 @@
     const img = new Image();
     img.onload = () => { whirlFx.img = img; pending--; };
     img.onerror = () => { pending--; };
-    img.src = 'assets/fx/barb-whirl.png?v=white-20261122b';
+    DG.assets.assign(img, 'assets/fx/barb-whirl.png?v=white-20261122b');
   }
 
   // 头部眼睛位置（head.png 图像坐标，头部当前按 1.43 倍绘制），眨眼时用暗色椭圆遮住
@@ -6209,7 +6360,7 @@
     s = { src, img: new Image(), ready: false, failed: false, canvas: null, flash: null, tints: {} };
     s.img.onload = () => build(s);
     s.img.onerror = () => { s.failed = true; };
-    s.img.src = src;
+    DG.assets.assign(s.img, src);
     cache[src] = s;
     return s;
   }
@@ -9354,7 +9505,7 @@
       s.flash = f;
     };
     s.img.onerror = () => { s.failed = true; };
-    s.img.src = src;
+    DG.assets.assign(s.img, src);
     texCache[src] = s;
     return s;
   }
@@ -10652,7 +10803,7 @@
     const image = new Image();
     image.onload = () => { images[atlas] = image; loading[atlas] = false; flush(); };
     image.onerror = () => { failed[atlas] = true; loading[atlas] = false; flush(); };
-    image.src = atlas === 'inside' ? INSIDE : OUTSIDE;
+    DG.assets.assign(image, atlas === 'inside' ? INSIDE : OUTSIDE);
   }
   function pick(list, h) { return list[Math.min(list.length - 1, Math.floor(h * list.length))]; }
 
@@ -10805,7 +10956,7 @@
       slice(img);
     };
     img.onerror = () => { state.ready = true; };
-    img.src = SRC;
+    DG.assets.assign(img, SRC);
   };
 
   DG.art = DG.art || {};
@@ -11612,6 +11763,70 @@
       return res;
     }
   };
+})();
+
+
+;
+/* ==== js/core/wakelock.js ==== */
+/* 屏幕常亮：进入游戏后申请 Wake Lock，避免手机游玩时自动息屏/锁屏 */
+(function () {
+  const DG = window.DG;
+  let sentinel = null;
+  let wanted = false;
+
+  function canLock() {
+    return !!(navigator.wakeLock && navigator.wakeLock.request);
+  }
+
+  function acquire() {
+    if (!wanted || sentinel || !canLock()) return;
+    // 页面不可见时系统必然拒绝申请，等回到前台再由 visibilitychange 触发
+    if (document.visibilityState !== 'visible') return;
+    let req;
+    try {
+      req = navigator.wakeLock.request('screen');
+    } catch (e) {
+      return;
+    }
+    if (!req || !req.then) return;
+    req.then((s) => {
+      sentinel = s;
+      // 系统在切后台、省电模式等情况下会主动释放，这里同步状态以便重新申请
+      s.addEventListener('release', () => {
+        if (sentinel === s) sentinel = null;
+        if (wanted) setTimeout(acquire, 300);
+      });
+    }).catch(() => {
+      // 浏览器不支持或被省电策略拒绝时静默降级，不影响游戏
+      sentinel = null;
+    });
+  }
+
+  DG.wake = {
+    // 进入主城 / 副本等实际游玩界面时调用
+    enable() {
+      wanted = true;
+      acquire();
+    },
+    // 回到登录页 / 选角页时释放，避免不必要的电量消耗
+    disable() {
+      wanted = false;
+      const s = sentinel;
+      sentinel = null;
+      if (s) {
+        try { s.release(); } catch (e) { /* 已释放则忽略 */ }
+      }
+    }
+  };
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      acquire();
+    } else {
+      // 隐藏期间系统会自动释放；这里只清引用，回到前台再重新申请
+      sentinel = null;
+    }
+  });
 })();
 
 
@@ -13622,7 +13837,7 @@
     if (townMapWarmed) return;
     townMapWarmed = true;
     const img = new Image();
-    img.src = 'assets/town-map.jpg';
+    DG.assets.assign(img, 'assets/town-map.jpg');
     if (img.decode) img.decode().catch(() => {});
   }
 
@@ -14017,9 +14232,27 @@
     return { x: px, y: py };
   }
 
+  // 主城阶段预热面板底图：这些大图首次打开时才解码会在手机上造成一次卡顿
+  let panelArtWarmed = false;
+  function warmPanelArt() {
+    if (panelArtWarmed) return;
+    panelArtWarmed = true;
+    [
+      'assets/ui/equip/bg.png',
+      'assets/ui/skill/bg.png',
+      'assets/ui/secret/bg.png',
+      'assets/ui/public/dialog-frame.png'
+    ].forEach(src => {
+      const img = new Image();
+      img.src = src;
+      if (img.decode) img.decode().catch(() => {});
+    });
+  }
+
   DG.scenes.town = {
     render(root) {
       if (DG.audio) DG.audio.playBgm('lobby');
+      warmPanelArt();
       const char = DG.game.char;
       const cls = DG.data.classes[char.cls];
       // 主城阶段提前解码本职业技能音效，进副本第一击即可出声
@@ -14617,6 +14850,8 @@
         DG.audio.playBgm('battle');
         // 进副本即预热本职业技能音效，保证第一击就有声
         DG.audio.preloadClass(this.cls.id);
+        // 升级音效提前解码：首次升级往往发生在开打后不久，避免因未解码被丢弃
+        DG.audio.preloadKeys(['stageLevelup', 'uiLevelup']);
       }
       this.announce(`${this.def.name} · 开始探索`, 2000);
       if (this.wxRule && this.wxRule.desc) {
@@ -16394,15 +16629,8 @@
       this.mouse.moved = true;
       this.lastInput = 'mouse';
       if (e.button === 0) {
-        this.autoMode = false;
-        this.autoTarget = null;
-        this.autoPack = null;
-        this.autoSteer = null;
-        this.autoEvade = null;
-        this.autoBlocked = 0;
-        this.autoDetour = null;
-        this.autoDecision = null;
-        this.syncAutoButton();
+        // 自动战斗期间点击屏幕不取消自动：关闭自动只认自动战斗按钮
+        if (this.autoMode) return;
         // 小地图区域不参与走位；首领阶段小地图已屏蔽，不能再拦截点击
         const bossUp = this.monsters.some(m => m.boss && !m.dead);
         const R = this.minimapRectNow();
@@ -16462,15 +16690,8 @@
     this._stick = DG.ui.stick(document.getElementById('stage'), {
       ignore: '.dg-top, .combat-bar, .auto-battle-btn, .pause-mask, .toast-wrap, .boss-wrap',
       onMove: (x, y) => {
-        this.autoMode = false;
-        this.autoTarget = null;
-        this.autoPack = null;
-        this.autoSteer = null;
-        this.autoEvade = null;
-        this.autoBlocked = 0;
-        this.autoDetour = null;
-        this.autoDecision = null;
-        this.syncAutoButton();
+        // 自动战斗期间拖动摇杆不打断自动战斗（关闭只认自动按钮）
+        if (this.autoMode) return;
         this.moveVec.x = x;
         this.moveVec.y = y;
         this.moveTarget = null;
@@ -16882,12 +17103,6 @@
   const DG = window.DG;
   const U = DG.util;
   const TILE = DG.scenes.dungeon.terrain.TILE;
-  // 已完成拆件重做的首领：投放时优先于普通首领出场
-  const REWORKED_BOSSES = [
-    'goatbrute', 'reaper', 'croc',
-    'mushroomgun', 'golem', 'eyehorror', 'mawflowerking', 'cauldron',
-    'crystalcrab', 'pinkdemon', 'pumpkinlord', 'octoking', 'mummyking'
-  ];
 
   Object.assign(DG.scenes.dungeon.prototype, {
   makeDecor() {
@@ -17459,35 +17674,48 @@
       if (pd > NEAR) continue;
       // 不贴脸刷怪：玩家就站在怪群位置上时先不激活，等拉开距离再说。
       // 自动战斗没有“等玩家走开”的耐心（AI 会把出生点当成落脚点静止），
-      // 所以自动模式下照常激活，但把出生点挪到玩家外侧，避免糊脸弹出
-      if (pd < 260 && !this.autoMode) continue;
+      // 所以自动模式下照常激活，但把出生点挪到玩家外侧，避免糊脸弹出；
+      // 正在混战时仍然不激活，防止凭空在角色身边围出一圈怪
+      if (pd < 260) {
+        if (!this.autoMode) continue;
+        let nearFight = false;
+        for (const m of this.monsters) {
+          if (!m.dead && !m.boss && U.dist(m, this.player) < 600) { nearFight = true; break; }
+        }
+        if (nearFight) continue;
+      }
       const pch = this.chunks[p.chunk];
       // 自动战斗需要自己找怪：距离已足够近时不再限制相邻区块，
       // 否则 AI 会在“隔一个区块”的怪群前反复踱步、怪永远不激活
       if (!this.autoMode && (!pch || Math.abs(pch.col - curCh.col) + Math.abs(pch.row - curCh.row) > 1)) continue;
       // 密室守卫：必须走到门口才惊醒，避免隔墙提前拉怪
       if (p.secret && pd > 380) continue;
-      // 自动模式下贴着玩家触发时，把出生点沿「玩家→怪群」方向外推，
-      // 让怪从外侧围上来，而不是直接刷在角色身上
+      // 自动模式下贴着玩家触发时，把出生点沿「玩家→怪群」方向外推 190px，
+      // 让怪从外侧围上来，而不是直接刷在角色身上；撞墙就绕着玩家转找空地
       let bx = p.x, by = p.y;
       if (pd < 260) {
-        const ax = p.x - this.player.x, ay = p.y - this.player.y;
-        const al = Math.hypot(ax, ay) || 1;
-        bx = this.player.x + ax / al * 190;
-        by = this.player.y + ay / al * 190;
+        const base = Math.atan2(p.y - this.player.y, p.x - this.player.x);
+        for (let k = 0; k < 8; k++) {
+          const ang = base + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 0.5;
+          const px = this.player.x + Math.cos(ang) * 190;
+          const py = this.player.y + Math.sin(ang) * 190;
+          if (!this.circleWall(px, py, this.player.r) && !this.circleProp(px, py, this.player.r)) {
+            bx = px; by = py;
+            break;
+          }
+        }
       }
       if (alive >= CAP) break;
       p.spawned = true;
       let slots = CAP - alive;
-      const pr = pd < 260 ? 6 : 3;
       // 密室：按随机方案出怪，可能是普通怪群、精英、精英+宝箱，或只有宝箱
       if (p.secret) {
         if (p.elite > 0) {
           const poolE = (this.def.elitePool && this.def.elitePool.length) ? this.def.elitePool : this.def.pool;
           for (let i = 0; i < p.elite && slots > 0; i++) {
             const ang = (i / Math.max(1, p.elite)) * Math.PI * 2 + U.rand(-0.4, 0.4);
-            const pos = this.nearestFloorPoint(bx + Math.cos(ang) * 46, by + Math.sin(ang) * 46, pr) ||
-              this.nearestFloorPoint(bx, by, pr) || { x: bx, y: by };
+            const pos = this.nearestFloorPoint(bx + Math.cos(ang) * 46, by + Math.sin(ang) * 46, 3) ||
+              this.nearestFloorPoint(bx, by, 3) || { x: bx, y: by };
             const m = this.spawnMonster(this.pickWeatherMonster(poolE), pos.x, pos.y, false, p.chunk);
             if (m) {
               this.promoteElite(m);
@@ -17504,8 +17732,8 @@
         }
         const count = Math.min(slots, p.count + (this.wxPackBonus || 0) + (this.extraPerPack || 0));
         for (let i = 0; i < count; i++) {
-          const pos = this.nearestFloorPoint(bx + U.rand(-46, 46), by + U.rand(-46, 46), pr) ||
-            this.nearestFloorPoint(bx, by, pr) || { x: bx, y: by };
+          const pos = this.nearestFloorPoint(bx + U.rand(-46, 46), by + U.rand(-46, 46), 3) ||
+            this.nearestFloorPoint(bx, by, 3) || { x: bx, y: by };
           if (this.spawnMonster(this.pickWeatherMonster(this.def.pool), pos.x, pos.y, false, p.chunk)) {
             slots--;
             alive++;
@@ -17517,8 +17745,8 @@
       const spread = (p.dense ? 30 : 46) * (this.wxSpreadMul || 1);
       const count = Math.min(slots, p.count + (this.wxPackBonus || 0) + (this.extraPerPack || 0));
       for (let i = 0; i < count; i++) {
-        const pos = this.nearestFloorPoint(bx + U.rand(-spread, spread), by + U.rand(-spread, spread), pr) ||
-          this.nearestFloorPoint(bx, by, pr) || { x: bx, y: by };
+        const pos = this.nearestFloorPoint(bx + U.rand(-spread, spread), by + U.rand(-spread, spread), 3) ||
+          this.nearestFloorPoint(bx, by, 3) || { x: bx, y: by };
         if (this.spawnMonster(this.pickWeatherMonster(this.def.pool), pos.x, pos.y, false, p.chunk)) {
           slots--;
           alive++;
@@ -17527,8 +17755,8 @@
       // 精英：图鉴大造型，按块额外投放一只（带专属招式读条）
       const eliteChance = (this.tune ? this.tune.eliteChance : 0.3) + (this.wxEliteBonus || 0);
       if (slots > 0 && this.def.elitePool && this.def.elitePool.length && U.chance(eliteChance)) {
-        const epos = this.nearestFloorPoint(bx + U.rand(-30, 30), by + U.rand(-30, 30), pr) ||
-          this.nearestFloorPoint(bx, by, pr) || { x: bx, y: by };
+        const epos = this.nearestFloorPoint(bx + U.rand(-30, 30), by + U.rand(-30, 30), 3) ||
+          this.nearestFloorPoint(bx, by, 3) || { x: bx, y: by };
         const m = this.spawnMonster(this.pickWeatherMonster(this.def.elitePool), epos.x, epos.y, false, p.chunk);
         if (m) {
           this.promoteElite(m);
@@ -17808,17 +18036,9 @@
   spawnBoss() {
     // 条件满足后首领在玩家附近（但不贴脸）的房间现身
     const pos = this.pickBossSpawn();
-    // 每关有指定首领，多数情况下由它坐镇；其余首领池作为重复挑战的变体
-    const pool = (this.def.bossPool && this.def.bossPool.length)
-      ? this.def.bossPool
-      : [this.def.bossId];
-    // 已拆件重做的首领优先投放：本关池内有它们就从池内挑，
-    // 池内没有则从全部重做首领中挑，确保每个关卡都能优先见到重做后的首领
-    let reworked = pool.filter((id) => REWORKED_BOSSES.indexOf(id) >= 0);
-    if (!reworked.length) reworked = REWORKED_BOSSES;
-    const bossId = Math.random() < 0.85
-      ? U.pick(reworked)
-      : (this.def.bossId && Math.random() < 0.8 ? this.def.bossId : U.pick(pool));
+    // 首领由关卡配置按章轮换投放（见 DG.data.dungeons 的 bossId），
+    // 相邻关卡不会重复，所有关卡都优先使用已拆件重做的首领
+    const bossId = this.def.bossId;
     const boss = this.spawnMonster(bossId, pos.x, pos.y, true);
     if (!boss) {
       // 首领配置缺失时直接结算撤离，避免流程卡在 bossIntro
@@ -20069,8 +20289,11 @@
     this.announce(`等级提升 · Lv.${now}`, 1900);
     this.syncLevelBadge(now, true);
     if (DG.audio) {
-      DG.audio.play('stageLevelup', { vol: 0.85 });
-      DG.audio.play('uiLevelup', { vol: 0.6, gap: 0.18 });
+      // 升级号角立刻起，清脆的 UI 升级音稍后叠上，两声错开避免糊在一起
+      DG.audio.play('stageLevelup', { vol: 1 });
+      setTimeout(() => {
+        if (!this.finished && DG.audio) DG.audio.play('uiLevelup', { vol: 0.7 });
+      }, 110);
     }
   },
   onMonsterDeath(m) {
@@ -20085,6 +20308,7 @@
     // 分裂出的小体不计击杀、不给经验金币，避免刷资源与提前触发首领
     if (!m.noLoot) {
       this.kills++;
+      this.lastKillTime = this.time;
       this.gainXp(m.xp);
       this.goldEarned += m.gold;
       this.updateWaveText();
@@ -20407,6 +20631,13 @@
     const curChunk = this.currentChunk();
     for (const m of this.monsters) {
       if (m.dead) continue;
+      // 记录上一帧位移：自动战斗的远程预判需要目标速度
+      if (dt > 0 && m._px != null) {
+        m._vx = (m.x - m._px) / dt;
+        m._vy = (m.y - m._py) / dt;
+      }
+      m._px = m.x;
+      m._py = m.y;
       m.flash = Math.max(0, m.flash - dt);
       m.atkTimer = Math.max(0, m.atkTimer - dt);
       m.shootTimer = Math.max(0, m.shootTimer - dt);
@@ -21364,9 +21595,10 @@
       const dist = Math.hypot(dx, dy);
       if (dist < 1) return { x: 0, y: 0 };
       const x = dx / dist, y = dy / dist;
-      const steps = Math.ceil(dist / 72);
+      // 步长小于最薄墙体，避免“直线看起来通”而实际撞墙
+      const steps = Math.ceil(dist / 32);
       for (let i = 1; i <= steps; i++) {
-        const t = Math.min(dist, i * 72);
+        const t = Math.min(dist, i * 32);
         const px = this.player.x + x * t, py = this.player.y + y * t;
         if (this.circleWall(px, py, this.player.r) || this.circleProp(px, py, this.player.r)) return null;
       }
@@ -21374,7 +21606,9 @@
     },
     autoSmoothDirection(next, weight) {
       const old = this.autoSteer;
-      if (!old) {
+      // 方向发生大角度反转时直接切换而不是插值：否则左右相反的寻路结果会被
+      // 平滑成 (0,0)，角色在墙边原地抽搐、永远走不出拐角
+      if (!old || old.x * next.x + old.y * next.y < 0.2) {
         this.autoSteer = { x: next.x, y: next.y };
         return next;
       }
@@ -21415,18 +21649,20 @@
       }
       return true;
     },
-    // 视线检测：隔着墙/可破坏立件时不要站桩输出，先绕过去或打碎挡路的道具
+    // 视线检测：隔着墙/可破坏立件时不要站桩输出，先绕过去或打碎挡路的道具。
+    // 采样步长必须小于最薄墙体（32px）：24px 采样会从薄墙中间穿过去，
+    // 造成“看得见、站桩射、弹道全被墙挡住”的零输出死锁
     autoLineClear(target) {
       if (!target) return false;
       const dx = target.x - this.player.x, dy = target.y - this.player.y;
       const d = Math.hypot(dx, dy);
       if (d < 32) return true;
-      const steps = Math.ceil(d / 24);
+      const steps = Math.ceil(d / 12);
       for (let i = 1; i < steps; i++) {
         const t = d * i / steps;
         const px = this.player.x + dx / d * t, py = this.player.y + dy / d * t;
-        if (this.circleWall(px, py, 3)) return false;
-        if (this.circleProp(px, py, 4)) return false;
+        if (this.circleWall(px, py, 6)) return false;
+        if (this.circleProp(px, py, 6)) return false;
       }
       return true;
     },
@@ -21488,6 +21724,9 @@
       // 还有没激活的怪群时，只打当前/相邻区块的怪；
       // 怪群全部激活后，剩下的怪无论多远都要清掉，否则无法触发首领
       const pendingPacks = (this.chunkPacks || []).some(p => !p.spawned && p !== this.autoIgnorePack);
+      // 长时间没有击杀（疑似被地形/怪群卡住）时放开“只打当前区块”的限制，
+      // 让 AI 能直接去清掉地图上残留的怪，避免在空区块里反复打转
+      const stalled = now - (this.lastKillTime == null ? now : this.lastKillTime) > 45;
       let best = null, bestScore = Infinity, bestDist = Infinity;
       if (!exploring) {
         for (const m of this.monsters) {
@@ -21499,7 +21738,7 @@
             return { x: m.x, y: m.y, monster: m, kind: 'boss' };
           }
           const mch = m.chunkIndex != null ? this.chunks[m.chunkIndex] : null;
-          if (pendingPacks && mch && curCh && Math.abs(mch.col - curCh.col) + Math.abs(mch.row - curCh.row) > 1 && !m.aggro) continue;
+          if (!stalled && pendingPacks && mch && curCh && Math.abs(mch.col - curCh.col) + Math.abs(mch.row - curCh.row) > 1 && !m.aggro) continue;
           // 优先级：距离为主，残血目标（配合处决）、远程与精英更值得先处理
           let score = d - (1 - m.hp / m.maxHp) * 70;
           if (m.ranged) score -= 30;
@@ -21822,6 +22061,32 @@
         m.autoStuckT = 0;
         m.autoStuckHp = m.hp;
       }
+      // 兜底：自动模式长时间零击杀（>30s）时，把 AI 死磕的那只怪挪到玩家外围的开阔地。
+      // 极少数怪会被隔间/墙体锁死、永远走不过来，不兜底就会卡死通关进度
+      if (now - (this.lastKillTime == null ? now : this.lastKillTime) < 30) return;
+      const goalM = this.autoGoal && this.autoGoal.monster;
+      if (!goalM || goalM.dead || goalM.boss) return;
+      if (now < (this.autoRelocateAt || 0)) return;
+      if (U.dist(this.player, goalM) < 260) return;
+      this.autoRelocateAt = now + 4;
+      for (let i = 0; i < 16; i++) {
+        const a = Math.PI * 2 * i / 16;
+        const rr = 360 + (i % 4) * 30;
+        const x = this.player.x + Math.cos(a) * rr;
+        const y = this.player.y + Math.sin(a) * rr;
+        if (this.circleWall(x, y, goalM.r) || this.circleProp(x, y, goalM.r)) continue;
+        goalM.x = goalM._px = x;
+        goalM.y = goalM._py = y;
+        goalM.spawnX = x;
+        goalM.spawnY = y;
+        goalM.aggro = true;
+        this.autoTarget = null;
+        this.autoGoal = null;
+        this.autoPack = null;
+        this.autoDecision = null;
+        this.autoSteer = null;
+        break;
+      }
     },
     autoCast() {
       if (this.player.hp <= 0) return;
@@ -21855,7 +22120,16 @@
           }
         }
         if (target) {
-          this.player.facing = U.angle(this.player, target);
+          let face = U.angle(this.player, target);
+          // 高速移动目标按弹道飞行时间取提前量，否则远程 AI 会对着残影一直放空
+          if (this.autoMode && this.autoIsRanged()) {
+            const vx = target._vx || 0, vy = target._vy || 0;
+            if (Math.hypot(vx, vy) > 40) {
+              const fly = U.dist(this.player, target) / ((this.basicSkill && this.basicSkill.speed) || 800);
+              face = U.angle(this.player, { x: target.x + vx * fly * 0.7, y: target.y + vy * fly * 0.7 });
+            }
+          }
+          this.player.facing = face;
           this.doBasic(this.player.facing);
         } else if (this.autoMode) {
           // 自动战斗：前方挡路的可破坏道具直接砸碎，避免被卡在障碍前
@@ -24781,6 +25055,7 @@
     gotoLogin() {
       this.stopDungeon();
       this.hideAssetMask();
+      if (DG.wake) DG.wake.disable();
       this.accountName = null;
       this.charIndex = -1;
       this.char = null;
@@ -24790,6 +25065,7 @@
 
     gotoCharacter() {
       this.stopDungeon();
+      if (DG.wake) DG.wake.disable();
       if (!this.account()) {
         this.gotoLogin();
         return;
@@ -24849,6 +25125,7 @@
         return;
       }
       // 镇内提示只在本次登录首次进入时出现，避免反复刷屏
+      if (DG.wake) DG.wake.enable();
       this.readyThen(() => DG.scenes.town.render(this.ui), '正在准备资源…');
     },
 
@@ -24898,6 +25175,8 @@
     startDungeon(def) {
       if (!this.char || !def) return;
       this.stopDungeon();
+      // 战斗中同样保持屏幕常亮
+      if (DG.wake) DG.wake.enable();
       // 每次进战斗都按当前设备像素比重置渲染倍率：
       // 既保证首帧角色清晰，也让上一次掉帧降档不会一直沿用
       this.setRenderScale(this.nativeRenderScale());

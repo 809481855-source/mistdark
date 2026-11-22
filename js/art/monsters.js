@@ -2458,7 +2458,7 @@
       s.flash = f;
     };
     s.img.onerror = () => { s.failed = true; };
-    s.img.src = src;
+    DG.assets.assign(s.img, src);
     texCache[src] = s;
     return s;
   }
