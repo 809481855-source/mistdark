@@ -63,6 +63,21 @@
       this.gotoLogin();
       // 登录界面已经渲染，撤掉静态启动画面（背景图若未到还有渐变兜底，不会黑屏）
       requestAnimationFrame(() => this.hideBoot());
+      this.registerServiceWorker();
+    },
+
+    // 注册本地缓存：线上服务器对所有资源返回 no-store，浏览器不会缓存，
+    // 重复打开都要重新下载；Service Worker 用 Cache Storage 把这部分兜住。
+    registerServiceWorker() {
+      if (!('serviceWorker' in navigator)) return;
+      const host = location.hostname;
+      // Service Worker 只能在 https 或本机调试时使用，file:// 双击打开时自动跳过
+      if (location.protocol !== 'https:' && host !== 'localhost' && host !== '127.0.0.1') return;
+      const start = () => {
+        navigator.serviceWorker.register('sw.js').catch(() => { /* 缓存不可用不影响游戏 */ });
+      };
+      if (document.readyState === 'complete') start();
+      else window.addEventListener('load', start);
     },
 
     // 撤掉 index.html 中的静态启动画面

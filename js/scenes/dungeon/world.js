@@ -739,16 +739,64 @@
     }
     return null;
   },
-  // 按天气倾向加权选怪：偏好类型 2.6 倍权重，其余保留随机性
+  // 场景明度（0~1）：取当前地貌地面的感知亮度，用于怪物配色匹配
+  sceneLuma() {
+    if (this._sceneLuma != null) return this._sceneLuma;
+    const T = DG.scenes.dungeon.terrain;
+    const st = this.mapStyle || (T.STYLES && T.STYLES[this.def.mapStyle]) || (T.STYLES && T.STYLES.grove) || {};
+    const hex = st.ground || (st.floor && st.floor[0]) || '#1a1a1a';
+    this._sceneLuma = this.colorLuma(hex);
+    return this._sceneLuma;
+  },
+  colorLuma(hex) {
+    if (!hex || hex.charAt(0) !== '#' || hex.length < 7) return 0.5;
+    const n = parseInt(hex.slice(1), 16);
+    const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+    return (r * 0.299 + g * 0.587 + b * 0.114) / 255;
+  },
+  monsterLuma(id) {
+    if (!this._monsterLumaCache) this._monsterLumaCache = {};
+    const hit = this._monsterLumaCache[id];
+    if (hit != null) return hit;
+    const t = DG.data.monsters[id];
+    const v = t ? this.colorLuma(t.color) : 0.5;
+    this._monsterLumaCache[id] = v;
+    return v;
+  },
+  // 配色匹配：暗场景不投放蓝白等高亮怪物；亮场景优先投放高亮怪物。
+  // 只影响“选哪一种怪”，不改怪物数量与刷新密度。
+  toneWeight(id) {
+    const scene = this.sceneLuma();
+    const luma = this.monsterLuma(id);
+    if (scene <= 0.23 && luma >= 0.56) return 0;
+    if (scene >= 0.24) {
+      if (luma >= 0.56) return 1.9;
+      if (luma <= 0.34) return 0.7;
+    }
+    return 1;
+  },
+  // 按天气倾向加权选怪：偏好类型 2.6 倍权重，其余保留随机性；
+  // 再叠加场景明度权重，避免亮色怪物出现在过暗的场景里。
   pickWeatherMonster(pool) {
+    if (!pool || !pool.length) return null;
     const bias = this.wxSpawnBias;
-    if (!bias || !bias.length || !pool || !pool.length) return U.pick(pool);
     let total = 0;
     const weights = new Array(pool.length);
     for (let i = 0; i < pool.length; i++) {
-      const w = bias.indexOf(pool[i]) >= 0 ? 2.6 : 1;
+      let w = bias && bias.indexOf(pool[i]) >= 0 ? 2.6 : 1;
+      w *= this.toneWeight(pool[i]);
       weights[i] = w;
       total += w;
+    }
+    // 整池都不匹配（极少见）：退到与场景明度最接近的一只，保证怪物不会断档
+    if (total <= 0) {
+      const scene = this.sceneLuma();
+      let best = pool[0], bestD = Infinity;
+      for (const id of pool) {
+        const d = Math.abs(this.monsterLuma(id) - scene);
+        if (d < bestD) { bestD = d; best = id; }
+      }
+      return best;
     }
     let r = Math.random() * total;
     for (let i = 0; i < pool.length; i++) {

@@ -783,14 +783,16 @@
         ctx.fill();
       }
 
-      // 素材怪不会像几何怪那样整体变白：受击时补一圈白光轮廓，保证每一刀都有清晰反馈
-      if ((artBoss || artMob) && m.flash > 0) {
+      // 受击反馈：所有怪物统一补一圈白光。素材怪依赖各自的闪白贴图，
+      // 部分分件/缺图素材不会变色，这里用轮廓光保证任何怪物、任何攻击都有清晰回馈
+      if (m.flash > 0) {
         const fa = Math.min(1, m.flash / 0.13);
+        const lit = artBoss || artMob;
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = fa * 0.5;
-        ctx.strokeStyle = '#fff0da';
-        ctx.lineWidth = 3;
+        ctx.globalAlpha = fa * (lit ? 0.5 : 0.42);
+        ctx.strokeStyle = lit ? '#fff0da' : '#fffdf2';
+        ctx.lineWidth = lit ? 3 : 2.6;
         ctx.beginPath();
         ctx.ellipse(0, -m.r * 0.12, m.r * 0.92, m.r * 1.12, 0, 0, Math.PI * 2);
         ctx.stroke();

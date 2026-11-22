@@ -382,23 +382,23 @@
   const ACT_TEMPLATES = {
     1: [
       { pool: ['wolf', 'skeleton', 'mistwalker', 'pea', 'foxraider'], elitePool: ['mawflower'], bossPool: ['eyehorror', 'croc', 'mawfish'] },
-      { pool: ['skeleton', 'musketeer', 'pumpkin', 'slime', 'frostwolf'], elitePool: ['plaguedoc'], bossPool: ['mummyking', 'eyehorror', 'croc'] },
+      { pool: ['skeleton', 'musketeer', 'pumpkin', 'slime', 'frostwolf', 'bat', 'cowlbandit'], elitePool: ['plaguedoc'], bossPool: ['mummyking', 'eyehorror', 'croc'] },
       { pool: ['wolf', 'fleece', 'foxraider', 'cowlbandit', 'bat'], elitePool: ['mawflower', 'plaguedoc'], bossPool: ['croc', 'mummyking', 'mawfish'] }
     ],
     2: [
       { pool: ['beetle', 'cinderraven', 'candle', 'urchin', 'bat'], elitePool: ['warlock'], bossPool: ['cauldron', 'golem', 'blueogre'] },
-      { pool: ['skeleton', 'boneknight', 'mistwalker', 'venomlisk', 'slime'], elitePool: ['plaguedoc'], bossPool: ['abysseye', 'goatbrute', 'cauldron'] },
+      { pool: ['skeleton', 'boneknight', 'mistwalker', 'venomlisk', 'slime', 'urchin', 'cinderraven'], elitePool: ['plaguedoc'], bossPool: ['abysseye', 'goatbrute', 'cauldron'] },
       { pool: ['wolf', 'pumpkin', 'foxraider', 'bulwark', 'deepfin'], elitePool: ['mawflower'], bossPool: ['golem', 'blueogre', 'goatbrute'] }
     ],
     3: [
       { pool: ['deepfin', 'angler', 'urchin', 'frostslime', 'bat'], elitePool: ['warlock'], bossPool: ['piratecrab', 'octoking', 'silverknight'] },
-      { pool: ['frostwolf', 'frostslime', 'fleece', 'bulwark', 'mistwalker'], elitePool: ['plaguedoc'], bossPool: ['snakeking', 'silverknight', 'octoking'] },
+      { pool: ['frostwolf', 'frostslime', 'fleece', 'bulwark', 'mistwalker', 'cowlbandit', 'deepfin'], elitePool: ['plaguedoc'], bossPool: ['snakeking', 'silverknight', 'octoking'] },
       { pool: ['cowlbandit', 'deepfin', 'venomlisk', 'bat', 'skeleton'], elitePool: ['warlock'], bossPool: ['octoking', 'piratecrab', 'snakeking'] }
     ],
     4: [
       { pool: ['bulwark', 'emberdrake', 'venomlisk', 'mistwalker', 'cinderraven'], elitePool: ['warlock', 'plaguedoc'], bossPool: ['reaper', 'crystalcrab', 'hierophant'] },
-      { pool: ['boneknight', 'skeleton', 'pumpkin', 'candle', 'beetle'], elitePool: ['plaguedoc'], bossPool: ['shadowdemon', 'hierophant', 'crystalcrab'] },
-      { pool: ['frostwolf', 'frostslime', 'fleece', 'bulwark', 'wolf'], elitePool: ['warlock'], bossPool: ['crystalcrab', 'reaper', 'shadowdemon'] }
+      { pool: ['boneknight', 'skeleton', 'pumpkin', 'candle', 'beetle', 'cinderraven', 'urchin'], elitePool: ['plaguedoc'], bossPool: ['shadowdemon', 'hierophant', 'crystalcrab'] },
+      { pool: ['frostwolf', 'frostslime', 'fleece', 'bulwark', 'wolf', 'emberdrake', 'cinderraven'], elitePool: ['warlock'], bossPool: ['crystalcrab', 'reaper', 'shadowdemon'] }
     ]
   };
   // 追加关卡的临时强度上限（随后会按 80 关统一重排为单调曲线）

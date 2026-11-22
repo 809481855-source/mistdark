@@ -453,6 +453,11 @@
             this.addFloater(t.x + U.rand(-6, 6), t.y - 74, U.fmt(t.acc), '#eef7ff', 19);
             t.acc = 0;
           }
+          // 持续伤害也别让怪物“毫无反应”：和旋风斩一样每 0.5 秒补一次闪白
+          for (const m of this.monsters) {
+            if (m.dead) continue;
+            if (U.dist(t, m) <= t.r + m.r + 8) m.flash = Math.max(m.flash, 0.13);
+          }
         }
       }
     },
