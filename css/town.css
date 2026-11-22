@@ -179,13 +179,14 @@
 .town-screen{
   display:block;
   padding:0;
-  overflow:hidden;
-  background:#07080b;
+  overflow:visible;
+  background:transparent;
 }
 .town-screen::after{display:none;}
 
+/* 场景层按舞台原点铺开（舞台切到 810×1680 时地图多出的部分由 #stage 裁掉），HUD 仍在 720×1440 内 */
 .town-world{
-  position:absolute;left:0;top:0;
+  position:absolute;left:var(--ui-ox,0px);top:var(--ui-oy,0px);
   overflow:hidden;
   z-index:0;
 }

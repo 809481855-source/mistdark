@@ -740,56 +740,6 @@
 }
 .secret-foot .btn.off{filter:grayscale(.55) brightness(.62);}
 
-/* ============ 任务面板 ============ */
-.quest-card{
-  border:1px solid #2d3038;border-radius:6px;padding:14px 16px;
-  background:linear-gradient(180deg,rgba(255,255,255,.022),rgba(255,255,255,0));
-  margin-bottom:12px;
-}
-.quest-card.main{
-  border-color:rgba(201,162,95,.34);
-  background:
-    radial-gradient(circle at 100% 0%, rgba(201,162,95,.08), transparent 60%),
-    rgba(255,255,255,.015);
-}
-.quest-card.ready{border-color:var(--gold);box-shadow:inset 0 0 18px rgba(201,162,95,.1);}
-.quest-card.done{opacity:.82;}
-.q-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;}
-.q-head b{font-size:15.5px;color:var(--text);letter-spacing:1px;font-weight:600;}
-.quest-card.main .q-head b{color:var(--gold-2);}
-.q-progress{font-size:12px;color:var(--muted);letter-spacing:.5px;white-space:nowrap;}
-.q-desc{font-size:13px;color:#c4bdae;line-height:1.75;margin-top:9px;}
-.q-lore{font-size:12px;color:var(--dim);line-height:1.7;margin-top:7px;font-style:italic;}
-.q-target{font-size:12.5px;color:var(--gold-dim);margin-top:9px;letter-spacing:.4px;}
-.q-target .ok{color:var(--ok);font-style:normal;}
-.q-bar{
-  height:6px;border-radius:3px;margin-top:10px;
-  background:rgba(0,0,0,.45);
-  border:1px solid rgba(255,255,255,.05);
-  overflow:hidden;
-}
-.q-bar i{
-  display:block;height:100%;border-radius:3px;
-  background:linear-gradient(90deg,var(--gold-dim),var(--gold-2));
-  transition:width .3s ease-out;
-}
-.quest-card.ready .q-bar i{background:linear-gradient(90deg,#8fbf7a,#c6e39b);}
-.q-foot{
-  display:flex;align-items:center;justify-content:space-between;gap:12px;
-  margin-top:12px;flex-wrap:wrap;
-}
-.q-foot .btn{height:34px;padding:0 18px;font-size:12.5px;flex:0 0 auto;}
-.qg-gold{font-size:12px;color:var(--gold-2);}
-.qg-xp{font-size:12px;color:#a9c6ec;margin-left:10px;}
-.qg-tree{font-size:12px;color:#b7e0a8;margin-left:10px;}
-.qg-skill{font-size:12px;color:#d8bcf0;margin-left:10px;}
-.quest-sub{
-  font-size:12px;color:var(--gold-dim);letter-spacing:2px;
-  margin:18px 0 10px;
-}
-.quest-grid{display:flex;flex-direction:column;gap:12px;}
-.quest-grid .quest-card{margin-bottom:0;}
-
 /* ============ 技能树 ============ */
 .tree-list{display:flex;flex-direction:column;gap:14px;}
 .tree-block{
@@ -883,7 +833,6 @@
 .modal .sheet,
 .modal .detail-box,
 .modal .skill-row,
-.modal .quest-card,
 .modal .result-cell,
 .modal .loot-area,
 .modal .tree-block,
@@ -893,11 +842,6 @@
   border-color:#c2a97f;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.45), inset 0 -1px 0 rgba(90,60,30,.10);
 }
-.modal .quest-card.main{
-  background:linear-gradient(180deg,rgba(255,248,230,.86),rgba(232,214,180,.56));
-  border-color:#b8934f;
-}
-.modal .quest-card.ready{border-color:#a97c2e;box-shadow:inset 0 0 18px rgba(169,124,46,.12);}
 .modal .equip-slot{padding:10px;}
 
 /* ---------- 深色凹槽：物品格 / 技能图标 / 阶级徽章保持深底浅字 ---------- */
@@ -916,11 +860,6 @@
 .modal .item-stat span:last-child{color:#2e2418;}
 .modal .skill-desc{color:#463728;}
 .modal .skill-desc em{color:#8f5a17;}
-.modal .q-desc{color:#463728;}
-.modal .q-lore{color:#7b6850;}
-.modal .qg-xp{color:#3c6396;}
-.modal .qg-tree{color:#4d7938;}
-.modal .qg-skill{color:#6b4a9a;}
 .modal .skillup-note{color:#3c6396;}
 /* 点数徽章：数字必须清晰可读（此前被 .meta b 的深色覆盖成「深底深字」） */
 .modal .point-badge{
@@ -1035,15 +974,6 @@
 .modal .skill-plus .cost{font-size:16px;}
 .modal .skill-plus .btn{width:auto;min-width:238px;height:98px;padding:0 18px;font-size:28px;}
 .modal .modal-body .note{font-size:18px;line-height:1.85;}
-.modal .q-head b{font-size:23px;}
-.modal .q-progress{font-size:18px;}
-.modal .q-desc{font-size:20px;}
-.modal .q-lore{font-size:18px;}
-.modal .q-target{font-size:19px;}
-.modal .q-foot{gap:14px;}
-.modal .q-foot .btn{height:98px;padding:0 22px;font-size:26px;}
-.modal .qg-gold,.modal .qg-xp,.modal .qg-tree,.modal .qg-skill{font-size:18px;}
-.modal .quest-sub{font-size:19px;}
 .modal .tree-head b{font-size:21px;}
 .modal .tree-head .meta{font-size:17px;}
 .modal .tree-nodes{grid-template-columns:repeat(2,1fr);gap:10px;}
@@ -1127,20 +1057,6 @@
 .modal .skill-plus .btn{min-width:150px;width:auto;height:98px;padding:0 10px;font-size:28px;}
 .modal .skill-plus .cost{order:0;margin:0;font-size:16px;color:#6a5840;}
 
-/* 任务卡：奖励与领取按钮同一行，减少卡片高度 */
-/* 奖励在左、状态/按钮在右；奖励多时在左列内换行，不在按钮下方留大片空白 */
-.modal .q-foot{display:flex;flex-wrap:nowrap;align-items:center;gap:14px;}
-.modal .q-rewards{flex:1 1 auto;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;}
-.modal .q-foot .btn{flex:0 0 auto;margin-left:auto;min-width:190px;height:98px;padding:0 12px;font-size:26px;}
-/* 未完成状态用轻量状态签，避免禁用大按钮占据整行 */
-.modal .q-state{
-  flex:0 0 auto;margin-left:auto;
-  padding:8px 18px;border:1px solid #c2a97f;border-radius:22px;
-  background:rgba(255,250,238,.55);
-  font-size:18px;line-height:1.3;letter-spacing:1px;color:#7b6850;
-  white-space:nowrap;
-}
-
 /* 标题行右侧的次要按钮（重置等）：紧凑宽度，与点数徽章保持同一行 */
 .modal .section-label{flex-wrap:wrap;row-gap:8px;}
 .modal .section-label .meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;}
@@ -1153,7 +1069,6 @@
 .modal .skill-name .key-tip,
 .modal .skill-next,
 .modal .skill-plus .cost,
-.modal .q-progress,
 .modal .modal-body .note,
 .modal .settings-note,
 .modal .compare-note,
@@ -1182,7 +1097,7 @@
 .modal-body::-webkit-scrollbar-thumb:hover{background:#8f7550;}
 
 
-/* ================= 装备界面（PSD 810×1680 等比缩放） ================= */
+/* ================= 装备界面（PSD 810×1680 原生尺寸铺满屏幕） ================= */
 .eq-screen{
   position:absolute;inset:0;z-index:56;overflow:hidden;
   background:#b0a086;pointer-events:auto;
@@ -1190,7 +1105,7 @@
 }
 .eq-canvas{
   position:absolute;left:0;top:0;width:810px;height:1680px;
-  transform:scale(.888889);transform-origin:0 0;
+  transform-origin:left top;will-change:transform;
 }
 .eq-bg{
   position:absolute;left:0;top:0;width:810px;height:365px;
@@ -1202,7 +1117,7 @@
   text-shadow:0 2px 0 #2a1608,0 0 10px rgba(0,0,0,.85);
 }
 .eq-close{
-  position:absolute;left:735px;top:141px;width:55px;height:53px;padding:0;border:0;
+  position:absolute;left:auto;right:calc(20px + var(--eq-crop,0px));top:141px;width:55px;height:53px;padding:0;border:0;
   background:url("../assets/ui/public/dialog-close.png") center/100% 100% no-repeat;
   cursor:pointer;
 }
@@ -1251,10 +1166,10 @@
   background:url("../assets/ui/equip/cell.png") 0 0/100% 100% no-repeat;
 }
 .eq-cell:active{transform:scale(.96);}
-.eq-cell.empty{opacity:.45;pointer-events:none;}
+.eq-cell.empty{pointer-events:none;}
 .eq-cell-label{
   position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-  font-size:22px;letter-spacing:2px;color:#4b351d;
+  font-size:24px;letter-spacing:1px;color:#654a30;
 }
 .eq-frame{position:absolute;left:-3px;top:-2px;width:98px;height:96px;pointer-events:none;}
 .eq-glyph{
@@ -1302,11 +1217,12 @@
   background:url("../assets/ui/equip/tab-bar.png") 0 0/100% 100% no-repeat;
 }
 .eq-tab-pill{
-  position:absolute;top:0;width:120px;height:69px;transition:left .16s ease;
+  position:absolute;top:0;width:118px;height:69px;transition:left .16s ease;
   background:url("../assets/ui/equip/tab-on.png") 0 0/100% 100% no-repeat;
 }
 .eq-tab{
-  position:absolute;top:0;width:120px;height:69px;padding:0;border:0;background:none;
+  /* 三个页签按 125 间距排布，宽度收 2px，最后一个正好落在 368 的页签底框内 */
+  position:absolute;top:0;width:118px;height:69px;padding:0;border:0;background:none;
   font-size:24px;font-weight:700;letter-spacing:2px;color:#96714a;cursor:pointer;
 }
 .eq-tab.on{color:#fff4dd;text-shadow:0 1px 2px #7a3610;}
@@ -1316,15 +1232,16 @@
   color:#f6e6c6;text-shadow:0 1px 2px rgba(0,0,0,.6);
 }
 .eq-btn:active{transform:scale(.96);filter:brightness(.94);}
-.eq-btn.stash{left:398px;background-image:url("../assets/ui/public/btn-primary-brown.png");}
-.eq-btn.dismantle{left:536px;background-image:url("../assets/ui/public/btn-primary-red.png");}
+.eq-btn.stash{left:398px;background-image:url("../assets/ui/public/btn-primary-red.png");}
+.eq-btn.dismantle{left:536px;background-image:url("../assets/ui/public/btn-primary-brown.png");}
 .eq-cap{
   position:absolute;left:0;right:0;top:94px;height:34px;line-height:34px;text-align:center;
   font-size:20px;color:#7a5a35;
 }
 .eq-cap b{color:#2f2418;}
 .eq-grid-wrap{
-  position:absolute;left:36px;top:144px;width:603px;height:361px;
+  /* 高度必须正好等于 3 行：92×3 + 24×2 = 324，多出来会把第 4 行的彩色框顶边露成细条 */
+  position:absolute;left:36px;top:144px;width:603px;height:324px;
   overflow-y:auto;overflow-x:hidden;touch-action:pan-y;scrollbar-width:none;
 }
 .eq-grid-wrap::-webkit-scrollbar,.eq-stash-grid-wrap::-webkit-scrollbar{display:none;}
@@ -1373,3 +1290,231 @@
 }
 .eq-dbtn.red{background-image:url("../assets/ui/public/btn-primary-red.png");}
 .eq-dbtn:active{transform:scale(.95);filter:brightness(.94);}
+
+/* ============================================================
+   任务面板（主线 / 悬赏）
+   ------------------------------------------------------------
+   只出现在公用纸面弹框内：外壳、页签与按钮全部复用
+   .modal / .tab-btn / .btn，不新增图片资源。
+   状态色：进行中=褐、可领取=金、已完成=绿、待推进=虚线灰。
+   ============================================================ */
+.quest-panel{display:flex;flex-direction:column;gap:14px;}
+.quest-panel .tab-bar{gap:10px;margin-bottom:0;}
+.quest-panel .tab-btn{
+  flex:1 1 0;justify-content:center;
+  display:inline-flex;align-items:center;gap:8px;
+  padding:0 12px;
+}
+.qp-tab-num{
+  font-style:normal;font-size:16px;font-weight:600;letter-spacing:.5px;
+  padding:1px 8px;border-radius:10px;
+  color:#6a5840;background:rgba(143,90,23,.12);
+  border:1px solid rgba(150,113,60,.35);
+}
+.tab-btn.sel .qp-tab-num{
+  color:#fff8ea;background:rgba(255,248,234,.16);
+  border-color:rgba(255,248,234,.4);
+}
+.qp-tab-dot{
+  width:11px;height:11px;border-radius:50%;
+  background:#c8442f;box-shadow:0 0 0 3px rgba(200,68,47,.16);
+  animation:qp-pulse 1.6s ease-in-out infinite;
+}
+@keyframes qp-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.25);opacity:.7}}
+
+.qp-view{display:flex;flex-direction:column;gap:12px;}
+
+/* ---------- 主线：当前任务 ---------- */
+.qp-hero{
+  position:relative;
+  padding:16px 18px 18px;
+  border:1px solid #b8934f;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(169,124,46,.14), transparent 58%),
+    linear-gradient(180deg,rgba(255,250,238,.9),rgba(233,216,183,.62));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.6), inset 0 -1px 0 rgba(90,60,30,.12);
+}
+.qp-hero.ready{
+  border-color:#a97c2e;
+  box-shadow:inset 0 0 26px rgba(169,124,46,.16), inset 0 1px 0 rgba(255,255,255,.6);
+}
+.qp-hero.done{border-color:#8faa74;background:linear-gradient(180deg,rgba(250,250,240,.86),rgba(216,222,198,.6));}
+.qp-hero-head{display:flex;align-items:center;gap:14px;}
+.qp-step{
+  flex:0 0 auto;width:64px;height:64px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  border-radius:50%;border:1px solid #b8934f;
+  background:radial-gradient(circle at 40% 30%,#fff8ea,#e2c892 72%);
+  box-shadow:inset 0 0 0 3px rgba(255,255,255,.35), 0 2px 6px rgba(120,85,35,.18);
+}
+.qp-step b{font-size:24px;line-height:1;color:#7d4c12;}
+.qp-step span{font-size:12px;line-height:1;color:#8f7550;letter-spacing:1px;}
+.qp-hero-id{flex:1;min-width:0;}
+.qp-kicker{font-size:15px;line-height:1;letter-spacing:3px;color:#8f5a17;}
+.qp-hero-id h4{
+  margin:7px 0 0;
+  font-size:24px;line-height:1.2;font-weight:800;letter-spacing:1px;color:#33291d;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+
+/* ---------- 状态签 ---------- */
+.qp-tag{
+  flex:0 0 auto;
+  display:inline-flex;align-items:center;gap:6px;
+  padding:7px 14px;border-radius:20px;
+  border:1px solid #c2a97f;background:rgba(255,250,238,.6);
+  font-size:16px;line-height:1;letter-spacing:1px;color:#7b6850;
+  white-space:nowrap;
+}
+.qp-tag.ready{
+  color:#7a3d0c;border-color:#a97c2e;font-weight:700;
+  background:linear-gradient(180deg,#f6e2b6,#e4c88f);
+  box-shadow:0 0 12px rgba(169,124,46,.22);
+}
+.qp-tag.ready::before{
+  content:"";width:8px;height:8px;border-radius:50%;
+  background:#b5651c;box-shadow:0 0 8px rgba(181,101,28,.85);
+}
+.qp-tag.done{color:#3f6b30;border-color:#8faa74;background:rgba(143,170,116,.16);}
+.qp-tag.todo{color:#9a8a72;border-style:dashed;background:transparent;}
+
+/* ---------- 任务文案 ---------- */
+.qp-lore{margin:14px 0 0;font-size:18px;line-height:1.7;font-style:italic;color:#7b6850;}
+.qp-desc{margin:10px 0 0;font-size:19px;line-height:1.7;color:#463728;}
+.qp-objective{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  margin-top:14px;padding:10px 14px;
+  border:1px dashed rgba(150,113,60,.5);
+  background:rgba(255,250,238,.5);
+}
+.qp-objective > span{font-size:15px;letter-spacing:2px;color:#8f7550;}
+.qp-objective b{font-size:19px;color:#4d3c2a;}
+.qp-objective em{margin-left:auto;font-style:normal;font-size:16px;color:#8f7550;}
+.qp-objective em.ok{color:#3f6b30;font-weight:700;}
+
+/* ---------- 进度 ---------- */
+.qp-progress-row{
+  display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+  margin-top:14px;font-size:16px;color:#6a5840;
+}
+.qp-progress-row b{font-size:18px;color:#7d4c12;}
+.qp-bar{
+  height:14px;margin-top:8px;border-radius:7px;overflow:hidden;
+  background:rgba(90,60,30,.16);
+  box-shadow:inset 0 2px 4px rgba(90,60,30,.22);
+}
+.qp-bar i{
+  display:block;height:100%;border-radius:7px;
+  background:linear-gradient(90deg,#a97c2e,#e6c98b);
+  box-shadow:0 0 8px rgba(169,124,46,.35);
+  transition:width .3s ease-out;
+}
+.qp-bounty.ready .qp-bar i{background:linear-gradient(90deg,#7fae63,#c0dd9a);}
+
+/* ---------- 奖励徽记 ---------- */
+.qp-rewards{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:14px;}
+.qp-chip{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:4px 10px 4px 4px;border-radius:4px;
+  border:1px solid rgba(150,113,60,.35);
+  background:rgba(255,250,238,.62);
+  font-size:16px;font-weight:600;line-height:1.35;color:#4d3c2a;
+}
+.qp-chip i{
+  width:26px;height:26px;border-radius:3px;
+  display:inline-flex;align-items:center;justify-content:center;
+  font-style:normal;font-size:14px;font-weight:700;line-height:1;
+  color:#fff8ea;background:#8f5a17;
+}
+.qp-chip.gold i{background:#a97c2e;}
+.qp-chip.xp i{background:#4a6f9e;}
+.qp-chip.tree i{background:#5d7f47;}
+.qp-chip.skill i{background:#6b4a9a;}
+
+/* ---------- 操作区 ---------- */
+.qp-actions{display:flex;gap:12px;margin-top:16px;}
+.qp-actions .btn{flex:1 1 0;min-width:0;}
+.qp-go{width:100%;margin-top:2px;}
+
+/* ---------- 后续主线 ---------- */
+.qp-section{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  margin-top:2px;font-size:17px;letter-spacing:2px;color:#8f5a17;
+}
+.qp-section em{font-style:normal;font-size:15px;letter-spacing:.5px;color:#8f7550;}
+.qp-next-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;}
+.qp-next{
+  display:flex;align-items:center;gap:12px;
+  padding:9px 14px;border:1px solid #c2a97f;
+  background:rgba(255,250,238,.42);
+}
+.qp-next b{
+  flex:0 0 auto;width:34px;height:34px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  border:1px solid #c2a97f;background:rgba(255,250,238,.7);
+  font-size:15px;color:#8f7550;line-height:1;
+}
+.qp-next-name{
+  flex:1 1 auto;min-width:0;font-size:18px;color:#4d3c2a;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.qp-next-stage{
+  flex:0 0 auto;max-width:150px;font-size:15px;color:#8f7550;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.qp-next .qp-tag{padding:4px 10px;font-size:14px;}
+
+/* ---------- 悬赏 ---------- */
+.qp-sum{display:flex;gap:10px;}
+.qp-sum span{
+  flex:1 1 0;
+  display:flex;align-items:baseline;justify-content:center;gap:8px;
+  padding:9px 10px;border:1px solid #c2a97f;
+  background:rgba(255,250,238,.55);
+  font-size:16px;color:#6a5840;
+}
+.qp-sum b{font-size:24px;line-height:1;color:#7d4c12;}
+.qp-hint{
+  padding:10px 14px;border-left:3px solid #b8934f;
+  background:rgba(255,250,238,.5);
+  font-size:16px;line-height:1.65;color:#6a5840;
+}
+.qp-bounty-list{display:flex;flex-direction:column;gap:10px;}
+.qp-bounty{
+  display:flex;gap:14px;
+  padding:14px 16px 16px;
+  border:1px solid #c2a97f;
+  background:linear-gradient(180deg,rgba(255,250,238,.62),rgba(228,210,176,.42));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.5);
+}
+.qp-bounty.ready{
+  border-color:#a97c2e;
+  box-shadow:inset 0 0 20px rgba(169,124,46,.14), inset 0 1px 0 rgba(255,255,255,.5);
+}
+.qp-bounty-icon{
+  flex:0 0 auto;width:58px;height:58px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  border:1px solid #b8934f;
+  background:radial-gradient(circle at 38% 30%,#fff8ea,#ddc391 74%);
+  box-shadow:inset 0 0 0 3px rgba(255,255,255,.32);
+  font-size:26px;font-weight:800;line-height:1;color:#7d4c12;
+}
+.qp-bounty.ready .qp-bounty-icon{
+  box-shadow:inset 0 0 0 3px rgba(255,255,255,.32), 0 0 14px rgba(169,124,46,.4);
+}
+.qp-bounty-main{flex:1;min-width:0;}
+.qp-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;}
+.qp-head b{font-size:20px;font-weight:700;letter-spacing:.5px;color:#33291d;}
+.qp-progress{flex:0 0 auto;font-size:16px;letter-spacing:.5px;color:#8f7550;}
+.qp-bounty.ready .qp-progress{color:#7d4c12;font-weight:700;}
+.qp-bounty .qp-desc{margin-top:6px;font-size:17px;line-height:1.6;}
+.qp-bounty .qp-bar{height:12px;margin-top:10px;}
+.qp-bounty .qp-foot{display:flex;align-items:center;gap:12px;margin-top:12px;flex-wrap:nowrap;}
+.qp-bounty .qp-rewards{flex:1 1 auto;min-width:0;margin-top:0;gap:6px;}
+.qp-bounty .qp-rewards .qp-chip{padding:3px 8px 3px 3px;font-size:15px;}
+.qp-bounty .qp-rewards .qp-chip i{width:22px;height:22px;font-size:12px;}
+.qp-bounty .qp-foot .btn{
+  flex:0 0 auto;margin-left:auto;
+  min-width:150px;height:98px;padding:0 12px;font-size:26px;
+}
+

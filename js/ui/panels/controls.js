@@ -37,12 +37,28 @@
       const sfx = cur.audio !== false;
       const amb = typeof cur.ambientVol === 'number' ? cur.ambientVol : 100;
       const music = cur.music !== false;
+      const screen = cur.screen || 'std';
+      const screenOpts = [
+        ['max', '最大屏'],
+        ['short', '短屏'],
+        ['std', '9:16']
+      ];
 
       body.innerHTML =
         `<div class="setting-row">` +
           `<div class="setting-title">${groups[0].title}</div>` +
           `<div class="setting-desc">${groups[0].desc}</div>` +
           `<div class="seg">${segs}</div>` +
+        `</div>` +
+        `<div class="setting-row">` +
+          `<div class="setting-title">屏幕尺寸</div>` +
+          `<div class="setting-desc">仅竖版手机：最大屏 810×1680 · 短屏 720×1680 · 其他屏幕按 9:16（720×1440）。` +
+          `场景固定按 810×1680 绘制，选小屏只裁掉边缘背景；界面保持 720×1440 居中不动。</div>` +
+          `<div class="seg">` +
+            screenOpts.map(o =>
+              `<button class="seg-btn${screen === o[0] ? ' sel' : ''}" data-screen="${o[0]}">${o[1]}</button>`
+            ).join('') +
+          `</div>` +
         `</div>` +
         `<div class="setting-row">` +
           `<div class="setting-title">天气音效</div>` +
@@ -71,6 +87,14 @@
           DG.settings.set({ inputMode: btn.getAttribute('data-val') });
           render();
           if (onChanged) onChanged(DG.settings.get());
+        });
+      });
+      body.querySelectorAll('.seg-btn[data-screen]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          DG.settings.set({ screen: btn.getAttribute('data-screen') });
+          if (DG.game && DG.game.applyScreen) DG.game.applyScreen();
+          if (DG.ui && DG.ui.toast) DG.ui.toast('屏幕尺寸已切换', 'gold');
+          render();
         });
       });
       body.querySelectorAll('.seg-btn[data-audio]').forEach(btn => {

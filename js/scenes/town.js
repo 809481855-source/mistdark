@@ -9,7 +9,7 @@
 
   // ---------- 营地地图参数 ----------
   const MAP_W = 2504, MAP_H = 1680;               // 原图尺寸
-  const VIEW_W = 720, VIEW_H = 1440;              // 舞台逻辑尺寸
+  const VIEW_W = 810, VIEW_H = 1680;              // 场景按最大屏尺寸绘制
   const WORLD_W = Math.round(MAP_W * VIEW_H / MAP_H); // 地图按屏高铺满后的世界宽度
   const WORLD_H = VIEW_H;
   const ACTOR_W = 240, ACTOR_H = 256;

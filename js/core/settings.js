@@ -7,7 +7,8 @@
     inputMode: 'kbm',  // kbm 键鼠 | touch 手机模式
     audio: true,       // 天气环境音总开关
     ambientVol: 100,   // 天气环境音音量 0-100
-    music: true        // 背景音乐（BGM）开关
+    music: true,       // 背景音乐（BGM）开关
+    screen: 'std'      // max 810×1680 | short 720×1680 | std 9:16 720×1440
   };
 
   const data = Object.assign({}, DEFAULTS);
@@ -26,6 +27,9 @@
         data.ambientVol = Math.max(0, Math.min(100, saved.ambientVol));
       }
       if (saved && saved.music === false) data.music = false;
+      if (saved && (saved.screen === 'max' || saved.screen === 'short' || saved.screen === 'std')) {
+        data.screen = saved.screen;
+      }
     } else if (isTouchDevice()) {
       data.inputMode = 'touch';
     }

@@ -4,9 +4,30 @@
 .login-screen{
   display:block;
   padding:0;
-  overflow:hidden;
+  overflow:visible;
+  background:none;
+}
+/* 背景层铺满整个舞台（最大 810×1680）：UI 仍固定 720×1440 居中，
+   切到最大屏 / 短屏时只外扩背景与遮罩，四周不会露出底色 */
+.login-screen::before{
+  content:"";
+  position:absolute;
+  left:var(--ui-ox,0px);
+  top:var(--ui-oy,0px);
+  width:var(--stage-w,720px);
+  height:var(--stage-h,1440px);
   background:url("../assets/login-bg.jpg") center bottom / cover no-repeat,
     radial-gradient(ellipse at 50% 32%, #2a303c 0%, #141a24 50%, #07080b 100%);
+  pointer-events:none;
+}
+/* 黑色遮罩与背景同步铺满舞台，避免四周比中间亮一圈 */
+.login-screen > .login-mask{
+  left:var(--ui-ox,0px);
+  top:var(--ui-oy,0px);
+  right:auto;
+  bottom:auto;
+  width:var(--stage-w,720px);
+  height:var(--stage-h,1440px);
 }
 /* 设计稿为纯遮罩层，不再叠网格纹理 */
 .login-screen::after{content:none;}

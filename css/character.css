@@ -3,9 +3,21 @@
 /* ---------- 选角色（竖版三槽位，垂直居中） ---------- */
 .char-screen{
   padding:38px 40px 24px;
+  overflow:visible;
+  background:none;
+}
+/* 背景层铺满整个舞台（最大 810×1680）：UI 仍固定 720×1440 居中，大屏只外扩背景 */
+.char-screen::before{
+  content:"";
+  position:absolute;
+  left:var(--ui-ox,0px);
+  top:var(--ui-oy,0px);
+  width:var(--stage-w,720px);
+  height:var(--stage-h,1440px);
   /* 背景只放插画本身，不加网格 / 压暗叠加 */
   background:url("../assets/char-bg.jpg") center top / cover no-repeat,
     radial-gradient(ellipse at 50% 30%, #2a303c 0%, #141a24 50%, #07080b 100%);
+  pointer-events:none;
 }
 /* 选角不放通用网格纹理 */
 .char-screen::after{display:none;}
@@ -58,7 +70,13 @@
 }
 .char-grade{
   position:absolute;
-  inset:0;
+  /* 与背景层同步铺满舞台，避免大屏下四周没有被职业色调分级 */
+  left:var(--ui-ox,0px);
+  top:var(--ui-oy,0px);
+  right:auto;
+  bottom:auto;
+  width:var(--stage-w,720px);
+  height:var(--stage-h,1440px);
   pointer-events:none;
   z-index:1;
 }

@@ -4,9 +4,20 @@
   align-items:center;
   justify-content:flex-start;
   padding:40px 56px;
-  overflow:auto;
+  overflow:visible;
+  background:none;
+}
+/* 背景层铺满整个舞台（最大 810×1680）：UI 仍固定 720×1440 居中，大屏只外扩背景 */
+.entry-screen::before{
+  content:"";
+  position:absolute;
+  left:var(--ui-ox,0px);
+  top:var(--ui-oy,0px);
+  width:var(--stage-w,720px);
+  height:var(--stage-h,1440px);
   background:url("../assets/login-bg.jpg") center bottom / cover no-repeat,
     radial-gradient(ellipse at 50% 32%, #2a303c 0%, #141a24 50%, #07080b 100%);
+  pointer-events:none;
 }
 .entry-screen::after{background:none;}
 

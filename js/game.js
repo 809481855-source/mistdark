@@ -2,6 +2,10 @@
 (function () {
   const DG = window.DG;
 
+  // 场景固定按最大尺寸 810×1680 绘制：舞台比它小就等比裁边，始终不会露出空白
+  const SCENE_W = 810;
+  const SCENE_H = 1680;
+
   const game = DG.game = {
     canvas: null,
     ctx: null,
@@ -75,9 +79,9 @@
     // 用它渲染可以避免「720p 画布被拉伸到整屏」导致的角色发糊。
     nativeRenderScale() {
       const doc = document.documentElement;
-      const width = doc.clientWidth || window.innerWidth || 720;
-      const height = doc.clientHeight || window.innerHeight || 1440;
-      const fit = Math.min(width / 720, height / 1440) || 1;
+      const width = doc.clientWidth || window.innerWidth || SCENE_W;
+      const height = doc.clientHeight || window.innerHeight || SCENE_H;
+      const fit = Math.max(width / SCENE_W, height / SCENE_H) || 1;
       const dpr = window.devicePixelRatio || 1;
       // 手机端封顶 1.5 倍，兼顾锐度与填充率；桌面端封顶 2 倍
       const coarse = !!(window.matchMedia && window.matchMedia('(pointer:coarse)').matches);
@@ -89,11 +93,27 @@
     // 下限 1 倍：低于原生分辨率会让战斗角色明显发糊，任何情况下都不允许。
     setRenderScale(r) {
       const v = Math.max(1, Math.min(2, Math.round(r * 100) / 100));
-      if (Math.abs(v - this.renderScale) < 0.01) return;
+      const w = Math.round(SCENE_W * v);
+      const h = Math.round(SCENE_H * v);
+      if (Math.abs(v - this.renderScale) < 0.01 && this.canvas.width === w && this.canvas.height === h) return;
       this.renderScale = v;
-      this.canvas.width = Math.round(720 * v);
-      this.canvas.height = Math.round(1440 * v);
+      this.canvas.width = w;
+      this.canvas.height = h;
       this.ctx = this.canvas.getContext('2d', { alpha: false });
+    },
+
+    // 屏幕尺寸预设：竖版手机三档，只影响舞台显示窗口，场景始终按 810×1680 绘制
+    stageSize() {
+      const key = (DG.settings && DG.settings.get().screen) || 'std';
+      if (key === 'max') return { key, w: 810, h: 1680 };
+      if (key === 'short') return { key, w: 720, h: 1680 };
+      return { key: 'std', w: 720, h: 1440 };
+    },
+
+    // 设置面板切换屏幕尺寸后立即应用
+    applyScreen() {
+      this.fitStage(true);
+      if (this.dungeon && this.dungeon.updateHud) this.dungeon.updateHud();
     },
 
     // 适配手机 / 微信：按布局视口等比缩放，输入法弹出期间不跟随可视视口缩放，
@@ -108,17 +128,35 @@
       const width = doc.clientWidth || window.innerWidth;
       const height = doc.clientHeight || window.innerHeight;
       if (!width || !height) return;
-      // 铺满屏幕：横竖分别按屏幕尺寸缩放，消除 16:9 等宽屏手机左右两侧的黑边；
-      // 非等比拉伸最多容忍 30%，桌面 / 平板等比例差异过大时仍保持等比，避免画面明显变形。
-      const sx = width / 720;
-      const sy = height / 1440;
-      const ratio = sx / sy;
-      const MAX_STRETCH = 1.3;
-      let rx = sx;
-      const ry = sy;
-      if (ratio > MAX_STRETCH) rx = sy * MAX_STRETCH;
-      else if (ratio < 1 / MAX_STRETCH) rx = sy / MAX_STRETCH;
-      stage.style.transform = `scale(${rx}, ${ry})`;
+      const screen = this.stageSize();
+      stage.style.width = screen.w + 'px';
+      stage.style.height = screen.h + 'px';
+      // UI 固定 720×1440 居中，场景层要按舞台原点铺开：这两个偏移供场景元素（主城地图）使用
+      stage.style.setProperty('--ui-ox', ((720 - screen.w) / 2) + 'px');
+      stage.style.setProperty('--ui-oy', ((1440 - screen.h) / 2) + 'px');
+      stage.style.setProperty('--stage-w', screen.w + 'px');
+      stage.style.setProperty('--stage-h', screen.h + 'px');
+      // 等比缩放，绝不横向 / 纵向拉伸（拉伸会让插画和 UI 明显变形）：
+      // 优先按 cover 铺满屏幕，但只允许裁掉舞台为 UI 预留的背景边；
+      // 超出这个范围（桌面 / 平板等比例差异过大）就退回完整显示，宁可留边也不变形。
+      const sx = width / screen.w;
+      const sy = height / screen.h;
+      const cover = Math.max(sx, sy);
+      const fit = Math.min(sx, sy);
+      const marginX = (screen.w - 720) / 2;   // 舞台左右预留的背景宽度
+      const marginY = (screen.h - 1440) / 2;  // 舞台上下预留的背景高度
+      const cropX = Math.max(0, (screen.w - width / cover) / 2);
+      const cropY = Math.max(0, (screen.h - height / cover) / 2);
+      const scale = (cropX <= marginX + 0.5 && cropY <= marginY + 0.5) ? cover : fit;
+      stage.style.transform = `scale(${scale})`;
+      // 场景固定 810×1680：等比放大到刚好盖住舞台，多出的边缘由 #stage 裁掉
+      const coverScale = Math.max(screen.w / SCENE_W, screen.h / SCENE_H);
+      const cw = SCENE_W * coverScale;
+      const ch = SCENE_H * coverScale;
+      this.canvas.style.width = cw + 'px';
+      this.canvas.style.height = ch + 'px';
+      this.canvas.style.left = ((screen.w - cw) / 2) + 'px';
+      this.canvas.style.top = ((screen.h - ch) / 2) + 'px';
       // 画布后备像素跟随设备物理像素，避免拉伸显示导致角色模糊
       this.setRenderScale(this.nativeRenderScale());
     },

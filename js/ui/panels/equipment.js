@@ -1,12 +1,15 @@
-/* 角色 · 装备界面：按 PSD 810×1680 坐标还原，整幅画布等比缩放到 720×1440 舞台 */
+/* 角色 · 装备界面：PSD 810×1680 原生坐标，按屏幕铺满显示（不再先缩到 720×1440） */
 (function () {
   const DG = window.DG;
   const U = DG.util;
   const C = DG.CONFIG;
   const ui = DG.ui = DG.ui || {};
 
-  // 画布 810×1680 在 CSS 里整体 scale(.888889) 到 720 宽，JS 只使用 PSD 原始坐标
+  // 画布就是 PSD 的 810×1680，只按实际屏幕算一次等比缩放，JS 全程使用 PSD 原始坐标
   const ASSET = 'assets/ui/equip/';
+  const PSD_W = 810;
+  const PSD_H = 1680;
+  const CONTENT_H = 1605;   // PSD 内容最低点（装备库面板底边），保证任何比例下内容不被裁掉
 
   // 装备页（PSD 65,400 438×601）内的格子坐标，已减去页面左上角
   const SLOT_POS = {
@@ -50,6 +53,40 @@
     return DG.items.slotInfo(item.slot) || { name: '装备', glyph: '?' };
   }
 
+  // 把 810×1680 画布按舞台实际显示尺寸铺满（cover），并抵消舞台自身的非等比缩放，
+  // 保证 PSD 的圆形、字号、间距在任何屏幕上都不变形、不被二次压缩
+  function fitCanvas(canvas, layoutW) {
+    const stage = document.getElementById('stage');
+    if (!stage) return;
+    const rect = stage.getBoundingClientRect();
+    const tf = getComputedStyle(stage).transform;
+    let kx = 1;
+    let ky = 1;
+    if (tf && tf !== 'none') {
+      const m = tf.match(/matrix\(([^)]+)\)/);
+      if (m) {
+        const v = m[1].split(',').map(Number);
+        kx = v[0] || 1;
+        ky = v[3] || 1;
+      }
+    }
+    // 以“铺满屏幕”为准；屏幕过扁时退让到内容高度，避免底部装备栏被切
+    const scale = Math.min(
+      Math.max(rect.width / PSD_W, rect.height / PSD_H),
+      rect.height / CONTENT_H
+    );
+    const sx = scale / kx;
+    const sy = scale / ky;
+    canvas.style.transformOrigin = 'left top';
+    canvas.style.transform = `scale(${sx}, ${sy})`;
+    canvas.style.left = ((layoutW || 720) / 2 - (PSD_W / 2) * sx) + 'px';
+    canvas.style.top = '0px';
+    // 舞台比 810 窄时（短屏 720×1680）画布左右各被裁掉一部分，
+    // 把裁切宽度传给 CSS，让贴边的关闭按钮跟着内收，避免被切掉
+    const cropX = Math.max(0, (PSD_W * sx - (layoutW || 720)) / 2);
+    canvas.style.setProperty('--eq-crop', cropX + 'px');
+  }
+
   // 单个道具格：空格显示部位名，有装备时叠品质框 + 部位图标 + 等级
   function fillCell(cell, item, slot) {
     cell.innerHTML = '';
@@ -75,6 +112,20 @@
     const canvas = U.el('div', 'eq-canvas');
     screen.appendChild(canvas);
     DG.game.ui.appendChild(screen);
+    // #ui 固定 720×1440 居中，装备页需要覆盖整个舞台（可能是 810×1680）
+    const layout = () => {
+      const stage = document.getElementById('stage');
+      const dw = (stage && stage.offsetWidth) || 720;
+      const dh = (stage && stage.offsetHeight) || 1440;
+      screen.style.left = ((720 - dw) / 2) + 'px';
+      screen.style.top = ((1440 - dh) / 2) + 'px';
+      screen.style.width = dw + 'px';
+      screen.style.height = dh + 'px';
+      fitCanvas(canvas, dw);
+    };
+    layout();
+    const onResize = () => layout();
+    window.addEventListener('resize', onResize);
 
     let tab = 'equip';
     let page = 'bag';               // bag：临时装备库 / stash：大装备仓库
@@ -83,6 +134,7 @@
 
     function close() {
       document.removeEventListener('keydown', onKey);
+      window.removeEventListener('resize', onResize);
       if (screen.parentNode) screen.remove();
       if (opts.onClose) opts.onClose();
     }
