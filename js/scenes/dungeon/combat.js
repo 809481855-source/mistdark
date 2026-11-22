@@ -374,7 +374,8 @@
       // 升级号角立刻起，清脆的 UI 升级音稍后叠上，两声错开避免糊在一起
       DG.audio.play('stageLevelup', { vol: 1 });
       setTimeout(() => {
-        if (!this.finished && DG.audio) DG.audio.play('uiLevelup', { vol: 0.7 });
+        // 该音频本身峰值只有 0.21，必须给满音量才不会被战斗音压住
+        if (!this.finished && DG.audio) DG.audio.play('uiLevelup', { vol: 1 });
       }, 110);
     }
   },

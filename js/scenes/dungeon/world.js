@@ -577,7 +577,8 @@
       // 所以自动模式下照常激活，但把出生点挪到玩家外侧，避免糊脸弹出；
       // 正在混战时仍然不激活，防止凭空在角色身边围出一圈怪
       if (pd < 260) {
-        if (!this.autoMode) continue;
+        // 开局 10 秒内不贴脸激活：出生点周围的怪群先留着，避免一进图就被围杀
+        if (!this.autoMode || (this.time || 0) < 10) continue;
         let nearFight = false;
         for (const m of this.monsters) {
           if (!m.dead && !m.boss && U.dist(m, this.player) < 600) { nearFight = true; break; }
@@ -590,15 +591,14 @@
       if (!this.autoMode && (!pch || Math.abs(pch.col - curCh.col) + Math.abs(pch.row - curCh.row) > 1)) continue;
       // 密室守卫：必须走到门口才惊醒，避免隔墙提前拉怪
       if (p.secret && pd > 380) continue;
-      // 自动模式下贴着玩家触发时，把出生点沿「玩家→怪群」方向外推 190px，
-      // 让怪从外侧围上来，而不是直接刷在角色身上；撞墙就绕着玩家转找空地
+      // 自动模式下贴着玩家触发时，把出生中心推到 300px 外，避免怪直接糊在角色脸上
       let bx = p.x, by = p.y;
       if (pd < 260) {
-        const base = Math.atan2(p.y - this.player.y, p.x - this.player.x);
+        const base = U.rand(0, Math.PI * 2);
         for (let k = 0; k < 8; k++) {
-          const ang = base + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 0.5;
-          const px = this.player.x + Math.cos(ang) * 190;
-          const py = this.player.y + Math.sin(ang) * 190;
+          const ang = base + k * Math.PI / 4;
+          const px = this.player.x + Math.cos(ang) * 300;
+          const py = this.player.y + Math.sin(ang) * 300;
           if (!this.circleWall(px, py, this.player.r) && !this.circleProp(px, py, this.player.r)) {
             bx = px; by = py;
             break;

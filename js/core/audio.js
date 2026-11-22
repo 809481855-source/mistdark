@@ -462,11 +462,13 @@
   // 背景音乐：登录大厅 / 主城大厅 / 普通战斗 / 首领战
   // bgm-login 为原包 bgm/main_scene（本地缓存缺失，已按原 CDN 地址补下）
   // login / lobby 已替换为 Kevin MacLeod "Inner Sanctum" / "Gathering Darkness"（CC BY 4.0）
+  // 统一转 AAC（m4a）：源码即 96kbps MP3，改用 72k 立体声 / 48k 单声道 AAC，
+  // 体积降约 30%，听感基本不变，且 iOS / 微信 / Android 原生支持
   const BGM = {
-    login: 'bgm-login.mp3',
-    lobby: 'bgm-lobby.mp3',
-    battle: 'bgm-battle.mp3',
-    boss: 'bgm-boss.mp3'
+    login: 'bgm-login.m4a',
+    lobby: 'bgm-lobby.m4a',
+    battle: 'bgm-battle.m4a',
+    boss: 'bgm-boss.m4a'
   };
 
   // 各职业常用音效：进城/进副本前预热，避免首击时还在解码

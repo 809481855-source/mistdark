@@ -59,11 +59,14 @@
           }
         }
         // 近战：进入攻击距离后停手，让普攻自动出手（被墙挡住时继续绕路）
-        const range = Math.max(92, Math.min(220, (this.basicSkill.range || 120) * 0.72));
-        const stop = range + target.r + this.player.r;
+        // 停手距离必须落在真实命中范围内（近战判定为 centerDist <= range + m.r）。
+        // 旧算法额外加了玩家半径，首领体型大时会停在命中范围之外，
+        // 表现为“贴着首领站定却几乎打不出伤害”。
+        const reach = this.basicSkill.range || 120;
+        const stop = reach * 0.95 + Math.min(target.r, 40) * 0.5;
         const los = this.autoLineClear(target);
         if (dist <= stop && los) this.autoHoldingRange = true;
-        else if (dist > stop + 34 || !los) this.autoHoldingRange = false;
+        else if (dist > stop + 16 || !los) this.autoHoldingRange = false;
         if (this.autoHoldingRange) return this.autoCommitMove(this.autoSmoothDirection({ x: 0, y: 0 }, 0.28), goal);
       }
       let dir = this.autoDirectDirection(goal) || this.autoFlowDirection(this.player.x, this.player.y, goal) || { x: 0, y: 0 };
@@ -110,14 +113,16 @@
     // 放弃当前不可达目标：把怪/怪群拉黑一段时间，并改为优先探索
     autoGiveUpGoal(now) {
       const goal = this.autoGoal;
-      if (goal && goal.monster) {
+      const bossGoal = !!(goal && goal.monster && goal.monster.boss);
+      if (goal && goal.monster && !bossGoal) {
         this.autoIgnore = goal.monster;
         this.autoIgnoreUntil = now + 10;
       } else if (goal && goal.kind === 'pack' && this.autoPack) {
         this.autoIgnorePack = this.autoPack;
         this.autoIgnorePackUntil = now + 10;
       }
-      this.autoExploreUntil = now + 6;
+      // 首领不能放弃：不进探索模式，下一帧重新贴身打
+      this.autoExploreUntil = bossGoal ? 0 : now + 6;
       this.autoTarget = null;
       this.autoPack = null;
       this.autoGoal = null;
@@ -274,13 +279,17 @@
       let best = null, bestScore = Infinity, bestDist = Infinity;
       if (!exploring) {
         for (const m of this.monsters) {
-          if (m.dead || m === this.autoIgnore) continue;
+          if (m.dead) continue;
           const d = U.dist(this.player, m);
+          // 首领永远不被拉黑：它是通关条件，一旦出现就必须持续压制。
+          // 否则一次“不可达”判定就会让 AI 跑去清远处的怪，留下首领挂机不打。
           if (m.boss) {
             this.autoTarget = m;
             this.autoPack = null;
-            return { x: m.x, y: m.y, monster: m, kind: 'boss' };
+            this.autoGoal = { x: m.x, y: m.y, monster: m, kind: 'boss' };
+            return this.autoGoal;
           }
+          if (m === this.autoIgnore) continue;
           const mch = m.chunkIndex != null ? this.chunks[m.chunkIndex] : null;
           if (!stalled && pendingPacks && mch && curCh && Math.abs(mch.col - curCh.col) + Math.abs(mch.row - curCh.row) > 1 && !m.aggro) continue;
           // 优先级：距离为主，残血目标（配合处决）、远程与精英更值得先处理

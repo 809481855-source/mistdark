@@ -835,11 +835,13 @@
   // 背景音乐：登录大厅 / 主城大厅 / 普通战斗 / 首领战
   // bgm-login 为原包 bgm/main_scene（本地缓存缺失，已按原 CDN 地址补下）
   // login / lobby 已替换为 Kevin MacLeod "Inner Sanctum" / "Gathering Darkness"（CC BY 4.0）
+  // 统一转 AAC（m4a）：源码即 96kbps MP3，改用 72k 立体声 / 48k 单声道 AAC，
+  // 体积降约 30%，听感基本不变，且 iOS / 微信 / Android 原生支持
   const BGM = {
-    login: 'bgm-login.mp3',
-    lobby: 'bgm-lobby.mp3',
-    battle: 'bgm-battle.mp3',
-    boss: 'bgm-boss.mp3'
+    login: 'bgm-login.m4a',
+    lobby: 'bgm-lobby.m4a',
+    battle: 'bgm-battle.m4a',
+    boss: 'bgm-boss.m4a'
   };
 
   // 各职业常用音效：进城/进副本前预热，避免首击时还在解码
@@ -17677,7 +17679,8 @@
       // 所以自动模式下照常激活，但把出生点挪到玩家外侧，避免糊脸弹出；
       // 正在混战时仍然不激活，防止凭空在角色身边围出一圈怪
       if (pd < 260) {
-        if (!this.autoMode) continue;
+        // 开局 10 秒内不贴脸激活：出生点周围的怪群先留着，避免一进图就被围杀
+        if (!this.autoMode || (this.time || 0) < 10) continue;
         let nearFight = false;
         for (const m of this.monsters) {
           if (!m.dead && !m.boss && U.dist(m, this.player) < 600) { nearFight = true; break; }
@@ -17690,15 +17693,14 @@
       if (!this.autoMode && (!pch || Math.abs(pch.col - curCh.col) + Math.abs(pch.row - curCh.row) > 1)) continue;
       // 密室守卫：必须走到门口才惊醒，避免隔墙提前拉怪
       if (p.secret && pd > 380) continue;
-      // 自动模式下贴着玩家触发时，把出生点沿「玩家→怪群」方向外推 190px，
-      // 让怪从外侧围上来，而不是直接刷在角色身上；撞墙就绕着玩家转找空地
+      // 自动模式下贴着玩家触发时，把出生中心推到 300px 外，避免怪直接糊在角色脸上
       let bx = p.x, by = p.y;
       if (pd < 260) {
-        const base = Math.atan2(p.y - this.player.y, p.x - this.player.x);
+        const base = U.rand(0, Math.PI * 2);
         for (let k = 0; k < 8; k++) {
-          const ang = base + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 0.5;
-          const px = this.player.x + Math.cos(ang) * 190;
-          const py = this.player.y + Math.sin(ang) * 190;
+          const ang = base + k * Math.PI / 4;
+          const px = this.player.x + Math.cos(ang) * 300;
+          const py = this.player.y + Math.sin(ang) * 300;
           if (!this.circleWall(px, py, this.player.r) && !this.circleProp(px, py, this.player.r)) {
             bx = px; by = py;
             break;
@@ -20292,7 +20294,8 @@
       // 升级号角立刻起，清脆的 UI 升级音稍后叠上，两声错开避免糊在一起
       DG.audio.play('stageLevelup', { vol: 1 });
       setTimeout(() => {
-        if (!this.finished && DG.audio) DG.audio.play('uiLevelup', { vol: 0.7 });
+        // 该音频本身峰值只有 0.21，必须给满音量才不会被战斗音压住
+        if (!this.finished && DG.audio) DG.audio.play('uiLevelup', { vol: 1 });
       }, 110);
     }
   },
@@ -21515,11 +21518,14 @@
           }
         }
         // 近战：进入攻击距离后停手，让普攻自动出手（被墙挡住时继续绕路）
-        const range = Math.max(92, Math.min(220, (this.basicSkill.range || 120) * 0.72));
-        const stop = range + target.r + this.player.r;
+        // 停手距离必须落在真实命中范围内（近战判定为 centerDist <= range + m.r）。
+        // 旧算法额外加了玩家半径，首领体型大时会停在命中范围之外，
+        // 表现为“贴着首领站定却几乎打不出伤害”。
+        const reach = this.basicSkill.range || 120;
+        const stop = reach * 0.95 + Math.min(target.r, 40) * 0.5;
         const los = this.autoLineClear(target);
         if (dist <= stop && los) this.autoHoldingRange = true;
-        else if (dist > stop + 34 || !los) this.autoHoldingRange = false;
+        else if (dist > stop + 16 || !los) this.autoHoldingRange = false;
         if (this.autoHoldingRange) return this.autoCommitMove(this.autoSmoothDirection({ x: 0, y: 0 }, 0.28), goal);
       }
       let dir = this.autoDirectDirection(goal) || this.autoFlowDirection(this.player.x, this.player.y, goal) || { x: 0, y: 0 };
@@ -21566,14 +21572,16 @@
     // 放弃当前不可达目标：把怪/怪群拉黑一段时间，并改为优先探索
     autoGiveUpGoal(now) {
       const goal = this.autoGoal;
-      if (goal && goal.monster) {
+      const bossGoal = !!(goal && goal.monster && goal.monster.boss);
+      if (goal && goal.monster && !bossGoal) {
         this.autoIgnore = goal.monster;
         this.autoIgnoreUntil = now + 10;
       } else if (goal && goal.kind === 'pack' && this.autoPack) {
         this.autoIgnorePack = this.autoPack;
         this.autoIgnorePackUntil = now + 10;
       }
-      this.autoExploreUntil = now + 6;
+      // 首领不能放弃：不进探索模式，下一帧重新贴身打
+      this.autoExploreUntil = bossGoal ? 0 : now + 6;
       this.autoTarget = null;
       this.autoPack = null;
       this.autoGoal = null;
@@ -21730,13 +21738,17 @@
       let best = null, bestScore = Infinity, bestDist = Infinity;
       if (!exploring) {
         for (const m of this.monsters) {
-          if (m.dead || m === this.autoIgnore) continue;
+          if (m.dead) continue;
           const d = U.dist(this.player, m);
+          // 首领永远不被拉黑：它是通关条件，一旦出现就必须持续压制。
+          // 否则一次“不可达”判定就会让 AI 跑去清远处的怪，留下首领挂机不打。
           if (m.boss) {
             this.autoTarget = m;
             this.autoPack = null;
-            return { x: m.x, y: m.y, monster: m, kind: 'boss' };
+            this.autoGoal = { x: m.x, y: m.y, monster: m, kind: 'boss' };
+            return this.autoGoal;
           }
+          if (m === this.autoIgnore) continue;
           const mch = m.chunkIndex != null ? this.chunks[m.chunkIndex] : null;
           if (!stalled && pendingPacks && mch && curCh && Math.abs(mch.col - curCh.col) + Math.abs(mch.row - curCh.row) > 1 && !m.aggro) continue;
           // 优先级：距离为主，残血目标（配合处决）、远程与精英更值得先处理
