@@ -122,16 +122,7 @@ input::placeholder{color:#8b857a;}
 .point-badge{font-size:13.5px;}
 .modal-body .note{font-size:13.5px;}
 
-/* 任务 / 技能树 */
-.quest-card{padding:16px;}
-.q-head b{font-size:17.5px;}
-.q-progress{font-size:13px;}
-.q-desc{font-size:15px;}
-.q-lore{font-size:13.5px;}
-.q-target{font-size:13.5px;}
-.q-foot .btn{height:40px;font-size:14px;}
-.qg-gold,.qg-xp,.qg-tree,.qg-skill{font-size:13.5px;}
-.quest-sub{font-size:13.5px;}
+/* 技能树 */
 .tree-block{padding:14px;}
 .tree-head b{font-size:17px;}
 .tree-node b{font-size:14px;}
@@ -287,16 +278,7 @@ input[type=text],input[type=password]{height:62px;font-size:21px;padding:0 20px;
 .point-badge{font-size:17.5px;}
 .modal-body .note{font-size:17.5px;}
 
-/* 任务 / 技能树 */
-.quest-card{padding:18px;}
-.q-head b{font-size:21px;}
-.q-progress{font-size:16.5px;}
-.q-desc{font-size:18.5px;}
-.q-lore{font-size:16.5px;}
-.q-target{font-size:17px;}
-.q-foot .btn{height:46px;font-size:17.5px;}
-.qg-gold,.qg-xp,.qg-tree,.qg-skill{font-size:17px;}
-.quest-sub{font-size:17px;}
+/* 技能树 */
 .tree-block{padding:16px;}
 .tree-head b{font-size:21px;}
 .tree-node{padding:12px;}

@@ -9,12 +9,14 @@
   const TYPE_GLYPH = { kill: '剿', elite: '精', boss: '王', loot: '拾', clear: '旗' };
 
   ui.openQuests = function (char, onChange) {
-    const body = U.el('div');
+    const body = U.el('div', 'quest-body');
     const modal = ui.modal({
       title: '任务',
       subtitle: '主线推进 · 悬赏循环',
       body
     });
+    // 固定高度面板：切换页签、领取奖励都不会改变界面尺寸
+    modal.modal.classList.add('quest-modal');
 
     let tab = 'main';
 
@@ -50,7 +52,7 @@
 
       const ready = DG.quests.mainReady(char);
       const stage = DG.data.dungeonById[main.stage];
-      const next = DG.data.quests.main.slice(qs.main + 1, qs.main + 3);
+      const next = DG.data.quests.main.slice(qs.main + 1, qs.main + 4);
       const nextHtml = next.length
         ? `<div class="qp-section"><span>后续主线</span><em>按顺序推进</em></div>` +
           `<ul class="qp-next-list">` + next.map(q => {
@@ -115,9 +117,9 @@
           `<span>可领取 <b>${readyN}</b></span>` +
           `<span>进行中 <b>${qs.bounties.length - readyN}</b></span>` +
         `</div>` +
-        `<div class="qp-hint">击杀、精英、首领、拾取与通关会在副本中自动累计；领取后立即刷新新的委托。</div>` +
+        `<div class="qp-hint">副本战斗自动累计进度，领取后立即刷新委托。</div>` +
         `<div class="qp-bounty-list">${cards}</div>` +
-        `<button class="btn ghost qp-go" data-go>前往副本推进委托</button>`;
+        `<button class="btn ghost qp-go" data-go>前往副本</button>`;
     }
 
     function bind(view) {
@@ -192,8 +194,11 @@
 
       const view = body.querySelector('.qp-view');
       view.innerHTML = tab === 'main' ? mainView(qs) : bountyView(qs);
-      body.scrollTop = 0;
       bind(view);
+
+      // 主城任务图标红点与实际可领取数量保持同步，领取后立即消失
+      const dot = document.querySelector('[data-quest-dot]');
+      if (dot) dot.classList.toggle('hidden', DG.quests.claimableCount(char) <= 0);
     }
 
     render();

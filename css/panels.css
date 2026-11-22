@@ -1297,8 +1297,22 @@
    只出现在公用纸面弹框内：外壳、页签与按钮全部复用
    .modal / .tab-btn / .btn，不新增图片资源。
    状态色：进行中=褐、可领取=金、已完成=绿、待推进=虚线灰。
+   弹框固定 636×1000，内部页签、卡片与操作区高度固定，
+   切换页签或任务状态不会改变整体结构尺寸。
    ============================================================ */
-.quest-panel{display:flex;flex-direction:column;gap:14px;}
+.modal.quest-modal{height:1000px;}
+.modal.quest-modal .modal-body{
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
+.modal.quest-modal .quest-body{
+  flex:1 1 auto;min-height:0;
+  display:flex;flex-direction:column;
+}
+.quest-panel{
+  flex:1 1 auto;min-height:0;
+  display:flex;flex-direction:column;gap:14px;
+}
 .quest-panel .tab-bar{gap:10px;margin-bottom:0;}
 .quest-panel .tab-btn{
   flex:1 1 0;justify-content:center;
@@ -1322,11 +1336,16 @@
 }
 @keyframes qp-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.25);opacity:.7}}
 
-.qp-view{display:flex;flex-direction:column;gap:12px;}
+.qp-view{
+  flex:1 1 auto;min-height:0;
+  display:flex;flex-direction:column;gap:12px;
+}
 
 /* ---------- 主线：当前任务 ---------- */
 .qp-hero{
   position:relative;
+  flex:1 1 auto;min-height:0;
+  display:flex;flex-direction:column;
   padding:16px 18px 18px;
   border:1px solid #b8934f;
   background:
@@ -1338,7 +1357,11 @@
   border-color:#a97c2e;
   box-shadow:inset 0 0 26px rgba(169,124,46,.16), inset 0 1px 0 rgba(255,255,255,.6);
 }
-.qp-hero.done{border-color:#8faa74;background:linear-gradient(180deg,rgba(250,250,240,.86),rgba(216,222,198,.6));}
+.qp-hero.done{
+  justify-content:center;
+  border-color:#8faa74;
+  background:linear-gradient(180deg,rgba(250,250,240,.86),rgba(216,222,198,.6));
+}
 .qp-hero-head{display:flex;align-items:center;gap:14px;}
 .qp-step{
   flex:0 0 auto;width:64px;height:64px;
@@ -1412,7 +1435,9 @@
 .qp-bounty.ready .qp-bar i{background:linear-gradient(90deg,#7fae63,#c0dd9a);}
 
 /* ---------- 奖励徽记 ---------- */
+/* 奖励固定在卡片底部，进度条与说明留在上方，拉长后仍然稳定 */
 .qp-rewards{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:14px;}
+.qp-hero .qp-rewards{margin-top:auto;padding-top:14px;}
 .qp-chip{
   display:inline-flex;align-items:center;gap:6px;
   padding:4px 10px 4px 4px;border-radius:4px;
@@ -1432,9 +1457,17 @@
 .qp-chip.skill i{background:#6b4a9a;}
 
 /* ---------- 操作区 ---------- */
-.qp-actions{display:flex;gap:12px;margin-top:16px;}
-.qp-actions .btn{flex:1 1 0;min-width:0;}
-.qp-go{width:100%;margin-top:2px;}
+/* 按钮按公用资源 238×98 等比缩到 70%（167×69），不横向拉长 */
+.quest-panel .btn{
+  min-width:167px;width:167px;height:69px;
+  padding:0 6px;
+  border-width:21px 28px;
+  font-size:21px;
+  letter-spacing:.5px;
+}
+.qp-actions{display:flex;justify-content:flex-end;gap:12px;margin-top:16px;}
+.qp-actions .btn{flex:0 0 auto;}
+.qp-go{flex:0 0 auto;align-self:flex-end;margin-top:2px;}
 
 /* ---------- 后续主线 ---------- */
 .qp-section{
@@ -1445,7 +1478,8 @@
 .qp-next-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;}
 .qp-next{
   display:flex;align-items:center;gap:12px;
-  padding:9px 14px;border:1px solid #c2a97f;
+  flex:0 0 auto;height:64px;
+  padding:0 14px;border:1px solid #c2a97f;
   background:rgba(255,250,238,.42);
 }
 .qp-next b{
@@ -1465,23 +1499,30 @@
 .qp-next .qp-tag{padding:4px 10px;font-size:14px;}
 
 /* ---------- 悬赏 ---------- */
-.qp-sum{display:flex;gap:10px;}
+.qp-sum{flex:0 0 auto;display:flex;gap:10px;}
 .qp-sum span{
   flex:1 1 0;
   display:flex;align-items:baseline;justify-content:center;gap:8px;
-  padding:9px 10px;border:1px solid #c2a97f;
+  height:48px;padding:0 10px;border:1px solid #c2a97f;
   background:rgba(255,250,238,.55);
   font-size:16px;color:#6a5840;
 }
 .qp-sum b{font-size:24px;line-height:1;color:#7d4c12;}
 .qp-hint{
-  padding:10px 14px;border-left:3px solid #b8934f;
+  flex:0 0 auto;
+  display:flex;align-items:center;
+  height:46px;padding:0 14px;
+  border-left:3px solid #b8934f;
   background:rgba(255,250,238,.5);
-  font-size:16px;line-height:1.65;color:#6a5840;
+  font-size:16px;line-height:1.4;color:#6a5840;
 }
-.qp-bounty-list{display:flex;flex-direction:column;gap:10px;}
+.qp-bounty-list{
+  flex:1 1 auto;min-height:0;
+  display:flex;flex-direction:column;gap:10px;
+}
 .qp-bounty{
-  display:flex;gap:14px;
+  display:flex;align-items:center;gap:14px;
+  flex:1 1 0;min-height:0;
   padding:14px 16px 16px;
   border:1px solid #c2a97f;
   background:linear-gradient(180deg,rgba(255,250,238,.62),rgba(228,210,176,.42));
@@ -1502,7 +1543,7 @@
 .qp-bounty.ready .qp-bounty-icon{
   box-shadow:inset 0 0 0 3px rgba(255,255,255,.32), 0 0 14px rgba(169,124,46,.4);
 }
-.qp-bounty-main{flex:1;min-width:0;}
+.qp-bounty-main{flex:1;min-width:0;overflow:hidden;}
 .qp-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;}
 .qp-head b{font-size:20px;font-weight:700;letter-spacing:.5px;color:#33291d;}
 .qp-progress{flex:0 0 auto;font-size:16px;letter-spacing:.5px;color:#8f7550;}
@@ -1513,8 +1554,5 @@
 .qp-bounty .qp-rewards{flex:1 1 auto;min-width:0;margin-top:0;gap:6px;}
 .qp-bounty .qp-rewards .qp-chip{padding:3px 8px 3px 3px;font-size:15px;}
 .qp-bounty .qp-rewards .qp-chip i{width:22px;height:22px;font-size:12px;}
-.qp-bounty .qp-foot .btn{
-  flex:0 0 auto;margin-left:auto;
-  min-width:150px;height:98px;padding:0 12px;font-size:26px;
-}
+.qp-bounty .qp-foot .btn{flex:0 0 auto;margin-left:auto;}
 
