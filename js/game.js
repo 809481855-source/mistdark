@@ -29,8 +29,8 @@
       this.ui = document.getElementById('ui');
       this.db = DG.storage.load();
 
-      // 登录阶段就把主城 / 战斗需要的贴图全部预载并烘焙，进入场景时不再临时加载
-      if (DG.art && DG.art.preloadAssets) DG.art.preloadAssets();
+      // 主城 / 战斗贴图约 2MB：等 load 之后再预载，先保证登录首屏拿到满带宽
+      this.deferPreload();
 
       this.fitStage();
       window.addEventListener('resize', () => this.fitStage());
@@ -74,10 +74,26 @@
       // Service Worker 只能在 https 或本机调试时使用，file:// 双击打开时自动跳过
       if (location.protocol !== 'https:' && host !== 'localhost' && host !== '127.0.0.1') return;
       const start = () => {
-        navigator.serviceWorker.register('sw.js').catch(() => { /* 缓存不可用不影响游戏 */ });
+        navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then((reg) => {
+          // 首屏已完成：让 SW 在后台把未访问过的资源按清单补进本地缓存
+          if (!reg || !reg.active) return;
+          setTimeout(() => {
+            if (reg.active) reg.active.postMessage({ type: 'warm', delay: 3000 });
+          }, 600);
+        }).catch(() => { /* 缓存不可用不影响游戏 */ });
       };
       if (document.readyState === 'complete') start();
       else window.addEventListener('load', start);
+    },
+
+    // 首屏资源（CSS / JS / 登录背景）就绪后再预热战斗贴图：
+    // 之前一进页面就抢连接，登录背景反而要排队，弱网首屏明显变慢。
+    deferPreload() {
+      const run = () => setTimeout(() => {
+        if (DG.art && DG.art.preloadAssets) DG.art.preloadAssets();
+      }, 1200);
+      if (document.readyState === 'complete') run();
+      else window.addEventListener('load', run, { once: true });
     },
 
     // 撤掉 index.html 中的静态启动画面
@@ -372,23 +388,20 @@
       const keep = result.victory ? 1 : (result.retreat ? 0.7 : 0.4);
       result.keepRate = keep;
       if (keep < 1) {
+        // 经验在战斗中已实时入账（升级也已在战斗内完成），
+        // 这里只扣回未保留的那部分，且不扣到负数、不掉级
+        const lostXp = Math.round(result.xp * (1 - keep));
+        char.xp = Math.max(0, (char.xp || 0) - lostXp);
         result.gold = Math.round(result.gold * keep);
-        result.xp = Math.round(result.xp * keep);
+        result.xp = Math.max(0, result.xp - lostXp);
       }
 
       char.gold = (char.gold || 0) + result.gold;
-      const levels = DG.character.addXp(char, result.xp);
-      result.levels = levels;
+      result.levels = result.levels || [];
+      // 每 3 级才发 1 点技能点，结算文案按实际发放数量显示
+      result.skillPoints = result.levels.filter(lv => lv % 3 === 0).length;
       result.level = char.level;
       this.save();
-
-      if (levels.length > 0) {
-        if (DG.audio) {
-          DG.audio.play('stageLevelup', { vol: 0.9 });
-          DG.audio.play('uiLevelup', { vol: 0.65, gap: 0.2 });
-        }
-        DG.ui.toast(`等级提升至 Lv.${char.level}，获得 ${levels.length} 技能点`, 'gold');
-      }
 
       // 结算面板出现时切回主城音乐，避免战斗音乐停掉后出现长时间静音
       if (DG.audio) DG.audio.playBgm('lobby');

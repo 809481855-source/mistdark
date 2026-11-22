@@ -488,7 +488,7 @@
 }
 .loot-title{font-size:12px;color:var(--gold-dim);letter-spacing:2px;margin-bottom:14px;display:flex;justify-content:space-between;}
 .loot-title span:last-child{color:var(--dim);letter-spacing:.5px;}
-.loot-grid{display:flex;flex-wrap:wrap;gap:10px;}
+.loot-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;}
 .loot-empty{font-size:12.5px;color:var(--dim);padding:8px 0;}
 .loot-cell{
   width:86px;height:92px;border-radius:4px;
@@ -498,12 +498,14 @@
   position:relative;
   padding:0 8px;
 }
-/* 公用道具框铺满格面，文字叠在上层 */
+/* 公用道具框铺满格面并保持原始比例，避免拉伸；文字叠在上层 */
 .loot-frame{
   position:absolute;inset:0;width:100%;height:100%;
+  object-fit:contain;
   pointer-events:none;border-radius:4px;
 }
 .loot-cell > :not(.loot-frame){position:relative;z-index:1;}
+.loot-glyph{position:relative;z-index:1;line-height:1;}
 .loot-cell .loot-name{
   font-size:11.5px;font-weight:400;color:var(--text-2);
   max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
@@ -514,7 +516,7 @@
 .loot-cell.r-set{color:#a8e0a0;}
 .loot-cell.r-legend{color:#f5b07a;}
 .loot-cell .qty{
-  position:absolute;right:7px;top:5px;font-size:10px;color:var(--muted);
+  position:absolute;right:9px;top:7px;font-size:11px;color:var(--muted);
   text-shadow:0 1px 2px rgba(0,0,0,.85);
 }
 .levelup-note{
@@ -996,8 +998,13 @@
 .modal .loot-title{font-size:20px;}
 .modal .loot-empty{font-size:20px;}
 .modal .levelup-note,.modal .skillup-note{font-size:20px;}
-.modal .loot-cell{width:100px;height:110px;font-size:26px;}
-.modal .loot-cell .loot-name{font-size:20px;}
+.modal .loot-cell{width:auto;height:128px;font-size:26px;padding:12px 12px 10px;}
+.modal .loot-cell .loot-name{
+  font-size:17px;line-height:1.28;white-space:normal;text-align:center;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+  max-height:2.6em;text-overflow:clip;
+}
+.modal .loot-cell .qty{font-size:14px;right:11px;top:8px;}
 .modal .setting-title{font-size:21px;}
 .modal .setting-desc{font-size:20px;line-height:1.7;color:#5c4a33;}
 .modal .seg-btn{height:52px;font-size:20px;padding:0 22px;}

@@ -91,6 +91,8 @@
 
   ui.openEquipment = function (char, onChange, opts) {
     opts = opts || {};
+    // 连点装备入口时不叠出第二层面板，直接把已有实例返回
+    if (ui._equipPanel && ui._equipPanel.isOpen()) return ui._equipPanel;
     const screen = U.el('div', 'eq-screen');
     const canvas = U.el('div', 'eq-canvas');
     screen.appendChild(canvas);
@@ -118,6 +120,7 @@
 
     function close() {
       if (DG.audio) DG.audio.play('uiClose', { vol: 0.45, gap: 0.12 });
+      ui._equipPanel = null;
       document.removeEventListener('keydown', onKey);
       window.removeEventListener('resize', onResize);
       if (screen.parentNode) screen.remove();
@@ -379,6 +382,8 @@
     }
 
     render();
-    return { close };
+    const panel = { close, isOpen: () => !!screen.isConnected };
+    ui._equipPanel = panel;
+    return panel;
   };
 })();

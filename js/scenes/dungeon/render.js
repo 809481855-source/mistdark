@@ -933,6 +933,16 @@
     ctx.save();
     ctx.translate(p.x, p.y);
 
+    // 升级光环：脚下金色辉光。使用预渲染贴图，避免逐帧 shadowBlur
+    if (this.levelFx > 0) {
+      const k = Math.min(1, this.levelFx / 1.1);
+      const R = 78 * (1 + (1 - k) * 0.45);
+      ctx.save();
+      ctx.globalAlpha = k * 0.85;
+      ctx.drawImage(this.glowSprite('#ffd166'), -R, -R * 0.6, R * 2, R * 1.2);
+      ctx.restore();
+    }
+
     ctx.fillStyle = 'rgba(0,0,0,0.38)';
     ctx.beginPath();
     ctx.ellipse(0, p.r * 0.9, useHero ? p.r * 1.15 : p.r * 0.9, p.r * 0.42, 0, 0, Math.PI * 2);

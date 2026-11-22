@@ -578,25 +578,37 @@
       // 同一个怪群到玩家的距离一帧只算一次，下面激活 / 贴脸 / 密室判定共用
       const pd = U.dist(p, this.player);
       if (pd > NEAR) continue;
-      // 不贴脸刷怪：玩家就站在怪群位置上时先不激活，等拉开距离再说
-      if (pd < 260) continue;
+      // 不贴脸刷怪：玩家就站在怪群位置上时先不激活，等拉开距离再说。
+      // 自动战斗没有“等玩家走开”的耐心（AI 会把出生点当成落脚点静止），
+      // 所以自动模式下照常激活，但把出生点挪到玩家外侧，避免糊脸弹出
+      if (pd < 260 && !this.autoMode) continue;
       const pch = this.chunks[p.chunk];
       // 自动战斗需要自己找怪：距离已足够近时不再限制相邻区块，
       // 否则 AI 会在“隔一个区块”的怪群前反复踱步、怪永远不激活
       if (!this.autoMode && (!pch || Math.abs(pch.col - curCh.col) + Math.abs(pch.row - curCh.row) > 1)) continue;
       // 密室守卫：必须走到门口才惊醒，避免隔墙提前拉怪
       if (p.secret && pd > 380) continue;
+      // 自动模式下贴着玩家触发时，把出生点沿「玩家→怪群」方向外推，
+      // 让怪从外侧围上来，而不是直接刷在角色身上
+      let bx = p.x, by = p.y;
+      if (pd < 260) {
+        const ax = p.x - this.player.x, ay = p.y - this.player.y;
+        const al = Math.hypot(ax, ay) || 1;
+        bx = this.player.x + ax / al * 190;
+        by = this.player.y + ay / al * 190;
+      }
       if (alive >= CAP) break;
       p.spawned = true;
       let slots = CAP - alive;
+      const pr = pd < 260 ? 6 : 3;
       // 密室：按随机方案出怪，可能是普通怪群、精英、精英+宝箱，或只有宝箱
       if (p.secret) {
         if (p.elite > 0) {
           const poolE = (this.def.elitePool && this.def.elitePool.length) ? this.def.elitePool : this.def.pool;
           for (let i = 0; i < p.elite && slots > 0; i++) {
             const ang = (i / Math.max(1, p.elite)) * Math.PI * 2 + U.rand(-0.4, 0.4);
-            const pos = this.nearestFloorPoint(p.x + Math.cos(ang) * 46, p.y + Math.sin(ang) * 46, 3) ||
-              this.nearestFloorPoint(p.x, p.y, 3) || p;
+            const pos = this.nearestFloorPoint(bx + Math.cos(ang) * 46, by + Math.sin(ang) * 46, pr) ||
+              this.nearestFloorPoint(bx, by, pr) || { x: bx, y: by };
             const m = this.spawnMonster(this.pickWeatherMonster(poolE), pos.x, pos.y, false, p.chunk);
             if (m) {
               this.promoteElite(m);
@@ -613,8 +625,8 @@
         }
         const count = Math.min(slots, p.count + (this.wxPackBonus || 0) + (this.extraPerPack || 0));
         for (let i = 0; i < count; i++) {
-          const pos = this.nearestFloorPoint(p.x + U.rand(-46, 46), p.y + U.rand(-46, 46), 3) ||
-            this.nearestFloorPoint(p.x, p.y, 3) || p;
+          const pos = this.nearestFloorPoint(bx + U.rand(-46, 46), by + U.rand(-46, 46), pr) ||
+            this.nearestFloorPoint(bx, by, pr) || { x: bx, y: by };
           if (this.spawnMonster(this.pickWeatherMonster(this.def.pool), pos.x, pos.y, false, p.chunk)) {
             slots--;
             alive++;
@@ -626,8 +638,8 @@
       const spread = (p.dense ? 30 : 46) * (this.wxSpreadMul || 1);
       const count = Math.min(slots, p.count + (this.wxPackBonus || 0) + (this.extraPerPack || 0));
       for (let i = 0; i < count; i++) {
-        const pos = this.nearestFloorPoint(p.x + U.rand(-spread, spread), p.y + U.rand(-spread, spread), 3) ||
-          this.nearestFloorPoint(p.x, p.y, 3) || p;
+        const pos = this.nearestFloorPoint(bx + U.rand(-spread, spread), by + U.rand(-spread, spread), pr) ||
+          this.nearestFloorPoint(bx, by, pr) || { x: bx, y: by };
         if (this.spawnMonster(this.pickWeatherMonster(this.def.pool), pos.x, pos.y, false, p.chunk)) {
           slots--;
           alive++;
@@ -636,8 +648,8 @@
       // 精英：图鉴大造型，按块额外投放一只（带专属招式读条）
       const eliteChance = (this.tune ? this.tune.eliteChance : 0.3) + (this.wxEliteBonus || 0);
       if (slots > 0 && this.def.elitePool && this.def.elitePool.length && U.chance(eliteChance)) {
-        const epos = this.nearestFloorPoint(p.x + U.rand(-30, 30), p.y + U.rand(-30, 30), 3) ||
-          this.nearestFloorPoint(p.x, p.y, 3) || p;
+        const epos = this.nearestFloorPoint(bx + U.rand(-30, 30), by + U.rand(-30, 30), pr) ||
+          this.nearestFloorPoint(bx, by, pr) || { x: bx, y: by };
         const m = this.spawnMonster(this.pickWeatherMonster(this.def.elitePool), epos.x, epos.y, false, p.chunk);
         if (m) {
           this.promoteElite(m);

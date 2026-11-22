@@ -11,6 +11,17 @@
       const goal = this.autoGoalTarget();
       const evade = this.autoEvadeDirection(goal);
       if (evade) return this.autoCommitMove(this.autoSmoothDirection(evade, 0.42), goal);
+      // 火圈收缩：站在圈外会持续灼烧，优先往圈心走（比追怪更重要）
+      const ring = this.field && this.field.kind === 'fire' ? this.field.ring : null;
+      if (ring && ring.t > ring.arm &&
+        Math.hypot(this.player.x - ring.x, this.player.y - ring.y) > ring.r - this.player.r - 10) {
+        const dx = ring.x - this.player.x, dy = ring.y - this.player.y;
+        const len = Math.hypot(dx, dy) || 1;
+        return this.autoCommitMove(
+          this.autoSmoothDirection({ x: dx / len, y: dy / len }, 0.5),
+          { x: ring.x, y: ring.y, kind: 'ring' }
+        );
+      }
       if (this.autoDetour && this.autoDetour.until > now) return this.autoCommitMove(this.autoDetour.dir, goal);
       if (!goal) return this.autoCommitMove(this.autoSmoothDirection({ x: 0, y: 0 }, 0.2), null);
       const target = goal.monster;
@@ -29,10 +40,17 @@
           }
           // 满血面对普通小怪不必一直后撤：站桩输出更快；
           // 掉血、被围、精英/首领近身或脚下有预警时才拉开距离
-          const needKite = this.autoKiteHeld && (hpPct < 0.6 || closeCount >= 3 || target.boss || target.elite ||
-            this.autoHardDangerAt(this.player.x, this.player.y) > 0);
+          const needKite = this.autoKiteHeld && dist < attackRange * 0.92 &&
+            (hpPct < 0.6 || closeCount >= 3 || ((target.boss || target.elite) && dist < 280) ||
+              this.autoHardDangerAt(this.player.x, this.player.y) > 0);
           if (needKite || (hpPct < 0.4 && dist < 200 + target.r)) {
-            const dir = this.autoKiteDirection(target);
+            // 被多只怪贴身时朝“怪最稀疏”的方向撤，而不是只背对当前目标
+            let dir = null;
+            if (closeCount >= 3) {
+              const a = this.autoRetreatAngle();
+              if (a != null && a !== undefined) dir = { x: Math.cos(a), y: Math.sin(a) };
+            }
+            if (!dir) dir = this.autoKiteDirection(target);
             if (dir) return this.autoCommitMove(this.autoSmoothDirection(dir, 0.4), goal);
           }
           // 已在射程内且视线畅通：站定输出；否则继续走下面的寻路绕过去
@@ -62,10 +80,21 @@
           }
         }
       }
-      // 完全走不动：说明当前目标隔着墙或无法寻路，临时放弃并去激活别的怪群
+      // 完全走不动：先强行侧移脱困；短时间内反复脱困无效则放弃当前目标去探索
       if (!dir.x && !dir.y) {
         if (!this.autoStuckAt) this.autoStuckAt = now;
-        else if (now - this.autoStuckAt > 0.7) {
+        if (now - this.autoStuckAt > 0.35) {
+          const log = (this.autoEscapeLog || []).filter(t => now - t < 5);
+          const escape = log.length < 3 ? this.autoEscapeDirection() : null;
+          if (escape) {
+            log.push(now);
+            this.autoEscapeLog = log;
+            this.autoDetour = { dir: escape, until: now + 0.6 };
+            this.autoStuckAt = 0;
+            this.autoBlocked = 0;
+            return this.autoCommitMove(escape, goal);
+          }
+          this.autoEscapeLog = [];
           this.autoGiveUpGoal(now);
           return { x: 0, y: 0 };
         }
@@ -99,6 +128,7 @@
       this.autoKiteHeld = false;
       this.autoStuckAt = 0;
       this.autoBlocked = 0;
+      this.autoEscapeLog = [];
     },
     autoCommitMove(dir, goal) {
       this.autoDecision = { dir, goal, until: (this.time || 0) + 0.1 };
@@ -160,7 +190,7 @@
       }
       return true;
     },
-    // 视线检测：隔着墙时不要站桩输出/挥空，先绕过去
+    // 视线检测：隔着墙/可破坏立件时不要站桩输出，先绕过去或打碎挡路的道具
     autoLineClear(target) {
       if (!target) return false;
       const dx = target.x - this.player.x, dy = target.y - this.player.y;
@@ -169,9 +199,28 @@
       const steps = Math.ceil(d / 24);
       for (let i = 1; i < steps; i++) {
         const t = d * i / steps;
-        if (this.circleWall(this.player.x + dx / d * t, this.player.y + dy / d * t, 3)) return false;
+        const px = this.player.x + dx / d * t, py = this.player.y + dy / d * t;
+        if (this.circleWall(px, py, 3)) return false;
+        if (this.circleProp(px, py, 4)) return false;
       }
       return true;
+    },
+    // 找出挡在攻击线路上、可以直接打碎的立件
+    autoPropBlocker(target) {
+      if (!target || !this.propCols || !this.propCols.length) return null;
+      const dx = target.x - this.player.x, dy = target.y - this.player.y;
+      const d = Math.hypot(dx, dy);
+      if (d < 32) return null;
+      const steps = Math.ceil(d / 24);
+      for (let i = 1; i < steps; i++) {
+        const t = d * i / steps;
+        const px = this.player.x + dx / d * t, py = this.player.y + dy / d * t;
+        for (const c of this.propCols) {
+          if (!c.prop || c.prop.destroyed) continue;
+          if (this.propGap(c, px, py) < 6) return c;
+        }
+      }
+      return null;
     },
     // 风筝走位：远离目标为主，叠加侧向偏移，撞墙时换另一侧
     autoKiteDirection(target) {
@@ -230,13 +279,20 @@
           let score = d - (1 - m.hp / m.maxHp) * 70;
           if (m.ranged) score -= 30;
           if (m.elite) score -= 24;
+          // 分裂出的小体不计击杀：优先绕开它们，避免刷不动任务进度
+          if (m.noLoot) score += 260;
           if (score < bestScore) { best = m; bestScore = score; bestDist = d; }
         }
       }
       const locked = this.autoTarget;
-      if (!exploring && locked && locked !== this.autoIgnore && !locked.dead && this.monsters.indexOf(locked) >= 0) {
+      // 已锁定目标若是分裂小体，而场上还有能推进进度的本体，则立即换目标
+      const dropLock = locked && locked.noLoot && this.monsters.some(q => !q.dead && !q.noLoot);
+      if (!exploring && locked && !dropLock && locked !== this.autoIgnore && !locked.dead && this.monsters.indexOf(locked) >= 0) {
         const lockedD = U.dist(this.player, locked);
-        if (!best || lockedD <= bestDist + 120) {
+        // 精英目标离得太远而附近有普通怪时，先清小怪，避免长距离风筝僵持
+        const farElite = locked.elite && !locked.boss && best && !best.elite &&
+          lockedD > bestDist + 140;
+        if (!best || (lockedD <= bestDist + 120 && !farElite)) {
           // 贴合到最近的可行走点，防止怪物被挤进墙里导致寻路目标无效
           const gp = this.nearestFloorPoint(locked.x, locked.y, 2) || locked;
           this.autoGoal = { x: gp.x, y: gp.y, kind: 'monster', monster: locked };
@@ -343,7 +399,7 @@
       }
       return false;
     },
-    // 硬威胁：真正会掉血的预警（弹道 / 技能前摇 / 首领预警圈）
+    // 硬威胁：真正会掉血的预警（弹道 / 技能前摇 / 首领预警圈 / 场地与天气）
     autoHardDangerAt(x, y) {
       let danger = 0;
       if (this.autoProjectileDanger(x, y)) danger += 12000;
@@ -351,7 +407,49 @@
       for (const z of this.dangerZones || []) {
         if (this.autoZoneDanger(x, y, z)) danger += z.high ? 26000 : 8000;
       }
+      return danger + this.autoFieldDanger(x, y);
+    },
+    // 场地/天气威胁：火圈外、落雷预警圈、已触发的枫叶堆
+    autoFieldDanger(x, y) {
+      let danger = 0;
+      const f = this.field;
+      if (f && f.kind === 'fire' && f.ring && f.ring.t > f.ring.arm) {
+        if (Math.hypot(x - f.ring.x, y - f.ring.y) > f.ring.r - 18) danger += 9000;
+      }
+      for (const s of this.wxStrikes || []) {
+        if (Math.hypot(x - s.x, y - s.y) < 92 + this.player.r + 6) danger += 12000;
+      }
+      if (f && f.piles) {
+        for (const q of f.piles) {
+          if (!q.armed) continue;
+          if (Math.hypot(x - q.x, y - q.y) < (q.r || 30) + 80) danger += 9000;
+        }
+      }
+      for (const z of this.wxZones || []) {
+        if (!z.armed) continue;
+        if (Math.hypot(x - z.x, y - z.y) < (z.r || 70) + 80) danger += 9000;
+      }
       return danger;
+    },
+    // 卡死脱困：在 16 方向里挑一个可走、远离怪堆、略偏地图中心的方向
+    autoEscapeDirection() {
+      const aw = this.arenaW || ARENA_W, ah = this.arenaH || ARENA_H;
+      let best = null, bestScore = -Infinity;
+      for (let i = 0; i < 16; i++) {
+        const a = Math.PI * 2 * i / 16;
+        const x = Math.cos(a), y = Math.sin(a);
+        if (!this.autoStepFree(x, y, 56)) continue;
+        const ex = this.player.x + x * 96, ey = this.player.y + y * 96;
+        let score = -Math.hypot(ex - aw / 2, ey - ah / 2) * 0.02;
+        for (const m of this.monsters) {
+          if (m.dead) continue;
+          const md = Math.hypot(ex - m.x, ey - m.y);
+          if (md < 160) score -= (160 - md) * 0.6;
+        }
+        score -= this.autoHardDangerAt(ex, ey) * 0.001;
+        if (score > bestScore) { bestScore = score; best = { x: x, y: y }; }
+      }
+      return best;
     },
     autoEvadeDirection(goal) {
       const here = this.autoHardDangerAt(this.player.x, this.player.y);
@@ -449,6 +547,57 @@
       }
     },
 
+    // 自动战斗的普攻目标：远程优先打视野内最值得打的目标，
+    // 避免移动时只朝正前方放箭、背后近身的怪一直打不到
+    autoBasicTarget() {
+      const range = (this.basicSkill.range || 600) + 24;
+      let best = null, bestScore = Infinity;
+      for (const m of this.monsters) {
+        if (m.dead) continue;
+        const d = U.dist(this.player, m);
+        if (d > range) continue;
+        if (!this.autoLineClear(m)) continue;
+        let score = d;
+        if (m.boss) score -= 260;
+        else if (m.elite) score -= 70;
+        if (m.aggro) score -= 30;
+        if (m.hp / m.maxHp < 0.25) score -= 120;
+        // 分裂小体不推进任务，除非没有别的目标
+        if (m.noLoot) score += 240;
+        if (score < bestScore) { bestScore = score; best = m; }
+      }
+      return best;
+    },
+    // 自动战斗保险：近身却长时间不掉血的怪视为被墙体/立件卡死，挪到就近的空地上。
+    // 只在怪物自己附近找落脚点，不往玩家身边拉，避免把远处的怪群拽到脸上。
+    autoWatchStuckMonsters(dt) {
+      const now = this.time || 0;
+      if (now < (this.autoStuckScanAt || 0)) return;
+      this.autoStuckScanAt = now + 1;
+      if (this.phase === 'boss') return;
+      for (const m of this.monsters) {
+        if (m.dead || m.boss) continue;
+        const d = U.dist(this.player, m);
+        if (d > 280) { m.autoStuckT = 0; m.autoStuckHp = m.hp; continue; }
+        if (m.autoStuckHp !== m.hp) { m.autoStuckHp = m.hp; m.autoStuckT = 0; continue; }
+        m.autoStuckT = (m.autoStuckT || 0) + 1;
+        if (m.autoStuckT < 10) continue;
+        for (let i = 0; i < 16; i++) {
+          const a = Math.PI * 2 * i / 16;
+          const rr = 34 + (i % 3) * 26;
+          const x = m.x + Math.cos(a) * rr;
+          const y = m.y + Math.sin(a) * rr;
+          if (this.circleWall(x, y, m.r) || this.circleProp(x, y, m.r)) continue;
+          if (U.dist(this.player, { x: x, y: y }) < 70) continue;
+          m.x = x;
+          m.y = y;
+          m.aggro = true;
+          break;
+        }
+        m.autoStuckT = 0;
+        m.autoStuckHp = m.hp;
+      }
+    },
     autoCast() {
       if (this.player.hp <= 0) return;
       // 战吼蓄力/释放期间锁定动作：普攻与其他技能不插入，保证整套吼叫连贯播完
@@ -456,10 +605,29 @@
 
       // 0 号位：普攻（移动中只打前方的目标，出手方向跟随移动方向）
       if (this.attackCd <= 0 && !this.whirl) {
-        let target = this.nearestMonsterInFront((this.basicSkill.range || 600) + 24);
+        let target = null;
+        if (this.autoMode && this.autoIsRanged()) {
+          // 远程自动战斗：优先选择视野内收益最高的目标（残血/精英/首领/近身怪）
+          target = this.autoBasicTarget();
+        }
+        if (!target) target = this.nearestMonsterInFront((this.basicSkill.range || 600) + 24);
         // 远程职业后撤风筝时也允许回头输出，避免拉开距离的全程没有伤害
         if (!target && this.autoMode && this.autoIsRanged()) {
           target = this.nearestMonster((this.basicSkill.range || 600) + 24);
+        }
+        // 近战锁定分裂小体时，优先改打能推进进度的本体
+        if (this.autoMode && target && target.noLoot) {
+          const alt = this.autoBasicTarget();
+          if (alt && !alt.noLoot) target = alt;
+        }
+        // 目标被可破坏立件挡住：先打碎立件，避免双方隔着道具互相够不到
+        if (this.autoMode && target) {
+          const blocker = this.autoPropBlocker(target);
+          if (blocker) {
+            this.player.facing = U.angle(this.player, blocker);
+            this.doBasic(this.player.facing);
+            return;
+          }
         }
         if (target) {
           this.player.facing = U.angle(this.player, target);

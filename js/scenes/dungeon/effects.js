@@ -24,6 +24,8 @@
     this.effects.push({ kind: 'ring', x, y, r0, r1, color, life: dur || 0.45, max: dur || 0.45 });
   },
   updateEffects(dt) {
+    // 升级光环倒计时：与粒子分开维护，绘制时按剩余比例淡出
+    if (this.levelFx > 0) this.levelFx = Math.max(0, this.levelFx - dt);
     if (this.dangerZones && this.dangerZones.length) {
       let n = 0;
       for (let i = 0; i < this.dangerZones.length; i++) {

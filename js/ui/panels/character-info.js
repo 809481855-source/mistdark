@@ -5,6 +5,8 @@
   const ui = DG.ui = DG.ui || {};
 
   ui.openCharacterInfo = function (char, opts) {
+    // 连点角色入口时不叠出第二层弹框
+    if (document.querySelector('.modal-mask')) return;
     opts = opts || {};
     const cls = DG.data.classes[char.cls];
     const stats = DG.stats.compute(char);

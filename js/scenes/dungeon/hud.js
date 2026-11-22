@@ -105,6 +105,7 @@
     this.$compassArrow = el.querySelector('[data-bc-arrow]');
     this.$compassText = el.querySelector('[data-bc-text]');
     this.$announce = el.querySelector('[data-announce]');
+    this.$lvl = el.querySelector('[data-open-char]');
     this.$xp = el.querySelector('[data-xp]');
     this.$zoneFill = el.querySelector('[data-zone-fill]');
     this.$hourglass = el.querySelector('.dp-hourglass');
@@ -237,6 +238,17 @@
     c[key] = value;
     el.style[prop] = value;
   },
+  // 等级牌：pop=true 时重放一次弹跳发光，连续升级也能看到反馈
+  syncLevelBadge(level, pop) {
+    if (!this.$lvl) return;
+    this._badgeLevel = level;
+    this.$lvl.textContent = level;
+    if (!pop) return;
+    this.$lvl.classList.remove('lvl-pop');
+    // 读一次布局强制重排，保证同一帧内重加类名也能重新触发动画
+    void this.$lvl.offsetWidth;
+    this.$lvl.classList.add('lvl-pop');
+  },
   findBoss() {
     for (const m of this.monsters) {
       if (m.boss && !m.dead) return m;
@@ -246,12 +258,18 @@
   updateHud() {
     if (!this.hud) return;
     const need = DG.character.xpNeed(this.char.level);
-    const xp = this.char.xp + this.xpEarned;
+    // 经验在击杀时已实时写入角色，升级会同步扣减，这里直接读当前值即可
+    const xp = this.char.xp;
     const xpPct = U.clamp(xp / need, 0, 1);
     this.setHudStyle(this.$xp, 'xpWidth', 'width', (xpPct * 100) + '%');
     this.setHudText(this.$xpPct, 'xpPct', Math.round(xpPct * 100) + '%');
     this.setHudText(this.$xpNum, 'xpNum', `${U.fmt(xp)} / ${U.fmt(need)}`);
     this.setHudText(this.$explore, 'explore', `探索 ${Math.round(this.explorePct() * 100)}%`);
+    // 等级牌兜底同步：升级表现由 onLevelUp 触发弹跳，这里只保证数值不落后
+    if (this.$lvl && this._badgeLevel !== this.char.level) {
+      this._badgeLevel = this.char.level;
+      this.syncLevelBadge(this.char.level, false);
+    }
 
     // 一次遍历同时供血条与指南针使用，避免每次刷新扫描两遍怪物列表
     const boss = this.findBoss();

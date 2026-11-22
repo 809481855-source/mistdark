@@ -9,6 +9,8 @@
   const TYPE_GLYPH = { kill: '剿', elite: '精', boss: '王', loot: '拾', clear: '旗' };
 
   ui.openQuests = function (char, onChange) {
+    // 连点任务入口时不叠出第二层弹框
+    if (document.querySelector('.modal-mask')) return;
     const body = U.el('div', 'quest-body');
     const modal = ui.modal({
       title: '任务',

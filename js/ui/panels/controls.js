@@ -5,6 +5,8 @@
   const ui = DG.ui = DG.ui || {};
 
   ui.openControls = function (onChanged) {
+    // 连点设置入口时不叠出第二层弹框
+    if (document.querySelector('.modal-mask')) return;
     const body = U.el('div');
 
     ui.modal({

@@ -87,6 +87,8 @@
         moving: false, walkPhase: 0, flip: false, atkAnim: 0,
         // 受击硬直与后退：hurtT 剩余硬直时间，kbX/kbY 后退速度
         hurtT: 0, kbX: 0, kbY: 0,
+        // 连续受击：3 秒窗口内再次被击中会削弱反馈并取消击退
+        hurtChain: 0, hurtChainT: 0, hurtWeak: false,
         // 冰缓：精英「冰冻」词缀命中后短暂减速
         chillT: 0
       };
@@ -157,6 +159,9 @@
       this.xpEarned = 0;
       this.items = [];
       this.skillUps = [];
+      // 战斗内升级记录（供结算展示）与升级光环剩余时长
+      this.levelUps = [];
+      this.levelFx = 0;
 
       this.paused = false;
       this.finished = false;
@@ -249,7 +254,7 @@
         gold: Math.round(this.goldEarned),
         items: this.items.slice(),
         skillUps: this.skillUps.slice(),
-        levels: []
+        levels: this.levelUps.slice()
       };
     }
 
@@ -343,6 +348,9 @@
         this.skillCd[i] = Math.max(0, this.skillCd[i] - dt);
       }
       this.player.invuln = Math.max(0, this.player.invuln - dt);
+      // 连续受击窗口：3 秒内无新受击则恢复正常受击反馈
+      this.player.hurtChainT = Math.max(0, (this.player.hurtChainT || 0) - dt);
+      if (this.player.hurtChainT <= 0) { this.player.hurtChain = 0; this.player.hurtWeak = false; }
       this.player.chillT = Math.max(0, this.player.chillT - dt);
       this.player.atkAnim = Math.max(0, (this.player.atkAnim || 0) - dt);
       // 受击硬直：按当前后退速度位移并衰减
@@ -424,6 +432,7 @@
             my = dy / d;
           }
         } else if (this.autoMode) {
+          this.autoWatchStuckMonsters(dt);
           const auto = this.autoMoveDirection();
           mx = auto.x;
           my = auto.y;

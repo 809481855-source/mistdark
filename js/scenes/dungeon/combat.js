@@ -237,6 +237,13 @@
     const tm = this.talentMods();
     const timers = this.talentTimers;
 
+    // 连续受击判定：3 秒内再次被击中，削弱受击反馈并取消受击位移
+    const chain = (this.player.hurtChainT > 0) ? (this.player.hurtChain || 0) + 1 : 1;
+    const weakHurt = chain >= 2;
+    this.player.hurtChain = chain;
+    this.player.hurtChainT = 3;
+    this.player.hurtWeak = weakHurt;
+
     let incoming = raw;
     if (timers.voidGuard > 0) incoming *= 0.75;
     let armor = this.stats.armor;
@@ -246,28 +253,38 @@
     this.player.hp -= taken;
     if (tm.flags.fortify) timers.fortify = 2;
     if (tm.flags.postHurtMove) timers.postHurt = 2;
-    this.hurtFlash = 0.3;
-    this.shake = Math.max(this.shake, 0.18);
+    // 连续受击时红闪、震屏与音效一并减弱，避免密集受击的反馈过载
+    this.hurtFlash = weakHurt ? Math.max(0.06, Math.min(this.hurtFlash, 0.1))
+      : Math.max(this.hurtFlash, 0.3);
+    this.shake = Math.max(this.shake, weakHurt ? 0.06 : 0.18);
     if (DG.audio) {
-      DG.audio.play(this.cls && this.cls.id === 'ranger' ? 'rangerBehit' : 'barbBehit', { vol: 0.7, gap: 0.15 });
+      DG.audio.play(this.cls && this.cls.id === 'ranger' ? 'rangerBehit' : 'barbBehit',
+        { vol: weakHurt ? 0.4 : 0.7, gap: 0.15 });
     }
     this.addFloater(this.player.x, this.player.y - 34, '-' + taken, '#ff8a80', 22);
 
     // 受击硬直 + 后退：朝背离伤害来源的方向弹开一小段
     // 旋风期间不可阻挡：不吃硬直、不被击退，移动不受影响
     if (!this.whirl) {
-      let src = null, near = Infinity;
-      for (const m of (this.monsters || [])) {
-        if (m.dead) continue;
-        const d = U.dist(m, this.player);
-        if (d < near) { near = d; src = m; }
+      if (weakHurt) {
+        // 连续受击：取消击退位移，只保留极短的轻微后仰动作
+        this.player.kbX = 0;
+        this.player.kbY = 0;
+        this.player.hurtT = 0.10;
+      } else {
+        let src = null, near = Infinity;
+        for (const m of (this.monsters || [])) {
+          if (m.dead) continue;
+          const d = U.dist(m, this.player);
+          if (d < near) { near = d; src = m; }
+        }
+        const back = src
+          ? Math.atan2(this.player.y - src.y, this.player.x - src.x)
+          : this.player.facing + Math.PI;
+        this.player.hurtT = 0.30;
+        this.player.kbX = Math.cos(back) * 230;
+        this.player.kbY = Math.sin(back) * 230;
       }
-      const back = src
-        ? Math.atan2(this.player.y - src.y, this.player.x - src.x)
-        : this.player.facing + Math.PI;
-      this.player.hurtT = 0.30;
-      this.player.kbX = Math.cos(back) * 230;
-      this.player.kbY = Math.sin(back) * 230;
     }
     // 硬直期间给一点无敌帧，避免被连击锁死
     this.player.invuln = Math.max(this.player.invuln, 0.28);
@@ -285,8 +302,8 @@
     // 避免自动战斗因为一次走位失误直接判负（手动操作不生效）
     if (this.player.hp <= 0 && this.autoMode && (this.autoRescueCd || 0) <= 0) {
       this.player.hp = Math.round(this.player.maxHp * 0.35);
-      this.player.invuln = Math.max(this.player.invuln, 1.3);
-      this.autoRescueCd = 40;
+      this.player.invuln = Math.max(this.player.invuln, 2);
+      this.autoRescueCd = 30;
       this.talentTimers.postHurt = Math.max(this.talentTimers.postHurt || 0, 2);
       this.addRing(this.player.x, this.player.y, 18, 104, '#ffd479', 0.6);
       this.addBurst(this.player.x, this.player.y, '#ffd479', 16);
@@ -315,6 +332,49 @@
     this.announce('你倒下了……', 1800);
     this.addBurst(this.player.x, this.player.y, '#c6554e', 18);
   },
+  // 战斗内实时结算经验：击杀即入账，经验条满立刻升级，不再等副本结算
+  gainXp(amount) {
+    if (!amount || amount <= 0) return;
+    this.xpEarned += amount;
+    const levels = DG.character.addXp(this.char, amount);
+    if (levels && levels.length) this.onLevelUp(levels);
+  },
+  // 升级表现：金色光环 + 上升光尘 + LV 飘字 + 顶部公告 + 等级牌弹跳 + 音效
+  onLevelUp(levels) {
+    const from = levels[0] - 1;
+    const now = levels[levels.length - 1];
+    for (const lv of levels) this.levelUps.push(lv);
+    const p = this.player;
+    // 角色脚下短暂的金色光环
+    this.levelFx = 1.1;
+    this.addRing(p.x, p.y, 10, 96, '#ffd166', 0.62);
+    this.addRing(p.x, p.y, 4, 58, '#fff6d0', 0.44);
+    // 上升光尘：从脚边向头顶飘散
+    for (let i = 0; i < 24; i++) {
+      const a = U.rand(0, Math.PI * 2);
+      const rad = U.rand(4, p.r * 2.1);
+      this.effects.push({
+        kind: 'spark',
+        x: p.x + Math.cos(a) * rad,
+        y: p.y + Math.sin(a) * rad * 0.5,
+        vx: Math.cos(a) * U.rand(6, 26),
+        vy: U.rand(-150, -70),
+        life: U.rand(0.5, 0.95),
+        max: 1,
+        r: U.rand(1.6, 3.4),
+        color: i % 3 === 0 ? '#fff6d0' : '#ffd166'
+      });
+    }
+    // 飘字：直接显示升到的等级，一次连升多级也显示最终等级
+    this.addFloater(p.x, p.y - p.r - 48, `LV.${now}`, '#ffe08a', 30);
+    this.addFloater(p.x, p.y - p.r - 20, now > from + 1 ? `等级提升 +${now - from}` : '等级提升', '#ffd166', 20);
+    this.announce(`等级提升 · Lv.${now}`, 1900);
+    this.syncLevelBadge(now, true);
+    if (DG.audio) {
+      DG.audio.play('stageLevelup', { vol: 0.85 });
+      DG.audio.play('uiLevelup', { vol: 0.6, gap: 0.18 });
+    }
+  },
   onMonsterDeath(m) {
     // 分裂词缀：先裂成两个小体，再走结算（小体自身不再分裂、无掉落）
     if (m.affixes && m.affixes.indexOf('split') >= 0) this.splitElite(m);
@@ -327,7 +387,7 @@
     // 分裂出的小体不计击杀、不给经验金币，避免刷资源与提前触发首领
     if (!m.noLoot) {
       this.kills++;
-      this.xpEarned += m.xp;
+      this.gainXp(m.xp);
       this.goldEarned += m.gold;
       this.updateWaveText();
       // 任务进度：普通击杀 / 精英 / 首领分别计入悬赏
@@ -595,11 +655,13 @@
     if (d <= reach && Math.abs(diff) <= halfArc) {
       if (this.hurtPlayer(m.dmg)) this.affixOnHit(m);
       this.addBurst(p.x, p.y, color, 6);
-      // 撞：击退玩家；抓：把玩家拖向怪物
-      if (mv.knock) {
-        this.movePlayer(p, Math.cos(a.angle) * mv.knock, Math.sin(a.angle) * mv.knock, p.r);
-      } else if (mv.pull) {
-        this.movePlayer(p, -Math.cos(a.angle) * mv.pull, -Math.sin(a.angle) * mv.pull, p.r);
+      // 撞：击退玩家；抓：把玩家拖向怪物；连续受击期间取消这类受击位移
+      if (!p.hurtWeak) {
+        if (mv.knock) {
+          this.movePlayer(p, Math.cos(a.angle) * mv.knock, Math.sin(a.angle) * mv.knock, p.r);
+        } else if (mv.pull) {
+          this.movePlayer(p, -Math.cos(a.angle) * mv.pull, -Math.sin(a.angle) * mv.pull, p.r);
+        }
       }
     }
   },
@@ -893,6 +955,8 @@
         p.vy = p.vx * sa + p.vy * ca;
         p.vx = vx;
       }
+      // 记录移动前的位置：高速弹道按线段判定命中，避免贴脸目标被“跳帧”穿过
+      const ox = p.x, oy = p.y;
       p.x += p.vx * dt;
       p.y += p.vy * dt;
       if (p.x < -20 || p.x > (this.arenaW || ARENA_W) + 20 ||
@@ -906,9 +970,16 @@
       if (p.team === 'player') {
         this.breakPropsAt(p.x, p.y, p.r + 14, true);
         let consumed = false;
+        const sx = p.x - ox, sy = p.y - oy;
+        const segLen2 = sx * sx + sy * sy;
         for (const m of this.monsters) {
           if (m.dead || p.hit.indexOf(m) >= 0) continue;
-          if (Math.hypot(p.x - m.x, p.y - m.y) <= p.r + m.r) {
+          // 点到线段的最近距离：一帧跨过目标也能判定命中
+          let t = segLen2 > 0 ? ((m.x - ox) * sx + (m.y - oy) * sy) / segLen2 : 0;
+          if (t < 0) t = 0;
+          else if (t > 1) t = 1;
+          const cx = ox + sx * t, cy = oy + sy * t;
+          if (Math.hypot(m.x - cx, m.y - cy) <= p.r + m.r) {
             const hit = this.rollHit(p.mult, p.skill, m);
             this.hitMonster(m, hit.dmg, hit.crit);
             this.addBurst(p.x, p.y, p.color, 3);

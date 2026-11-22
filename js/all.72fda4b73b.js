@@ -12028,6 +12028,8 @@
 
   ui.openEquipment = function (char, onChange, opts) {
     opts = opts || {};
+    // 连点装备入口时不叠出第二层面板，直接把已有实例返回
+    if (ui._equipPanel && ui._equipPanel.isOpen()) return ui._equipPanel;
     const screen = U.el('div', 'eq-screen');
     const canvas = U.el('div', 'eq-canvas');
     screen.appendChild(canvas);
@@ -12055,6 +12057,7 @@
 
     function close() {
       if (DG.audio) DG.audio.play('uiClose', { vol: 0.45, gap: 0.12 });
+      ui._equipPanel = null;
       document.removeEventListener('keydown', onKey);
       window.removeEventListener('resize', onResize);
       if (screen.parentNode) screen.remove();
@@ -12316,7 +12319,9 @@
     }
 
     render();
-    return { close };
+    const panel = { close, isOpen: () => !!screen.isConnected };
+    ui._equipPanel = panel;
+    return panel;
   };
 })();
 
@@ -12780,6 +12785,8 @@
   const TYPE_GLYPH = { kill: '剿', elite: '精', boss: '王', loot: '拾', clear: '旗' };
 
   ui.openQuests = function (char, onChange) {
+    // 连点任务入口时不叠出第二层弹框
+    if (document.querySelector('.modal-mask')) return;
     const body = U.el('div', 'quest-body');
     const modal = ui.modal({
       title: '任务',
@@ -13181,13 +13188,14 @@
           return `<div class="loot-cell r-${it.rarity}" title="${U.escapeHtml(it.name)}">` +
             `<img class="loot-frame" src="${DG.ui.itemFrameSrc(it)}" alt="">` +
             `<span class="qty">${DG.data.rarityById[it.rarity].name}</span>` +
-            `${U.escapeHtml(slot.glyph)}` +
+            `<span class="loot-glyph">${U.escapeHtml(slot.glyph)}</span>` +
             `<span class="loot-name">${U.escapeHtml(it.name)}</span></div>`;
         }).join('')
       : `<div class="loot-empty">本次没有获得装备。</div>`;
 
     const levelNote = (result.levels && result.levels.length)
-      ? `<div class="levelup-note">等级提升！当前等级 Lv.${result.levels[result.levels.length - 1]}（获得 ${result.levels.length} 个技能点）</div>`
+      ? `<div class="levelup-note">等级提升！当前等级 Lv.${result.levels[result.levels.length - 1]}` +
+        `${result.skillPoints ? `（获得 ${result.skillPoints} 个技能点）` : ''}</div>`
       : '';
     const penaltyNote = (result.keepRate != null && result.keepRate < 1)
       ? `<div class="levelup-note">${result.retreat ? '主动撤退' : '重伤归来'}：本局金币与经验按 ${Math.round(result.keepRate * 100)}% 结算，装备保留</div>`
@@ -13244,6 +13252,8 @@
   const ui = DG.ui = DG.ui || {};
 
   ui.openCharacterInfo = function (char, opts) {
+    // 连点角色入口时不叠出第二层弹框
+    if (document.querySelector('.modal-mask')) return;
     opts = opts || {};
     const cls = DG.data.classes[char.cls];
     const stats = DG.stats.compute(char);
@@ -13304,6 +13314,8 @@
   const ui = DG.ui = DG.ui || {};
 
   ui.openControls = function (onChanged) {
+    // 连点设置入口时不叠出第二层弹框
+    if (document.querySelector('.modal-mask')) return;
     const body = U.el('div');
 
     ui.modal({
@@ -14483,6 +14495,8 @@
         moving: false, walkPhase: 0, flip: false, atkAnim: 0,
         // 受击硬直与后退：hurtT 剩余硬直时间，kbX/kbY 后退速度
         hurtT: 0, kbX: 0, kbY: 0,
+        // 连续受击：3 秒窗口内再次被击中会削弱反馈并取消击退
+        hurtChain: 0, hurtChainT: 0, hurtWeak: false,
         // 冰缓：精英「冰冻」词缀命中后短暂减速
         chillT: 0
       };
@@ -14553,6 +14567,9 @@
       this.xpEarned = 0;
       this.items = [];
       this.skillUps = [];
+      // 战斗内升级记录（供结算展示）与升级光环剩余时长
+      this.levelUps = [];
+      this.levelFx = 0;
 
       this.paused = false;
       this.finished = false;
@@ -14645,7 +14662,7 @@
         gold: Math.round(this.goldEarned),
         items: this.items.slice(),
         skillUps: this.skillUps.slice(),
-        levels: []
+        levels: this.levelUps.slice()
       };
     }
 
@@ -14739,6 +14756,9 @@
         this.skillCd[i] = Math.max(0, this.skillCd[i] - dt);
       }
       this.player.invuln = Math.max(0, this.player.invuln - dt);
+      // 连续受击窗口：3 秒内无新受击则恢复正常受击反馈
+      this.player.hurtChainT = Math.max(0, (this.player.hurtChainT || 0) - dt);
+      if (this.player.hurtChainT <= 0) { this.player.hurtChain = 0; this.player.hurtWeak = false; }
       this.player.chillT = Math.max(0, this.player.chillT - dt);
       this.player.atkAnim = Math.max(0, (this.player.atkAnim || 0) - dt);
       // 受击硬直：按当前后退速度位移并衰减
@@ -14820,6 +14840,7 @@
             my = dy / d;
           }
         } else if (this.autoMode) {
+          this.autoWatchStuckMonsters(dt);
           const auto = this.autoMoveDirection();
           mx = auto.x;
           my = auto.y;
@@ -16613,6 +16634,7 @@
     this.$compassArrow = el.querySelector('[data-bc-arrow]');
     this.$compassText = el.querySelector('[data-bc-text]');
     this.$announce = el.querySelector('[data-announce]');
+    this.$lvl = el.querySelector('[data-open-char]');
     this.$xp = el.querySelector('[data-xp]');
     this.$zoneFill = el.querySelector('[data-zone-fill]');
     this.$hourglass = el.querySelector('.dp-hourglass');
@@ -16745,6 +16767,17 @@
     c[key] = value;
     el.style[prop] = value;
   },
+  // 等级牌：pop=true 时重放一次弹跳发光，连续升级也能看到反馈
+  syncLevelBadge(level, pop) {
+    if (!this.$lvl) return;
+    this._badgeLevel = level;
+    this.$lvl.textContent = level;
+    if (!pop) return;
+    this.$lvl.classList.remove('lvl-pop');
+    // 读一次布局强制重排，保证同一帧内重加类名也能重新触发动画
+    void this.$lvl.offsetWidth;
+    this.$lvl.classList.add('lvl-pop');
+  },
   findBoss() {
     for (const m of this.monsters) {
       if (m.boss && !m.dead) return m;
@@ -16754,12 +16787,18 @@
   updateHud() {
     if (!this.hud) return;
     const need = DG.character.xpNeed(this.char.level);
-    const xp = this.char.xp + this.xpEarned;
+    // 经验在击杀时已实时写入角色，升级会同步扣减，这里直接读当前值即可
+    const xp = this.char.xp;
     const xpPct = U.clamp(xp / need, 0, 1);
     this.setHudStyle(this.$xp, 'xpWidth', 'width', (xpPct * 100) + '%');
     this.setHudText(this.$xpPct, 'xpPct', Math.round(xpPct * 100) + '%');
     this.setHudText(this.$xpNum, 'xpNum', `${U.fmt(xp)} / ${U.fmt(need)}`);
     this.setHudText(this.$explore, 'explore', `探索 ${Math.round(this.explorePct() * 100)}%`);
+    // 等级牌兜底同步：升级表现由 onLevelUp 触发弹跳，这里只保证数值不落后
+    if (this.$lvl && this._badgeLevel !== this.char.level) {
+      this._badgeLevel = this.char.level;
+      this.syncLevelBadge(this.char.level, false);
+    }
 
     // 一次遍历同时供血条与指南针使用，避免每次刷新扫描两遍怪物列表
     const boss = this.findBoss();
@@ -17418,25 +17457,37 @@
       // 同一个怪群到玩家的距离一帧只算一次，下面激活 / 贴脸 / 密室判定共用
       const pd = U.dist(p, this.player);
       if (pd > NEAR) continue;
-      // 不贴脸刷怪：玩家就站在怪群位置上时先不激活，等拉开距离再说
-      if (pd < 260) continue;
+      // 不贴脸刷怪：玩家就站在怪群位置上时先不激活，等拉开距离再说。
+      // 自动战斗没有“等玩家走开”的耐心（AI 会把出生点当成落脚点静止），
+      // 所以自动模式下照常激活，但把出生点挪到玩家外侧，避免糊脸弹出
+      if (pd < 260 && !this.autoMode) continue;
       const pch = this.chunks[p.chunk];
       // 自动战斗需要自己找怪：距离已足够近时不再限制相邻区块，
       // 否则 AI 会在“隔一个区块”的怪群前反复踱步、怪永远不激活
       if (!this.autoMode && (!pch || Math.abs(pch.col - curCh.col) + Math.abs(pch.row - curCh.row) > 1)) continue;
       // 密室守卫：必须走到门口才惊醒，避免隔墙提前拉怪
       if (p.secret && pd > 380) continue;
+      // 自动模式下贴着玩家触发时，把出生点沿「玩家→怪群」方向外推，
+      // 让怪从外侧围上来，而不是直接刷在角色身上
+      let bx = p.x, by = p.y;
+      if (pd < 260) {
+        const ax = p.x - this.player.x, ay = p.y - this.player.y;
+        const al = Math.hypot(ax, ay) || 1;
+        bx = this.player.x + ax / al * 190;
+        by = this.player.y + ay / al * 190;
+      }
       if (alive >= CAP) break;
       p.spawned = true;
       let slots = CAP - alive;
+      const pr = pd < 260 ? 6 : 3;
       // 密室：按随机方案出怪，可能是普通怪群、精英、精英+宝箱，或只有宝箱
       if (p.secret) {
         if (p.elite > 0) {
           const poolE = (this.def.elitePool && this.def.elitePool.length) ? this.def.elitePool : this.def.pool;
           for (let i = 0; i < p.elite && slots > 0; i++) {
             const ang = (i / Math.max(1, p.elite)) * Math.PI * 2 + U.rand(-0.4, 0.4);
-            const pos = this.nearestFloorPoint(p.x + Math.cos(ang) * 46, p.y + Math.sin(ang) * 46, 3) ||
-              this.nearestFloorPoint(p.x, p.y, 3) || p;
+            const pos = this.nearestFloorPoint(bx + Math.cos(ang) * 46, by + Math.sin(ang) * 46, pr) ||
+              this.nearestFloorPoint(bx, by, pr) || { x: bx, y: by };
             const m = this.spawnMonster(this.pickWeatherMonster(poolE), pos.x, pos.y, false, p.chunk);
             if (m) {
               this.promoteElite(m);
@@ -17453,8 +17504,8 @@
         }
         const count = Math.min(slots, p.count + (this.wxPackBonus || 0) + (this.extraPerPack || 0));
         for (let i = 0; i < count; i++) {
-          const pos = this.nearestFloorPoint(p.x + U.rand(-46, 46), p.y + U.rand(-46, 46), 3) ||
-            this.nearestFloorPoint(p.x, p.y, 3) || p;
+          const pos = this.nearestFloorPoint(bx + U.rand(-46, 46), by + U.rand(-46, 46), pr) ||
+            this.nearestFloorPoint(bx, by, pr) || { x: bx, y: by };
           if (this.spawnMonster(this.pickWeatherMonster(this.def.pool), pos.x, pos.y, false, p.chunk)) {
             slots--;
             alive++;
@@ -17466,8 +17517,8 @@
       const spread = (p.dense ? 30 : 46) * (this.wxSpreadMul || 1);
       const count = Math.min(slots, p.count + (this.wxPackBonus || 0) + (this.extraPerPack || 0));
       for (let i = 0; i < count; i++) {
-        const pos = this.nearestFloorPoint(p.x + U.rand(-spread, spread), p.y + U.rand(-spread, spread), 3) ||
-          this.nearestFloorPoint(p.x, p.y, 3) || p;
+        const pos = this.nearestFloorPoint(bx + U.rand(-spread, spread), by + U.rand(-spread, spread), pr) ||
+          this.nearestFloorPoint(bx, by, pr) || { x: bx, y: by };
         if (this.spawnMonster(this.pickWeatherMonster(this.def.pool), pos.x, pos.y, false, p.chunk)) {
           slots--;
           alive++;
@@ -17476,8 +17527,8 @@
       // 精英：图鉴大造型，按块额外投放一只（带专属招式读条）
       const eliteChance = (this.tune ? this.tune.eliteChance : 0.3) + (this.wxEliteBonus || 0);
       if (slots > 0 && this.def.elitePool && this.def.elitePool.length && U.chance(eliteChance)) {
-        const epos = this.nearestFloorPoint(p.x + U.rand(-30, 30), p.y + U.rand(-30, 30), 3) ||
-          this.nearestFloorPoint(p.x, p.y, 3) || p;
+        const epos = this.nearestFloorPoint(bx + U.rand(-30, 30), by + U.rand(-30, 30), pr) ||
+          this.nearestFloorPoint(bx, by, pr) || { x: bx, y: by };
         const m = this.spawnMonster(this.pickWeatherMonster(this.def.elitePool), epos.x, epos.y, false, p.chunk);
         if (m) {
           this.promoteElite(m);
@@ -17869,6 +17920,8 @@
     this.effects.push({ kind: 'ring', x, y, r0, r1, color, life: dur || 0.45, max: dur || 0.45 });
   },
   updateEffects(dt) {
+    // 升级光环倒计时：与粒子分开维护，绘制时按剩余比例淡出
+    if (this.levelFx > 0) this.levelFx = Math.max(0, this.levelFx - dt);
     if (this.dangerZones && this.dangerZones.length) {
       let n = 0;
       for (let i = 0; i < this.dangerZones.length; i++) {
@@ -19882,6 +19935,13 @@
     const tm = this.talentMods();
     const timers = this.talentTimers;
 
+    // 连续受击判定：3 秒内再次被击中，削弱受击反馈并取消受击位移
+    const chain = (this.player.hurtChainT > 0) ? (this.player.hurtChain || 0) + 1 : 1;
+    const weakHurt = chain >= 2;
+    this.player.hurtChain = chain;
+    this.player.hurtChainT = 3;
+    this.player.hurtWeak = weakHurt;
+
     let incoming = raw;
     if (timers.voidGuard > 0) incoming *= 0.75;
     let armor = this.stats.armor;
@@ -19891,28 +19951,38 @@
     this.player.hp -= taken;
     if (tm.flags.fortify) timers.fortify = 2;
     if (tm.flags.postHurtMove) timers.postHurt = 2;
-    this.hurtFlash = 0.3;
-    this.shake = Math.max(this.shake, 0.18);
+    // 连续受击时红闪、震屏与音效一并减弱，避免密集受击的反馈过载
+    this.hurtFlash = weakHurt ? Math.max(0.06, Math.min(this.hurtFlash, 0.1))
+      : Math.max(this.hurtFlash, 0.3);
+    this.shake = Math.max(this.shake, weakHurt ? 0.06 : 0.18);
     if (DG.audio) {
-      DG.audio.play(this.cls && this.cls.id === 'ranger' ? 'rangerBehit' : 'barbBehit', { vol: 0.7, gap: 0.15 });
+      DG.audio.play(this.cls && this.cls.id === 'ranger' ? 'rangerBehit' : 'barbBehit',
+        { vol: weakHurt ? 0.4 : 0.7, gap: 0.15 });
     }
     this.addFloater(this.player.x, this.player.y - 34, '-' + taken, '#ff8a80', 22);
 
     // 受击硬直 + 后退：朝背离伤害来源的方向弹开一小段
     // 旋风期间不可阻挡：不吃硬直、不被击退，移动不受影响
     if (!this.whirl) {
-      let src = null, near = Infinity;
-      for (const m of (this.monsters || [])) {
-        if (m.dead) continue;
-        const d = U.dist(m, this.player);
-        if (d < near) { near = d; src = m; }
+      if (weakHurt) {
+        // 连续受击：取消击退位移，只保留极短的轻微后仰动作
+        this.player.kbX = 0;
+        this.player.kbY = 0;
+        this.player.hurtT = 0.10;
+      } else {
+        let src = null, near = Infinity;
+        for (const m of (this.monsters || [])) {
+          if (m.dead) continue;
+          const d = U.dist(m, this.player);
+          if (d < near) { near = d; src = m; }
+        }
+        const back = src
+          ? Math.atan2(this.player.y - src.y, this.player.x - src.x)
+          : this.player.facing + Math.PI;
+        this.player.hurtT = 0.30;
+        this.player.kbX = Math.cos(back) * 230;
+        this.player.kbY = Math.sin(back) * 230;
       }
-      const back = src
-        ? Math.atan2(this.player.y - src.y, this.player.x - src.x)
-        : this.player.facing + Math.PI;
-      this.player.hurtT = 0.30;
-      this.player.kbX = Math.cos(back) * 230;
-      this.player.kbY = Math.sin(back) * 230;
     }
     // 硬直期间给一点无敌帧，避免被连击锁死
     this.player.invuln = Math.max(this.player.invuln, 0.28);
@@ -19930,8 +20000,8 @@
     // 避免自动战斗因为一次走位失误直接判负（手动操作不生效）
     if (this.player.hp <= 0 && this.autoMode && (this.autoRescueCd || 0) <= 0) {
       this.player.hp = Math.round(this.player.maxHp * 0.35);
-      this.player.invuln = Math.max(this.player.invuln, 1.3);
-      this.autoRescueCd = 40;
+      this.player.invuln = Math.max(this.player.invuln, 2);
+      this.autoRescueCd = 30;
       this.talentTimers.postHurt = Math.max(this.talentTimers.postHurt || 0, 2);
       this.addRing(this.player.x, this.player.y, 18, 104, '#ffd479', 0.6);
       this.addBurst(this.player.x, this.player.y, '#ffd479', 16);
@@ -19960,6 +20030,49 @@
     this.announce('你倒下了……', 1800);
     this.addBurst(this.player.x, this.player.y, '#c6554e', 18);
   },
+  // 战斗内实时结算经验：击杀即入账，经验条满立刻升级，不再等副本结算
+  gainXp(amount) {
+    if (!amount || amount <= 0) return;
+    this.xpEarned += amount;
+    const levels = DG.character.addXp(this.char, amount);
+    if (levels && levels.length) this.onLevelUp(levels);
+  },
+  // 升级表现：金色光环 + 上升光尘 + LV 飘字 + 顶部公告 + 等级牌弹跳 + 音效
+  onLevelUp(levels) {
+    const from = levels[0] - 1;
+    const now = levels[levels.length - 1];
+    for (const lv of levels) this.levelUps.push(lv);
+    const p = this.player;
+    // 角色脚下短暂的金色光环
+    this.levelFx = 1.1;
+    this.addRing(p.x, p.y, 10, 96, '#ffd166', 0.62);
+    this.addRing(p.x, p.y, 4, 58, '#fff6d0', 0.44);
+    // 上升光尘：从脚边向头顶飘散
+    for (let i = 0; i < 24; i++) {
+      const a = U.rand(0, Math.PI * 2);
+      const rad = U.rand(4, p.r * 2.1);
+      this.effects.push({
+        kind: 'spark',
+        x: p.x + Math.cos(a) * rad,
+        y: p.y + Math.sin(a) * rad * 0.5,
+        vx: Math.cos(a) * U.rand(6, 26),
+        vy: U.rand(-150, -70),
+        life: U.rand(0.5, 0.95),
+        max: 1,
+        r: U.rand(1.6, 3.4),
+        color: i % 3 === 0 ? '#fff6d0' : '#ffd166'
+      });
+    }
+    // 飘字：直接显示升到的等级，一次连升多级也显示最终等级
+    this.addFloater(p.x, p.y - p.r - 48, `LV.${now}`, '#ffe08a', 30);
+    this.addFloater(p.x, p.y - p.r - 20, now > from + 1 ? `等级提升 +${now - from}` : '等级提升', '#ffd166', 20);
+    this.announce(`等级提升 · Lv.${now}`, 1900);
+    this.syncLevelBadge(now, true);
+    if (DG.audio) {
+      DG.audio.play('stageLevelup', { vol: 0.85 });
+      DG.audio.play('uiLevelup', { vol: 0.6, gap: 0.18 });
+    }
+  },
   onMonsterDeath(m) {
     // 分裂词缀：先裂成两个小体，再走结算（小体自身不再分裂、无掉落）
     if (m.affixes && m.affixes.indexOf('split') >= 0) this.splitElite(m);
@@ -19972,7 +20085,7 @@
     // 分裂出的小体不计击杀、不给经验金币，避免刷资源与提前触发首领
     if (!m.noLoot) {
       this.kills++;
-      this.xpEarned += m.xp;
+      this.gainXp(m.xp);
       this.goldEarned += m.gold;
       this.updateWaveText();
       // 任务进度：普通击杀 / 精英 / 首领分别计入悬赏
@@ -20240,11 +20353,13 @@
     if (d <= reach && Math.abs(diff) <= halfArc) {
       if (this.hurtPlayer(m.dmg)) this.affixOnHit(m);
       this.addBurst(p.x, p.y, color, 6);
-      // 撞：击退玩家；抓：把玩家拖向怪物
-      if (mv.knock) {
-        this.movePlayer(p, Math.cos(a.angle) * mv.knock, Math.sin(a.angle) * mv.knock, p.r);
-      } else if (mv.pull) {
-        this.movePlayer(p, -Math.cos(a.angle) * mv.pull, -Math.sin(a.angle) * mv.pull, p.r);
+      // 撞：击退玩家；抓：把玩家拖向怪物；连续受击期间取消这类受击位移
+      if (!p.hurtWeak) {
+        if (mv.knock) {
+          this.movePlayer(p, Math.cos(a.angle) * mv.knock, Math.sin(a.angle) * mv.knock, p.r);
+        } else if (mv.pull) {
+          this.movePlayer(p, -Math.cos(a.angle) * mv.pull, -Math.sin(a.angle) * mv.pull, p.r);
+        }
       }
     }
   },
@@ -20538,6 +20653,8 @@
         p.vy = p.vx * sa + p.vy * ca;
         p.vx = vx;
       }
+      // 记录移动前的位置：高速弹道按线段判定命中，避免贴脸目标被“跳帧”穿过
+      const ox = p.x, oy = p.y;
       p.x += p.vx * dt;
       p.y += p.vy * dt;
       if (p.x < -20 || p.x > (this.arenaW || ARENA_W) + 20 ||
@@ -20551,9 +20668,16 @@
       if (p.team === 'player') {
         this.breakPropsAt(p.x, p.y, p.r + 14, true);
         let consumed = false;
+        const sx = p.x - ox, sy = p.y - oy;
+        const segLen2 = sx * sx + sy * sy;
         for (const m of this.monsters) {
           if (m.dead || p.hit.indexOf(m) >= 0) continue;
-          if (Math.hypot(p.x - m.x, p.y - m.y) <= p.r + m.r) {
+          // 点到线段的最近距离：一帧跨过目标也能判定命中
+          let t = segLen2 > 0 ? ((m.x - ox) * sx + (m.y - oy) * sy) / segLen2 : 0;
+          if (t < 0) t = 0;
+          else if (t > 1) t = 1;
+          const cx = ox + sx * t, cy = oy + sy * t;
+          if (Math.hypot(m.x - cx, m.y - cy) <= p.r + m.r) {
             const hit = this.rollHit(p.mult, p.skill, m);
             this.hitMonster(m, hit.dmg, hit.crit);
             this.addBurst(p.x, p.y, p.color, 3);
@@ -21112,6 +21236,17 @@
       const goal = this.autoGoalTarget();
       const evade = this.autoEvadeDirection(goal);
       if (evade) return this.autoCommitMove(this.autoSmoothDirection(evade, 0.42), goal);
+      // 火圈收缩：站在圈外会持续灼烧，优先往圈心走（比追怪更重要）
+      const ring = this.field && this.field.kind === 'fire' ? this.field.ring : null;
+      if (ring && ring.t > ring.arm &&
+        Math.hypot(this.player.x - ring.x, this.player.y - ring.y) > ring.r - this.player.r - 10) {
+        const dx = ring.x - this.player.x, dy = ring.y - this.player.y;
+        const len = Math.hypot(dx, dy) || 1;
+        return this.autoCommitMove(
+          this.autoSmoothDirection({ x: dx / len, y: dy / len }, 0.5),
+          { x: ring.x, y: ring.y, kind: 'ring' }
+        );
+      }
       if (this.autoDetour && this.autoDetour.until > now) return this.autoCommitMove(this.autoDetour.dir, goal);
       if (!goal) return this.autoCommitMove(this.autoSmoothDirection({ x: 0, y: 0 }, 0.2), null);
       const target = goal.monster;
@@ -21130,10 +21265,17 @@
           }
           // 满血面对普通小怪不必一直后撤：站桩输出更快；
           // 掉血、被围、精英/首领近身或脚下有预警时才拉开距离
-          const needKite = this.autoKiteHeld && (hpPct < 0.6 || closeCount >= 3 || target.boss || target.elite ||
-            this.autoHardDangerAt(this.player.x, this.player.y) > 0);
+          const needKite = this.autoKiteHeld && dist < attackRange * 0.92 &&
+            (hpPct < 0.6 || closeCount >= 3 || ((target.boss || target.elite) && dist < 280) ||
+              this.autoHardDangerAt(this.player.x, this.player.y) > 0);
           if (needKite || (hpPct < 0.4 && dist < 200 + target.r)) {
-            const dir = this.autoKiteDirection(target);
+            // 被多只怪贴身时朝“怪最稀疏”的方向撤，而不是只背对当前目标
+            let dir = null;
+            if (closeCount >= 3) {
+              const a = this.autoRetreatAngle();
+              if (a != null && a !== undefined) dir = { x: Math.cos(a), y: Math.sin(a) };
+            }
+            if (!dir) dir = this.autoKiteDirection(target);
             if (dir) return this.autoCommitMove(this.autoSmoothDirection(dir, 0.4), goal);
           }
           // 已在射程内且视线畅通：站定输出；否则继续走下面的寻路绕过去
@@ -21163,10 +21305,21 @@
           }
         }
       }
-      // 完全走不动：说明当前目标隔着墙或无法寻路，临时放弃并去激活别的怪群
+      // 完全走不动：先强行侧移脱困；短时间内反复脱困无效则放弃当前目标去探索
       if (!dir.x && !dir.y) {
         if (!this.autoStuckAt) this.autoStuckAt = now;
-        else if (now - this.autoStuckAt > 0.7) {
+        if (now - this.autoStuckAt > 0.35) {
+          const log = (this.autoEscapeLog || []).filter(t => now - t < 5);
+          const escape = log.length < 3 ? this.autoEscapeDirection() : null;
+          if (escape) {
+            log.push(now);
+            this.autoEscapeLog = log;
+            this.autoDetour = { dir: escape, until: now + 0.6 };
+            this.autoStuckAt = 0;
+            this.autoBlocked = 0;
+            return this.autoCommitMove(escape, goal);
+          }
+          this.autoEscapeLog = [];
           this.autoGiveUpGoal(now);
           return { x: 0, y: 0 };
         }
@@ -21200,6 +21353,7 @@
       this.autoKiteHeld = false;
       this.autoStuckAt = 0;
       this.autoBlocked = 0;
+      this.autoEscapeLog = [];
     },
     autoCommitMove(dir, goal) {
       this.autoDecision = { dir, goal, until: (this.time || 0) + 0.1 };
@@ -21261,7 +21415,7 @@
       }
       return true;
     },
-    // 视线检测：隔着墙时不要站桩输出/挥空，先绕过去
+    // 视线检测：隔着墙/可破坏立件时不要站桩输出，先绕过去或打碎挡路的道具
     autoLineClear(target) {
       if (!target) return false;
       const dx = target.x - this.player.x, dy = target.y - this.player.y;
@@ -21270,9 +21424,28 @@
       const steps = Math.ceil(d / 24);
       for (let i = 1; i < steps; i++) {
         const t = d * i / steps;
-        if (this.circleWall(this.player.x + dx / d * t, this.player.y + dy / d * t, 3)) return false;
+        const px = this.player.x + dx / d * t, py = this.player.y + dy / d * t;
+        if (this.circleWall(px, py, 3)) return false;
+        if (this.circleProp(px, py, 4)) return false;
       }
       return true;
+    },
+    // 找出挡在攻击线路上、可以直接打碎的立件
+    autoPropBlocker(target) {
+      if (!target || !this.propCols || !this.propCols.length) return null;
+      const dx = target.x - this.player.x, dy = target.y - this.player.y;
+      const d = Math.hypot(dx, dy);
+      if (d < 32) return null;
+      const steps = Math.ceil(d / 24);
+      for (let i = 1; i < steps; i++) {
+        const t = d * i / steps;
+        const px = this.player.x + dx / d * t, py = this.player.y + dy / d * t;
+        for (const c of this.propCols) {
+          if (!c.prop || c.prop.destroyed) continue;
+          if (this.propGap(c, px, py) < 6) return c;
+        }
+      }
+      return null;
     },
     // 风筝走位：远离目标为主，叠加侧向偏移，撞墙时换另一侧
     autoKiteDirection(target) {
@@ -21331,13 +21504,20 @@
           let score = d - (1 - m.hp / m.maxHp) * 70;
           if (m.ranged) score -= 30;
           if (m.elite) score -= 24;
+          // 分裂出的小体不计击杀：优先绕开它们，避免刷不动任务进度
+          if (m.noLoot) score += 260;
           if (score < bestScore) { best = m; bestScore = score; bestDist = d; }
         }
       }
       const locked = this.autoTarget;
-      if (!exploring && locked && locked !== this.autoIgnore && !locked.dead && this.monsters.indexOf(locked) >= 0) {
+      // 已锁定目标若是分裂小体，而场上还有能推进进度的本体，则立即换目标
+      const dropLock = locked && locked.noLoot && this.monsters.some(q => !q.dead && !q.noLoot);
+      if (!exploring && locked && !dropLock && locked !== this.autoIgnore && !locked.dead && this.monsters.indexOf(locked) >= 0) {
         const lockedD = U.dist(this.player, locked);
-        if (!best || lockedD <= bestDist + 120) {
+        // 精英目标离得太远而附近有普通怪时，先清小怪，避免长距离风筝僵持
+        const farElite = locked.elite && !locked.boss && best && !best.elite &&
+          lockedD > bestDist + 140;
+        if (!best || (lockedD <= bestDist + 120 && !farElite)) {
           // 贴合到最近的可行走点，防止怪物被挤进墙里导致寻路目标无效
           const gp = this.nearestFloorPoint(locked.x, locked.y, 2) || locked;
           this.autoGoal = { x: gp.x, y: gp.y, kind: 'monster', monster: locked };
@@ -21444,7 +21624,7 @@
       }
       return false;
     },
-    // 硬威胁：真正会掉血的预警（弹道 / 技能前摇 / 首领预警圈）
+    // 硬威胁：真正会掉血的预警（弹道 / 技能前摇 / 首领预警圈 / 场地与天气）
     autoHardDangerAt(x, y) {
       let danger = 0;
       if (this.autoProjectileDanger(x, y)) danger += 12000;
@@ -21452,7 +21632,49 @@
       for (const z of this.dangerZones || []) {
         if (this.autoZoneDanger(x, y, z)) danger += z.high ? 26000 : 8000;
       }
+      return danger + this.autoFieldDanger(x, y);
+    },
+    // 场地/天气威胁：火圈外、落雷预警圈、已触发的枫叶堆
+    autoFieldDanger(x, y) {
+      let danger = 0;
+      const f = this.field;
+      if (f && f.kind === 'fire' && f.ring && f.ring.t > f.ring.arm) {
+        if (Math.hypot(x - f.ring.x, y - f.ring.y) > f.ring.r - 18) danger += 9000;
+      }
+      for (const s of this.wxStrikes || []) {
+        if (Math.hypot(x - s.x, y - s.y) < 92 + this.player.r + 6) danger += 12000;
+      }
+      if (f && f.piles) {
+        for (const q of f.piles) {
+          if (!q.armed) continue;
+          if (Math.hypot(x - q.x, y - q.y) < (q.r || 30) + 80) danger += 9000;
+        }
+      }
+      for (const z of this.wxZones || []) {
+        if (!z.armed) continue;
+        if (Math.hypot(x - z.x, y - z.y) < (z.r || 70) + 80) danger += 9000;
+      }
       return danger;
+    },
+    // 卡死脱困：在 16 方向里挑一个可走、远离怪堆、略偏地图中心的方向
+    autoEscapeDirection() {
+      const aw = this.arenaW || ARENA_W, ah = this.arenaH || ARENA_H;
+      let best = null, bestScore = -Infinity;
+      for (let i = 0; i < 16; i++) {
+        const a = Math.PI * 2 * i / 16;
+        const x = Math.cos(a), y = Math.sin(a);
+        if (!this.autoStepFree(x, y, 56)) continue;
+        const ex = this.player.x + x * 96, ey = this.player.y + y * 96;
+        let score = -Math.hypot(ex - aw / 2, ey - ah / 2) * 0.02;
+        for (const m of this.monsters) {
+          if (m.dead) continue;
+          const md = Math.hypot(ex - m.x, ey - m.y);
+          if (md < 160) score -= (160 - md) * 0.6;
+        }
+        score -= this.autoHardDangerAt(ex, ey) * 0.001;
+        if (score > bestScore) { bestScore = score; best = { x: x, y: y }; }
+      }
+      return best;
     },
     autoEvadeDirection(goal) {
       const here = this.autoHardDangerAt(this.player.x, this.player.y);
@@ -21550,6 +21772,57 @@
       }
     },
 
+    // 自动战斗的普攻目标：远程优先打视野内最值得打的目标，
+    // 避免移动时只朝正前方放箭、背后近身的怪一直打不到
+    autoBasicTarget() {
+      const range = (this.basicSkill.range || 600) + 24;
+      let best = null, bestScore = Infinity;
+      for (const m of this.monsters) {
+        if (m.dead) continue;
+        const d = U.dist(this.player, m);
+        if (d > range) continue;
+        if (!this.autoLineClear(m)) continue;
+        let score = d;
+        if (m.boss) score -= 260;
+        else if (m.elite) score -= 70;
+        if (m.aggro) score -= 30;
+        if (m.hp / m.maxHp < 0.25) score -= 120;
+        // 分裂小体不推进任务，除非没有别的目标
+        if (m.noLoot) score += 240;
+        if (score < bestScore) { bestScore = score; best = m; }
+      }
+      return best;
+    },
+    // 自动战斗保险：近身却长时间不掉血的怪视为被墙体/立件卡死，挪到就近的空地上。
+    // 只在怪物自己附近找落脚点，不往玩家身边拉，避免把远处的怪群拽到脸上。
+    autoWatchStuckMonsters(dt) {
+      const now = this.time || 0;
+      if (now < (this.autoStuckScanAt || 0)) return;
+      this.autoStuckScanAt = now + 1;
+      if (this.phase === 'boss') return;
+      for (const m of this.monsters) {
+        if (m.dead || m.boss) continue;
+        const d = U.dist(this.player, m);
+        if (d > 280) { m.autoStuckT = 0; m.autoStuckHp = m.hp; continue; }
+        if (m.autoStuckHp !== m.hp) { m.autoStuckHp = m.hp; m.autoStuckT = 0; continue; }
+        m.autoStuckT = (m.autoStuckT || 0) + 1;
+        if (m.autoStuckT < 10) continue;
+        for (let i = 0; i < 16; i++) {
+          const a = Math.PI * 2 * i / 16;
+          const rr = 34 + (i % 3) * 26;
+          const x = m.x + Math.cos(a) * rr;
+          const y = m.y + Math.sin(a) * rr;
+          if (this.circleWall(x, y, m.r) || this.circleProp(x, y, m.r)) continue;
+          if (U.dist(this.player, { x: x, y: y }) < 70) continue;
+          m.x = x;
+          m.y = y;
+          m.aggro = true;
+          break;
+        }
+        m.autoStuckT = 0;
+        m.autoStuckHp = m.hp;
+      }
+    },
     autoCast() {
       if (this.player.hp <= 0) return;
       // 战吼蓄力/释放期间锁定动作：普攻与其他技能不插入，保证整套吼叫连贯播完
@@ -21557,10 +21830,29 @@
 
       // 0 号位：普攻（移动中只打前方的目标，出手方向跟随移动方向）
       if (this.attackCd <= 0 && !this.whirl) {
-        let target = this.nearestMonsterInFront((this.basicSkill.range || 600) + 24);
+        let target = null;
+        if (this.autoMode && this.autoIsRanged()) {
+          // 远程自动战斗：优先选择视野内收益最高的目标（残血/精英/首领/近身怪）
+          target = this.autoBasicTarget();
+        }
+        if (!target) target = this.nearestMonsterInFront((this.basicSkill.range || 600) + 24);
         // 远程职业后撤风筝时也允许回头输出，避免拉开距离的全程没有伤害
         if (!target && this.autoMode && this.autoIsRanged()) {
           target = this.nearestMonster((this.basicSkill.range || 600) + 24);
+        }
+        // 近战锁定分裂小体时，优先改打能推进进度的本体
+        if (this.autoMode && target && target.noLoot) {
+          const alt = this.autoBasicTarget();
+          if (alt && !alt.noLoot) target = alt;
+        }
+        // 目标被可破坏立件挡住：先打碎立件，避免双方隔着道具互相够不到
+        if (this.autoMode && target) {
+          const blocker = this.autoPropBlocker(target);
+          if (blocker) {
+            this.player.facing = U.angle(this.player, blocker);
+            this.doBasic(this.player.facing);
+            return;
+          }
         }
         if (target) {
           this.player.facing = U.angle(this.player, target);
@@ -23424,6 +23716,16 @@
     ctx.save();
     ctx.translate(p.x, p.y);
 
+    // 升级光环：脚下金色辉光。使用预渲染贴图，避免逐帧 shadowBlur
+    if (this.levelFx > 0) {
+      const k = Math.min(1, this.levelFx / 1.1);
+      const R = 78 * (1 + (1 - k) * 0.45);
+      ctx.save();
+      ctx.globalAlpha = k * 0.85;
+      ctx.drawImage(this.glowSprite('#ffd166'), -R, -R * 0.6, R * 2, R * 1.2);
+      ctx.restore();
+    }
+
     ctx.fillStyle = 'rgba(0,0,0,0.38)';
     ctx.beginPath();
     ctx.ellipse(0, p.r * 0.9, useHero ? p.r * 1.15 : p.r * 0.9, p.r * 0.42, 0, 0, Math.PI * 2);
@@ -24283,8 +24585,8 @@
       this.ui = document.getElementById('ui');
       this.db = DG.storage.load();
 
-      // 登录阶段就把主城 / 战斗需要的贴图全部预载并烘焙，进入场景时不再临时加载
-      if (DG.art && DG.art.preloadAssets) DG.art.preloadAssets();
+      // 主城 / 战斗贴图约 2MB：等 load 之后再预载，先保证登录首屏拿到满带宽
+      this.deferPreload();
 
       this.fitStage();
       window.addEventListener('resize', () => this.fitStage());
@@ -24328,10 +24630,26 @@
       // Service Worker 只能在 https 或本机调试时使用，file:// 双击打开时自动跳过
       if (location.protocol !== 'https:' && host !== 'localhost' && host !== '127.0.0.1') return;
       const start = () => {
-        navigator.serviceWorker.register('sw.js').catch(() => { /* 缓存不可用不影响游戏 */ });
+        navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then((reg) => {
+          // 首屏已完成：让 SW 在后台把未访问过的资源按清单补进本地缓存
+          if (!reg || !reg.active) return;
+          setTimeout(() => {
+            if (reg.active) reg.active.postMessage({ type: 'warm', delay: 3000 });
+          }, 600);
+        }).catch(() => { /* 缓存不可用不影响游戏 */ });
       };
       if (document.readyState === 'complete') start();
       else window.addEventListener('load', start);
+    },
+
+    // 首屏资源（CSS / JS / 登录背景）就绪后再预热战斗贴图：
+    // 之前一进页面就抢连接，登录背景反而要排队，弱网首屏明显变慢。
+    deferPreload() {
+      const run = () => setTimeout(() => {
+        if (DG.art && DG.art.preloadAssets) DG.art.preloadAssets();
+      }, 1200);
+      if (document.readyState === 'complete') run();
+      else window.addEventListener('load', run, { once: true });
     },
 
     // 撤掉 index.html 中的静态启动画面
@@ -24626,23 +24944,20 @@
       const keep = result.victory ? 1 : (result.retreat ? 0.7 : 0.4);
       result.keepRate = keep;
       if (keep < 1) {
+        // 经验在战斗中已实时入账（升级也已在战斗内完成），
+        // 这里只扣回未保留的那部分，且不扣到负数、不掉级
+        const lostXp = Math.round(result.xp * (1 - keep));
+        char.xp = Math.max(0, (char.xp || 0) - lostXp);
         result.gold = Math.round(result.gold * keep);
-        result.xp = Math.round(result.xp * keep);
+        result.xp = Math.max(0, result.xp - lostXp);
       }
 
       char.gold = (char.gold || 0) + result.gold;
-      const levels = DG.character.addXp(char, result.xp);
-      result.levels = levels;
+      result.levels = result.levels || [];
+      // 每 3 级才发 1 点技能点，结算文案按实际发放数量显示
+      result.skillPoints = result.levels.filter(lv => lv % 3 === 0).length;
       result.level = char.level;
       this.save();
-
-      if (levels.length > 0) {
-        if (DG.audio) {
-          DG.audio.play('stageLevelup', { vol: 0.9 });
-          DG.audio.play('uiLevelup', { vol: 0.65, gap: 0.2 });
-        }
-        DG.ui.toast(`等级提升至 Lv.${char.level}，获得 ${levels.length} 技能点`, 'gold');
-      }
 
       // 结算面板出现时切回主城音乐，避免战斗音乐停掉后出现长时间静音
       if (DG.audio) DG.audio.playBgm('lobby');

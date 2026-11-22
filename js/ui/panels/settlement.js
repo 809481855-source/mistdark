@@ -15,13 +15,14 @@
           return `<div class="loot-cell r-${it.rarity}" title="${U.escapeHtml(it.name)}">` +
             `<img class="loot-frame" src="${DG.ui.itemFrameSrc(it)}" alt="">` +
             `<span class="qty">${DG.data.rarityById[it.rarity].name}</span>` +
-            `${U.escapeHtml(slot.glyph)}` +
+            `<span class="loot-glyph">${U.escapeHtml(slot.glyph)}</span>` +
             `<span class="loot-name">${U.escapeHtml(it.name)}</span></div>`;
         }).join('')
       : `<div class="loot-empty">本次没有获得装备。</div>`;
 
     const levelNote = (result.levels && result.levels.length)
-      ? `<div class="levelup-note">等级提升！当前等级 Lv.${result.levels[result.levels.length - 1]}（获得 ${result.levels.length} 个技能点）</div>`
+      ? `<div class="levelup-note">等级提升！当前等级 Lv.${result.levels[result.levels.length - 1]}` +
+        `${result.skillPoints ? `（获得 ${result.skillPoints} 个技能点）` : ''}</div>`
       : '';
     const penaltyNote = (result.keepRate != null && result.keepRate < 1)
       ? `<div class="levelup-note">${result.retreat ? '主动撤退' : '重伤归来'}：本局金币与经验按 ${Math.round(result.keepRate * 100)}% 结算，装备保留</div>`
