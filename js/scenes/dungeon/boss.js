@@ -37,6 +37,14 @@
     knight: 1, snake: 1, demon: 1, ogre: 1, golem: 1
   };
 
+  // 章内唯一：每个首领只归属一个章节；跨章再出场会被视为“复现”并强化
+  const BOSS_ACT = {
+    eyehorror: 1, croc: 1, mawfish: 1, mummyking: 1,
+    cauldron: 2, golem: 2, blueogre: 2, goatbrute: 2, abysseye: 2,
+    piratecrab: 3, octoking: 3, silverknight: 3, snakeking: 3,
+    reaper: 4, hierophant: 4, shadowdemon: 4, crystalcrab: 4
+  };
+
   // 每只首领的招式粒子皮肤（复用 monsters.drawFxSkin 的 bits 渲染，零额外开销）
   const BOSS_SKINS = {
     eyehorror: { bits: 'void', n: 12, color: '#b57ce8' },
@@ -64,6 +72,38 @@
   };
 
   Object.assign(DG.scenes.dungeon.prototype, {
+    // 重复出场：统计本章更早关卡里出现过的同一首领，第 2 次起进入二阶段，
+    // 第 3 次起追加一套新招式，让同一首领在章内也不会重复同一场战斗。
+    applyBossVariant(m) {
+      if (!m || !m.boss) return m;
+      const act = (this.def && this.def.act) || 1;
+      const idx = (this.def && this.def.index) || 1;
+      let tier = 0;
+      const all = DG.data.dungeons || [];
+      for (const d of all) {
+        if (d.act === act && d.index < idx && d.bossId === m.typeId) tier++;
+      }
+      const home = BOSS_ACT[m.typeId];
+      if (home && home !== act && tier < 1) tier = 1;   // 跨章复现至少按二阶段处理
+      if (tier <= 0) return m;
+      // 二阶段/新招式只做两档，重复次数再多也不继续叠数值
+      tier = tier >= 2 ? 2 : 1;
+      m.repeatTier = tier;
+      m.name = (tier >= 2 ? '完全体 · ' : '再临 · ') + m.name;
+      m.maxHp = Math.round(m.maxHp * (tier >= 2 ? 1.25 : 1.12));
+      m.hp = m.maxHp;
+      m.dmg = Math.round(m.dmg * (tier >= 2 ? 1.15 : 1.08));
+      m.phase2At = 0.62;
+      if (tier >= 2) {
+        // 新招式：残响弹幕，补上中距离压制
+        m.patterns.push({
+          type: 'fan', label: '残响弹幕', range: 560, windup: 0.7, recover: 0.5, cd: 7,
+          count: 7, spread: 0.42, dmgMul: 0.8, color: '#e0b0a0', fx: 'arcSlash', timer: 0
+        });
+      }
+      return m;
+    },
+
     updateBoss(m, dt, d, ang, speedMul) {
       const p = this.player;
       m.aiCd = Math.max(0, (m.aiCd || 0) - dt);
@@ -72,7 +112,7 @@
       }
       this.bossAmbient(m, dt);
 
-      if (!m.enraged && m.hp / m.maxHp <= 0.5) this.enrageBoss(m);
+      if (!m.enraged && m.hp / m.maxHp <= (m.phase2At || 0.5)) this.enrageBoss(m);
 
       // 施法中原地读条，朝向锁定在读条开始的方向
       if (m.cast) {
@@ -431,7 +471,13 @@
       m.dmg = Math.round(m.dmg * 1.15);
       m.speed *= 1.12;
       for (const a of m.patterns) a.cd = Math.max(2.2, (a.cd || 3) * 0.85);
-      this.announce(`${m.name} 进入狂暴`, 2000);
+      // 复现首领的二阶段：额外增伤并召唤小怪，逼玩家换位
+      if (m.repeatTier) {
+        m.dmg = Math.round(m.dmg * 1.05);
+        this.bossSummon(m, { count: 1 + m.repeatTier });
+        this.addRing(m.x, m.y, 40, 260, '#d98b9d', 0.9);
+      }
+      this.announce(m.repeatTier ? `${m.name} · 二阶段` : `${m.name} 进入狂暴`, 2000);
       this.addRing(m.x, m.y, 20, 210, '#ff6a5e', 0.8);
       this.addBurst(m.x, m.y, '#ff8a7a', 26);
       this.shake = Math.max(this.shake, 0.5);

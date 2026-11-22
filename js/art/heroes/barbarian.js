@@ -65,8 +65,8 @@
   const SLASH_A0 = -2.95;             // 起弧角（与蓄力最高点对齐，整刀扫过约 271°）
   const SLASH_A1 = 1.78;              // 收弧角（略过挥砍末端，收势更长）
   const SLASH_FADE = 0.16;            // 收弧后的淡出时长（秒）
-  const SLASH_R = 1.00;               // 外弧半径 = 斧刃末端轨迹本身（刀光从斧刃末梢挥出，不外扩）
-  const SLASH_THICK = 0.30;           // 刀光最大厚度（相对圆弧半径）
+  const SLASH_R = 1.10;               // 外弧半径略超出斧刃末端，让刀光看起来更开阔
+  const SLASH_THICK = 0.58;           // 刀光最大厚度（相对圆弧半径）
   let slashGeo = null;                // 当前月牙几何（收弧后冻结，淡出期间不跳变）
   let slashFadeAt = -1;               // 开始淡出的时刻，-1 表示还在画弧
 
@@ -74,8 +74,8 @@
   // 比右手小一号（更细、更淡、收弧略早），不抢主手的视觉
   const SLASH_L_A0 = 0.50;            // 左手起弧（斧刃在右下，向上撩）
   const SLASH_L_A1 = -1.80;           // 左手收弧（斧刃到右上，与右手下劈交叉成 X）
-  const SLASH_L_R = 1.00;             // 外弧同样贴刃尖
-  const SLASH_L_THICK = 0.28;         // 刀光厚度（右手 0.30）
+  const SLASH_L_R = 1.08;             // 外弧同样略超出刃尖
+  const SLASH_L_THICK = 0.50;         // 刀光厚度（右手 0.58）
   const SLASH_L_ALPHA = 0.95;         // 整体不透明度（右手 1）
   let slashGeoL = null, slashFadeAtL = -1, slashAlphaL = 0;
 
@@ -215,59 +215,78 @@
     return { cx: lhx, cy: lhy, r: Math.hypot(ox, oy) * SLASH_L_R, ang: wrot + Math.atan2(oy, ox) };
   }
 
-  // 刀光：只画武器扫过的那道弧——尾端收成针尖、刃口一侧白热、外层宽弧柔光。
-  // 参考成熟 2D 动作游戏的做法：加色高光 + 低透明度宽弧，避免出现“固体红帆”的塑料感。
+  // 刀光：用实心月牙填充代替「逐段描边」——边缘只留一圈抗锯齿，
+  // 不会因为几十段半透明圆头相互重叠而发虚；颜色分成若干块沿弧推进，保持高清锐利。
   function drawSlash(ctx, g, a0, a1, alpha, thick) {
     if (Math.abs(a1 - a0) < 0.05) return;
     thick = thick || SLASH_THICK;
-    const N = 34, span = a1 - a0, absSpan = Math.abs(span);
+    const span = a1 - a0, absSpan = Math.abs(span);
     // 弧太短时先不画：刃口刚开始移动时若立刻留痕，会变成头后一坨红色光斑
     if (absSpan < 0.5) return;
     // 起手阶段按已扫过的角度渐显，刃口压下来后才是一条完整刀光
     const grow = Math.pow(Math.min(1, (absSpan - 0.5) / 0.75), 0.85);
     // 越靠近刃尖越宽、越亮；尾部迅速收细到几乎为零
     const taper = (k) => Math.pow(k, 1.35) * (1 - 0.85 * Math.pow(k, 6));
-    const fade = (k) => 0.02 + 0.98 * Math.pow(k, 1.25);
-    // out：0.5 表示外缘正好贴住刃尖轨迹；大于 0.5 时向外溢出，形成柔光
-    const band = (wMul, comp, style, alphaMul, out) => {
-      ctx.save();
-      ctx.globalCompositeOperation = comp;
-      ctx.lineCap = 'round';
-      for (let i = 0; i < N; i++) {
-        const k0 = i / N, k1 = (i + 1) / N, k = (k0 + k1) * 0.5;
-        const w = g.r * thick * grow * wMul * taper(k);
-        if (w < 0.3) continue;
+    const N = 56;
+    const widthAt = (k, wMul) => g.r * thick * grow * wMul * taper(k);
+    // 一条闭合月牙：外缘正向走、内缘反向走；out=0.5 时中心线压在刃尖轨迹上
+    const crescent = (wMul, out, k0, k1) => {
+      ctx.beginPath();
+      for (let i = 0; i <= N; i++) {
+        const k = k0 + (k1 - k0) * (i / N);
+        const a = a0 + span * k;
+        const w = widthAt(k, wMul);
         const rr = g.r + w * (out - 0.5);
-        ctx.globalAlpha = alpha * alphaMul * fade(k) * grow;
-        ctx.strokeStyle = style(k);
-        ctx.lineWidth = w;
-        ctx.beginPath();
-        const s0 = a0 + span * k0 - 0.004, s1 = a0 + span * k1 + 0.004;
-        // 反向挥砍时角度递减，统一按小角→大角画短弧，避免绕远路
-        ctx.arc(g.cx, g.cy, rr, Math.min(s0, s1), Math.max(s0, s1));
-        ctx.stroke();
+        const ox = g.cx + Math.cos(a) * (rr + w * 0.5);
+        const oy = g.cy + Math.sin(a) * (rr + w * 0.5);
+        if (i === 0) ctx.moveTo(ox, oy); else ctx.lineTo(ox, oy);
       }
-      ctx.restore();
+      for (let i = N; i >= 0; i--) {
+        const k = k0 + (k1 - k0) * (i / N);
+        const a = a0 + span * k;
+        const w = widthAt(k, wMul);
+        const rr = g.r + w * (out - 0.5);
+        ctx.lineTo(g.cx + Math.cos(a) * (rr - w * 0.5),
+          g.cy + Math.sin(a) * (rr - w * 0.5));
+      }
+      ctx.closePath();
     };
-    // 1 外层柔光：宽而淡，让刀光边缘融进地面
-    band(2.6, 'source-over', () => 'rgb(206,42,18)', 0.10, 0.72);
-    band(1.6, 'source-over', () => 'rgb(236,58,26)', 0.15, 0.62);
-    // 2 主体：暗红 → 亮橙红，尾部随弧长渐隐
-    band(1.0, 'source-over', (k) => {
-      const t = Math.min(1, k / 0.85);
-      const r = Math.round(150 + 105 * Math.pow(t, 1.4));
-      const gg = Math.round(12 + 106 * Math.pow(t, 1.7));
-      const b = Math.round(8 + 54 * Math.pow(t, 2));
-      return `rgb(${r},${gg},${b})`;
-    }, 0.62, 0.5);
-    // 3 刃口白热芯：贴着外缘走，加色发光；越靠近尾部越淡，避免整条变成霓虹管
-    band(0.24, 'lighter', (k) => {
-      const t = Math.min(1, k / 0.9);
-      const gg = Math.round(170 + 70 * t);
-      const b = Math.round(110 + 120 * t);
-      return `rgb(255,${gg},${b})`;
-    }, 0.5, 0.5);
-    band(0.10, 'lighter', () => 'rgb(255,246,232)', 0.45, 0.5);
+    // 1 外缘薄柔光：只比主体宽一点，避免大范围暗红光雾把画面拖糊
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = alpha * 0.16;
+    ctx.fillStyle = 'rgb(214,52,22)';
+    crescent(1.5, 0.58, 0, 1);
+    ctx.fill();
+    ctx.restore();
+    // 2 主体：沿弧切成色块，暗红 → 亮橙红；块与块严格贴合、不做半透明叠加
+    const CH = 18;
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = alpha * 0.92;
+    for (let c = 0; c < CH; c++) {
+      const k0 = c / CH, k1 = (c + 1) / CH;
+      const t = Math.min(1, (k0 + k1) * 0.5 / 0.85);
+      const r = Math.round(165 + 90 * Math.pow(t, 1.2));
+      const gg = Math.round(20 + 120 * Math.pow(t, 1.5));
+      const b = Math.round(10 + 60 * Math.pow(t, 1.8));
+      ctx.fillStyle = `rgb(${r},${gg},${b})`;
+      crescent(1.0, 0.5, k0, k1);
+      ctx.fill();
+    }
+    ctx.restore();
+    // 3 刃口：亮橙内芯 + 近白细边，贴着外缘走，保持锐利白热
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = alpha * 0.42;
+    ctx.fillStyle = 'rgb(255,150,70)';
+    crescent(0.34, 0.62, 0, 1);
+    ctx.fill();
+    ctx.globalAlpha = alpha * 0.85;
+    ctx.fillStyle = 'rgb(255,248,238)';
+    crescent(0.13, 0.62, 0, 1);
+    ctx.fill();
+    ctx.restore();
     // 4 刃尖小爆点：只留一点点亮芯，不做大光球
     const hx = g.cx + Math.cos(a1) * g.r, hy = g.cy + Math.sin(a1) * g.r;
     const rg = ctx.createRadialGradient(hx, hy, 0, hx, hy, g.r * 0.10);

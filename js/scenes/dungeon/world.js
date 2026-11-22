@@ -712,6 +712,7 @@
       m.gold = Math.round(m.gold * 2);
     }
     m.name = '精英 · ' + (t.name || m.name);
+    this.applyEliteAffixes(m);
     return m;
   },
   findMonsterSpawnPoint(x, y, r, ignore) {
@@ -847,6 +848,8 @@
     }
 
     this.monsters.push(m);
+    // 随机精英同样吃本关词缀（词缀在属性算完之后再叠，避免倍率互相污染）
+    if (elite) this.applyEliteAffixes(m);
     return m;
   },
   spawnBoss() {
@@ -867,6 +870,8 @@
       return;
     }
     const dir = DG.scenes.dungeon.dirName(U.angle(this.player, boss));
+    // 同一首领重复出场：二阶段（更高血量与更早狂暴），第三章后再加新招式
+    this.applyBossVariant(boss);
     if (DG.audio) DG.audio.playBgm('boss');
     this.$bossName.textContent = boss.name;
     this.$bossWrap.classList.remove('hidden');

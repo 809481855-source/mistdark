@@ -20,9 +20,11 @@
     const move = (ev) => {
       if (!origin || dead) return;
       const rect = root.getBoundingClientRect();
-      const scale = rect.width / 720;
-      let dx = (ev.clientX - origin.x) / scale;
-      let dy = (ev.clientY - origin.y) / scale;
+      // 舞台可能非等比铺满屏幕，横竖位移分别换算，保证摇杆方向与实际拖动一致
+      const scaleX = rect.width / 720;
+      const scaleY = rect.height / 1440;
+      let dx = (ev.clientX - origin.x) / scaleX;
+      let dy = (ev.clientY - origin.y) / scaleY;
       const len = Math.hypot(dx, dy);
       if (len > R) { dx = dx / len * R; dy = dy / len * R; }
       knob.style.transform = `translate(${dx}px, ${dy}px)`;

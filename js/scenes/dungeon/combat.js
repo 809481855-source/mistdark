@@ -126,23 +126,57 @@
     if (m.boss && tm.stats.bossDmgPct) dmg *= 1 + tm.stats.bossDmgPct / 100;
     if (m.hp / m.maxHp > 0.7 && tm.stats.highHpDmgPct) dmg *= 1 + tm.stats.highHpDmgPct / 100;
     if (m.slow > 0 && tm.stats.slowedDmgPct) dmg *= 1 + tm.stats.slowedDmgPct / 100;
+    // 草丛伏击：隐匿状态下打出的第一击额外 80%，随后暴露
+    let ambush = false;
+    if (this.fieldStealth && !m.boss && !m.aggro) {
+      dmg *= 1.8;
+      ambush = true;
+      this.fieldStealth = false;
+      this.fieldReveal = 2.4;
+    }
     dmg = Math.max(1, Math.round(dmg));
+
+    // 精英护盾：先吸收伤害，破盾时留一圈碎光
+    if (m.shield > 0) {
+      const absorb = Math.min(m.shield, dmg);
+      m.shield -= absorb;
+      dmg -= absorb;
+      if (!quiet) this.addFloater(m.x + U.rand(-6, 6), m.y - m.r - 34, `护盾 ${absorb}`, '#7fd0c0', 18);
+      if (m.shield <= 0) {
+        m.shield = 0;
+        this.addRing(m.x, m.y, m.r, m.r * 3, '#7fd0c0', 0.4);
+      }
+      if (dmg <= 0) {
+        m.hitT = 2.2;
+        return;
+      }
+    }
 
     m.hp -= dmg;
     // 被击中才亮血条：持续命中会不断续时，停手后 2.2 秒自动隐藏
     m.hitT = 2.2;
+    // 精英荆棘：按实际伤害的 18% 反弹，无需命中判定
+    if (!quiet && m.affixes && m.affixes.indexOf('thorn') >= 0) {
+      const back = Math.max(1, Math.round(dmg * 0.18));
+      if (this.hurtPlayer(back)) {
+        this.addFloater(this.player.x, this.player.y - 52, `荆棘 -${back}`, '#c98b5a', 17);
+      }
+    }
     if (!quiet) {
       m.flash = 0.13;
       // 血迹：按累计伤势分档铺在脚下，成堆怪物只保留最大一块
       this.addBlood(m);
       // 受击飞溅：血珠按伤害量向外抛散
       this.sprayBlood(m, dmg, crit);
+      // 劈砍专属：沿刀锋切向再甩出一道血幕，与上面的受击喷溅叠加
+      if (opts && opts.chop) this.slashBlood(m, opts.angle, dmg, crit);
       if (DG.audio) {
         DG.audio.play('barbHit', { vol: crit ? 0.85 : 0.6, rate: 0.94 + Math.random() * 0.12, gap: 0.05 });
       }
       this.addFloater(m.x + U.rand(-6, 6), m.y - m.r - 20,
         executed ? '处决' : (crit ? '暴击 ' : '') + U.fmt(dmg),
         executed ? '#ff7a5c' : (crit ? '#ffca6a' : '#f2ead9'), crit ? 30 : 21);
+      if (ambush) this.addFloater(m.x, m.y - m.r - 46, '伏击', '#a8e0a0', 22);
     }
     // 严寒：命中时有概率把怪物冻住一小段
     if (this.wxRule && this.wxRule.chill && !m.boss && U.chance(this.wxRule.chill)) {
@@ -161,11 +195,15 @@
       m.hp = 0;
       m.dead = true;
       this.onMonsterDeath(m);
+    } else if (opts && opts.chop) {
+      // 未致死的中刀目标进入短时出血状态，在后续帧持续滴血
+      m.bleedT = 1.4;
+      m.bleedAcc = 0;
     }
   },
   hurtPlayer(raw) {
-    if (this.player.invuln > 0 || this.finished || this.ending) return;
-    if (this.player.hp <= 0) return;
+    if (this.player.invuln > 0 || this.finished || this.ending) return false;
+    if (this.player.hp <= 0) return false;
     const tm = this.talentMods();
     const timers = this.talentTimers;
 
@@ -216,13 +254,14 @@
     if (this.player.hp <= 0) {
       this.player.hp = 0;
       this.onPlayerDeath();
-      return;
+      return true;
     }
 
     // 虚化：生命低于 30% 时自动脱离
     if (tm.flags.voidShift && this.player.hp / this.player.maxHp < 0.3 && timers.voidCd <= 0) {
       this.voidShift();
     }
+    return true;
   },
   onPlayerDeath() {
     if (this.ending) return;
@@ -234,23 +273,28 @@
     this.addBurst(this.player.x, this.player.y, '#c6554e', 18);
   },
   onMonsterDeath(m) {
+    // 分裂词缀：先裂成两个小体，再走结算（小体自身不再分裂、无掉落）
+    if (m.affixes && m.affixes.indexOf('split') >= 0) this.splitElite(m);
     if (DG.audio) {
       DG.audio.play('monsterDeath', { vol: m.boss ? 1 : 0.5, rate: 0.9 + Math.random() * 0.15, gap: 0.08 });
       // 首领倒下后战斗音乐回落，避免首领曲一直播到撤离
       if (m.boss) DG.audio.playBgm('battle');
       if (m.gold > 0) DG.audio.play('stageCoin', { vol: 0.32, gap: 0.12 });
     }
-    this.kills++;
-    this.xpEarned += m.xp;
-    this.goldEarned += m.gold;
-    this.updateWaveText();
-    // 任务进度：普通击杀 / 精英 / 首领分别计入悬赏
-    if (DG.quests && this.char) {
-      DG.quests.progress(this.char, 'kill', 1);
-      if (m.boss) DG.quests.progress(this.char, 'boss', 1);
-      else if (m.elite) DG.quests.progress(this.char, 'elite', 1);
+    // 分裂出的小体不计击杀、不给经验金币，避免刷资源与提前触发首领
+    if (!m.noLoot) {
+      this.kills++;
+      this.xpEarned += m.xp;
+      this.goldEarned += m.gold;
+      this.updateWaveText();
+      // 任务进度：普通击杀 / 精英 / 首领分别计入悬赏
+      if (DG.quests && this.char) {
+        DG.quests.progress(this.char, 'kill', 1);
+        if (m.boss) DG.quests.progress(this.char, 'boss', 1);
+        else if (m.elite) DG.quests.progress(this.char, 'elite', 1);
+      }
+      this.addFloater(m.x, m.y - 28, `+${m.gold} 金币`, '#e3c88e', 20);
     }
-    this.addFloater(m.x, m.y - 28, `+${m.gold} 金币`, '#e3c88e', 20);
     this.addBurst(m.x, m.y, m.color, m.boss ? 26 : 8);
     // 死亡爆炸：骨头四散弹跳
     this.spawnBoneBurst(m);
@@ -289,7 +333,9 @@
     }
     if (tm.flags.killRush) this.talentTimers.killRush = 3;
 
-    const drop = DG.loot.roll(m, this.def.ilvl, this.char && this.char.cls);
+    const drop = m.noLoot
+      ? { items: [], orb: false, rune: false }
+      : DG.loot.roll(m, this.def.ilvl, this.char && this.char.cls);
     // 首领的战利品直接落在玩家脚下，避免结算前来不及拾取
     const bx = m.boss ? this.player.x : m.x;
     const by = m.boss ? this.player.y : m.y;
@@ -352,7 +398,7 @@
     const mv = MELEE_MOVES[mid];
     m.action = {
       phase: 'windup', t: 0, angle: ang, move: mid, mv,
-      windup: (tpl.windup || 0.28) * mv.windup * (this.wxWindup || 1),
+      windup: (tpl.windup || 0.28) * mv.windup * (this.wxWindup || 1) * (m.windupMul || 1),
       strike: mv.strike,
       recover: mv.recover
     };
@@ -437,7 +483,7 @@
       const k = (m.artScale || 1) * (m.elite ? 1.18 : 1);
       const dir = Math.cos(a.angle) < 0 ? -1 : 1;
       this.projectiles.push({
-        team: 'enemy',
+        team: 'enemy', owner: m,
         x: m.x, y: m.y,
         vx: Math.cos(a.angle) * m.projSpeed,
         vy: Math.sin(a.angle) * m.projSpeed,
@@ -504,7 +550,7 @@
     const reach = m.attackRange * (mv.reach || 1) + p.r + 6;
     const halfArc = Math.max(0.6, arc / 2);
     if (d <= reach && Math.abs(diff) <= halfArc) {
-      this.hurtPlayer(m.dmg);
+      if (this.hurtPlayer(m.dmg)) this.affixOnHit(m);
       this.addBurst(p.x, p.y, color, 6);
       // 撞：击退玩家；抓：把玩家拖向怪物
       if (mv.knock) {
@@ -518,7 +564,7 @@
   fireEnemyShot(m, ang) {
     const projColor = m.projColor || '#b79be0';
     this.projectiles.push({
-      team: 'enemy',
+      team: 'enemy', owner: m,
       x: m.x, y: m.y,
       vx: Math.cos(ang) * m.projSpeed,
       vy: Math.sin(ang) * m.projSpeed,
@@ -565,6 +611,8 @@
       if (m.slow > 0) m.slow -= dt;
       if (m.fear > 0) m.fear -= dt;
       if (m.hitT > 0) m.hitT -= dt;
+      // 出血状态：被劈砍命中后持续从伤口滴血（眩晕/出手期间也要继续）
+      this.bleedTick(m, dt);
       // 眩晕：不移动、不出手，动作被打断
       if (m.stun > 0) {
         m.stun -= dt;
@@ -595,7 +643,9 @@
       if (chained) m.aggro = false;
       // 探索感：刚刷出的怪有短暂“苏醒”延迟，给玩家反应时间；
       // 之后靠近或停留过久才循声追击
-      if (!chained && !m.aggro && !m.boss && d < 560 * (this.wxSightMul || 1) && this.time - m.spawnTime > 0.7) m.aggro = true;
+      if (!chained && !m.aggro && !m.boss && !this.fieldStealth &&
+        d < 560 * (this.wxSightMul || 1) * (this.fieldSightMul || 1) &&
+        this.time - m.spawnTime > 0.7) m.aggro = true;
       if (!chained && !m.aggro && !m.boss && this.time - m.spawnTime > 16) m.aggro = true;
 
       if (m.boss) {
@@ -669,7 +719,7 @@
         } else if (m.atkTimer <= 0) {
           if (this.isArtMonster(m)) this.startMonsterAction(m, ang);
           else {
-            this.hurtPlayer(m.dmg);
+            if (this.hurtPlayer(m.dmg)) this.affixOnHit(m);
             m.atkTimer = m.attackCd;
           }
         }
@@ -857,7 +907,7 @@
       } else {
         if (this.player.hp > 0 && this.player.invuln <= 0 &&
           Math.hypot(p.x - this.player.x, p.y - this.player.y) <= p.r + this.player.r) {
-          this.hurtPlayer(p.dmg);
+          if (this.hurtPlayer(p.dmg)) this.affixOnHit(p.owner);
           this.addBurst(p.x, p.y, p.color, 4);
           continue;
         }

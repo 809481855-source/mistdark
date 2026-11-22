@@ -82,7 +82,9 @@
         // 角色动作：移动 / 朝向 / 出手
         moving: false, walkPhase: 0, flip: false, atkAnim: 0,
         // 受击硬直与后退：hurtT 剩余硬直时间，kbX/kbY 后退速度
-        hurtT: 0, kbX: 0, kbY: 0
+        hurtT: 0, kbX: 0, kbY: 0,
+        // 冰缓：精英「冰冻」词缀命中后短暂减速
+        chillT: 0
       };
       this.energy = ENERGY;
       this.camera = { x: this.player.x, y: this.player.y };
@@ -104,6 +106,9 @@
       this.bones = [];
       // 天气：进入副本时掷一次，整局不变
       this.rollWeather();
+      // 精英词缀与场地机制：词缀每关 1~2 条，场地机制只在 5 的倍数关出现
+      this.rollStageAffixes();
+      this.rollField();
       // 血迹：本图随机一组美术序列，受伤时铺在怪物脚下
       this.initBlood();
 
@@ -194,6 +199,16 @@
           if (!this.finished && this.hud) this.announce(`天气 · ${this.weatherName}｜${this.wxRule.desc}`, 2600);
         }, 2300);
       }
+      if (this.eliteAffixText) {
+        this._affixTimer = setTimeout(() => {
+          if (!this.finished && this.hud) this.announce(`精英词缀 · ${this.eliteAffixText}`, 2400);
+        }, 4600);
+      }
+      if (this.field) {
+        this._fieldTimer = setTimeout(() => {
+          if (!this.finished && this.hud) this.announce(`场地 · ${this.field.name}｜${this.field.desc}`, 2800);
+        }, 6600);
+      }
       this.updateHud();
     }
 
@@ -228,6 +243,13 @@
     finishNow() {
       if (this.finished) return;
       this.finished = true;
+      // 兜底补记通关：首领倒下时已记录过一次，这里只在缺失时补写，
+      // 防止任何异常路径导致「打赢了却没解锁下一关」
+      if (this.victory && DG.quests && this.char && this.def &&
+        !(this.char.cleared && this.char.cleared[this.def.id])) {
+        DG.quests.onStageClear(this.char, this.def.id);
+        if (DG.game && DG.game.save) DG.game.save();
+      }
       const result = this.buildResult();
       this.dispose();
       if (this.onFinish) this.onFinish(result);
@@ -262,6 +284,8 @@
       this.moveVec.y = 0;
       clearTimeout(this._annTimer);
       clearTimeout(this._wxTimer);
+      clearTimeout(this._affixTimer);
+      clearTimeout(this._fieldTimer);
       if (this._stick) {
         this._stick.destroy();
         this._stick = null;
@@ -286,6 +310,7 @@
         this.skillCd[i] = Math.max(0, this.skillCd[i] - dt);
       }
       this.player.invuln = Math.max(0, this.player.invuln - dt);
+      this.player.chillT = Math.max(0, this.player.chillT - dt);
       this.player.atkAnim = Math.max(0, (this.player.atkAnim || 0) - dt);
       // 受击硬直：按当前后退速度位移并衰减
       if (this.player.hurtT > 0) {
@@ -426,6 +451,7 @@
       this.updateBlood(dt);
       this.updateBones(dt);
       this.updateWeather(dt);
+      this.updateField(dt);
       this.updateChunkSpawns();
       this.updateChests(dt);
       this.updateWaves(dt);

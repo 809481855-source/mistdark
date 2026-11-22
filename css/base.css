@@ -26,10 +26,11 @@
   --ok:#7cb377;
   --blue:#6d9bdf;
 
-  /* 稀有度 */
+  /* 品质：白 → 蓝 → 紫 → 绿（套装）→ 橙（暗金） */
   --rar-normal:#b0aca2;
   --rar-magic:#6d9bdf;
-  --rar-rare:#e0b84f;
+  --rar-rare:#b06fd8;
+  --rar-set:#5fae5a;
   --rar-legend:#e8853c;
 
   /* 层级 */

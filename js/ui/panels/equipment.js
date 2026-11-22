@@ -1,218 +1,347 @@
-/* 装备与背包面板 */
+/* 角色 · 装备界面：按 PSD 810×1680 坐标还原，整幅画布等比缩放到 720×1440 舞台 */
 (function () {
   const DG = window.DG;
   const U = DG.util;
   const C = DG.CONFIG;
   const ui = DG.ui = DG.ui || {};
 
+  // 画布 810×1680 在 CSS 里整体 scale(.888889) 到 720 宽，JS 只使用 PSD 原始坐标
+  const ASSET = 'assets/ui/equip/';
+
+  // 装备页（PSD 65,400 438×601）内的格子坐标，已减去页面左上角
+  const SLOT_POS = {
+    helm: [173, 97],
+    shoulder: [43, 152],
+    amulet: [303, 153],
+    armor: [173, 214],
+    gloves: [43, 271],
+    ring: [303, 271],
+    pants: [173, 332],
+    weapon: [43, 389],
+    offhand: [303, 389],
+    boots: [173, 449]
+  };
+
+  // 品质框：白 / 蓝 / 紫 / 普通套装 / 暗金，套装与暗金另有远古框
+  const FRAME = {
+    normal: 'frame-normal.png',
+    magic: 'frame-magic.png',
+    rare: 'frame-rare.png',
+    set: 'frame-set.png',
+    legend: 'frame-legend.png'
+  };
+  const FRAME_ANCIENT = {
+    set: 'frame-set-ancient.png',
+    legend: 'frame-legend-ancient.png'
+  };
+
+  const TABS = [
+    { id: 'equip', name: '装备' },
+    { id: 'item', name: '道具' },
+    { id: 'other', name: '其他' }
+  ];
+
+  function frameSrc(item) {
+    const ancient = item.ancient && FRAME_ANCIENT[item.rarity];
+    return ASSET + (ancient || FRAME[item.rarity] || FRAME.normal);
+  }
+
+  function slotOf(item) {
+    return DG.items.slotInfo(item.slot) || { name: '装备', glyph: '?' };
+  }
+
+  // 单个道具格：空格显示部位名，有装备时叠品质框 + 部位图标 + 等级
+  function fillCell(cell, item, slot) {
+    cell.innerHTML = '';
+    if (!item) {
+      cell.classList.remove('has');
+      cell.appendChild(U.el('span', 'eq-cell-label', slot.name));
+      return;
+    }
+    cell.classList.add('has');
+    const img = U.el('img', 'eq-frame');
+    img.src = frameSrc(item);
+    img.alt = '';
+    cell.appendChild(img);
+    cell.appendChild(U.el('span', 'eq-glyph', slot.glyph));
+    cell.appendChild(U.el('span', 'eq-ilvl', String(item.ilvl)));
+    if (item.ancient) cell.appendChild(U.el('span', 'eq-ancient', '远'));
+    cell.title = item.name;
+  }
+
   ui.openEquipment = function (char, onChange, opts) {
-    const body = U.el('div');
-    const modal = ui.modal({
-      title: '角色与装备',
-      subtitle: '点击物品查看详情，装备立即生效；金币可重铸词条',
-      body,
-      width: 660,
-      onClose: opts && opts.onClose
-    });
+    opts = opts || {};
+    const screen = U.el('div', 'eq-screen');
+    const canvas = U.el('div', 'eq-canvas');
+    screen.appendChild(canvas);
+    DG.game.ui.appendChild(screen);
 
-    let sel = null; // {from:'bag', index} | {from:'equip', slot}
-    const bagSize = C.BAG_SIZE;
+    let tab = 'equip';
+    let page = 'bag';               // bag：临时装备库 / stash：大装备仓库
+    let bagScroll = 0;
+    let stashScroll = 0;
 
-    function rerender() {
-      const stats = DG.stats.compute(char);
-      const used = DG.character.bagUsed(char);
-      const slotCard = s => {
-        const it = char.equipment[s.id];
-        return `<div class="equip-slot">` +
-          `<span class="slot-label">${s.name}</span>` +
-          `<div class="slot-cell" data-slot="${s.id}"></div>` +
-          `<span class="slot-name">${it ? U.escapeHtml(it.name) : '未装备'}</span>` +
-          `</div>`;
-      };
-      // 主体装备 2×2，饰物三连排，避免 7 格纵向拉得过长
-      const mainSlots = ['weapon', 'helm', 'armor', 'boots'];
-      const trinketSlots = ['gloves', 'ring', 'amulet'];
-      const mainRows = C.SLOTS.filter(s => mainSlots.indexOf(s.id) >= 0).map(slotCard).join('');
-      const trinketRows = C.SLOTS.filter(s => trinketSlots.indexOf(s.id) >= 0).map(slotCard).join('');
-
-      const statRows = [
-        ['最大生命', U.fmt(stats.maxHp)],
-        ['攻击力', stats.atk],
-        ['护甲', `${stats.armor} <em>减伤 ${DG.stats.mitigation(stats.armor)}%</em>`],
-        ['暴击率', stats.crit + '%'],
-        ['暴击伤害', stats.critDmg + '%'],
-        ['移动速度', stats.moveSpeed],
-        ['攻击速度', stats.attackSpeed + '/秒'],
-        ['生命回复', stats.hpRegen + '/秒']
-      ].map(r => `<li><span>${r[0]}</span><b>${r[1]}</b></li>`).join('');
-
-      const cls = DG.data.classes[char.cls];
-      const equipped = C.SLOTS.filter(s => char.equipment[s.id]).length;
-      const bagPct = U.clamp(used / bagSize, 0, 1) * 100;
-      body.innerHTML = `
-        <div class="equip-layout">
-          <div class="equip-hero">
-            <div class="equip-hero-emblem" style="color:${cls.color};border-color:${cls.color}66;">${U.escapeHtml(cls.glyph)}</div>
-            <div class="equip-hero-id">
-              <div class="equip-hero-name">${U.escapeHtml(char.name)}<span class="equip-hero-lv">Lv.${char.level}</span></div>
-              <div class="equip-hero-sub">${U.escapeHtml(cls.name)} · ${U.escapeHtml(cls.title)}</div>
-            </div>
-            <div class="equip-hero-power"><span>战 力</span><b>${U.fmt(stats.power)}</b></div>
-          </div>
-          <div class="equip-top">
-            <section class="sheet equip-doll">
-              <div class="section-label"><span>装备槽位</span><span class="meta">${equipped} / ${C.SLOTS.length}</span></div>
-              <div class="equip-slots equip-main">${mainRows}</div>
-              <div class="equip-divider"><span>饰 物</span></div>
-              <div class="equip-slots equip-trinkets">${trinketRows}</div>
-            </section>
-            <section class="sheet equip-stats">
-              <div class="section-label"><span>角色属性</span><span class="meta">Lv.${char.level}</span></div>
-              <ul class="stat-list">${statRows}</ul>
-            </section>
-          </div>
-          <section class="sheet equip-bag">
-            <div class="section-label"><span>背包</span><span class="meta">${used} / ${bagSize} · 金币 ${U.fmt(char.gold)}</span></div>
-            <div class="bag-cap"><i style="width:${bagPct}%"></i></div>
-            <div class="bag-grid" data-bag></div>
-          </section>
-          <div class="detail-box" data-detail></div>
-        </div>`;
-
-      // 装备槽
-      C.SLOTS.forEach(s => {
-        const holder = body.querySelector(`.slot-cell[data-slot="${s.id}"]`);
-        const it = char.equipment[s.id];
-        holder.appendChild(ui.itemCell(it, {
-          showLevel: !!it,
-          selected: sel && sel.from === 'equip' && sel.slot === s.id,
-          emptyGlyph: '空',
-          onClick: () => {
-            sel = it ? { from: 'equip', slot: s.id } : null;
-            rerender();
-          }
-        }));
-      });
-
-      // 背包
-      const bagEl = body.querySelector('[data-bag]');
-      for (let i = 0; i < bagSize; i++) {
-        const it = char.bag[i];
-        bagEl.appendChild(ui.itemCell(it, {
-          selected: sel && sel.from === 'bag' && sel.index === i,
-          showLevel: !!it,
-          onClick: it ? (() => { sel = { from: 'bag', index: i }; rerender(); }) : null
-        }));
-      }
-
-      // 详情
-      const detail = body.querySelector('[data-detail]');
-      if (!sel) {
-        detail.innerHTML = ui.itemDetailHtml(null);
-      } else if (sel.from === 'bag') {
-        const item = char.bag[sel.index];
-        if (!item) { sel = null; return rerender(); }
-        detail.innerHTML = ui.itemDetailHtml(item, char.equipment[item.slot] || null);
-        const actions = U.el('div', 'detail-actions');
-        const btnEquip = U.el('button', 'btn primary btn-sm', '装 备');
-        const btnReroll = rerollButton(item);
-        const btnDrop = U.el('button', 'btn danger btn-sm', '丢 弃');
-        btnEquip.addEventListener('click', () => equipFromBag(sel.index));
-        btnReroll.addEventListener('click', () => rerollItem(item));
-        btnDrop.addEventListener('click', () => {
-          const target = char.bag[sel.index];
-          if (!target) return;
-          ui.confirm(`确定丢弃「${target.name}」？丢弃后无法找回。`, () => {
-            char.bag.splice(sel.index, 1);
-            sel = null;
-            DG.game.save();
-            if (onChange) onChange();
-            rerender();
-          }, { danger: true, okText: '丢弃' });
-        });
-        actions.appendChild(btnEquip);
-        actions.appendChild(btnReroll);
-        actions.appendChild(btnDrop);
-        detail.appendChild(actions);
-      } else if (sel.from === 'equip') {
-        const item = char.equipment[sel.slot];
-        if (!item) { sel = null; return rerender(); }
-        detail.innerHTML = ui.itemDetailHtml(item);
-        const actions = U.el('div', 'detail-actions');
-        const btnReroll = rerollButton(item);
-        const btnOff = U.el('button', 'btn btn-sm', '卸 下');
-        btnReroll.addEventListener('click', () => rerollItem(item));
-        btnOff.addEventListener('click', () => unequip(sel.slot));
-        actions.appendChild(btnReroll);
-        actions.appendChild(btnOff);
-        detail.appendChild(actions);
-      }
-
-      // 手机屏幕较矮，选中物品后把详情与操作按钮滚动到可见区域
-      if (sel) {
-        requestAnimationFrame(() => {
-          modal.body.scrollTop = modal.body.scrollHeight;
-        });
-      }
+    function close() {
+      document.removeEventListener('keydown', onKey);
+      if (screen.parentNode) screen.remove();
+      if (opts.onClose) opts.onClose();
     }
 
-    // 重铸：消耗金币重掷选中装备的基础属性与词缀
-    function rerollButton(item) {
-      const cost = DG.items.rerollCost(item);
-      const btn = U.el('button', 'btn btn-sm', `重铸 · ${U.fmt(cost)} 金币`);
-      if ((char.gold || 0) < cost) btn.disabled = true;
-      return btn;
+    function onKey(e) {
+      if (e.key === 'Escape') close();
     }
+    document.addEventListener('keydown', onKey);
 
-    function rerollItem(item) {
-      if (!sel) return;
-      const cost = DG.items.rerollCost(item);
-      if ((char.gold || 0) < cost) {
-        ui.toast('金币不足，无法重铸', 'danger');
-        return;
-      }
-      const fresh = DG.items.reroll(item, char.cls);
-      if (!fresh) return;
-      char.gold -= cost;
-      if (sel.from === 'bag') char.bag[sel.index] = fresh;
-      else char.equipment[sel.slot] = fresh;
+    function persist() {
       DG.game.save();
       if (onChange) onChange();
-      if (DG.audio) DG.audio.play('stageEquip', { vol: 0.5 });
-      ui.toast(`重铸完成：${fresh.name}`, 'gold');
-      rerender();
+      render();
     }
 
-    function equipFromBag(index) {
-      const item = char.bag[index];
-      if (!item) return;
+    function removeItem(list, item) {
+      const i = list.indexOf(item);
+      if (i >= 0) list.splice(i, 1);
+    }
+
+    function equipItem(item) {
       const old = char.equipment[item.slot];
+      removeItem(char.bag, item);
       char.equipment[item.slot] = item;
-      char.bag.splice(index, 1);
       if (old) char.bag.push(old);
-      sel = null;
-      DG.game.save();
-      if (onChange) onChange();
+      if (DG.audio) DG.audio.play('stageEquip', { vol: 0.5 });
       ui.toast(`已装备「${item.name}」`, 'gold');
-      rerender();
+      persist();
     }
 
     function unequip(slot) {
       const item = char.equipment[slot];
       if (!item) return;
-      if (DG.character.bagUsed(char) >= bagSize) {
-        ui.toast('背包已满，无法卸下', 'danger');
+      if (DG.character.bagUsed(char) >= C.BAG_SIZE) {
+        ui.toast('临时装备库已满，无法卸下', 'danger');
         return;
       }
       char.equipment[slot] = null;
       char.bag.push(item);
-      sel = null;
-      DG.game.save();
-      if (onChange) onChange();
-      rerender();
+      ui.toast(`已卸下「${item.name}」`);
+      persist();
     }
 
-    rerender();
-    return modal;
+    function toStash(item) {
+      removeItem(char.bag, item);
+      char.stash.push(item);
+      ui.toast(`「${item.name}」已存入装备库`, 'gold');
+      persist();
+    }
+
+    function fromStash(item) {
+      if (DG.character.bagUsed(char) >= C.BAG_SIZE) {
+        ui.toast('临时装备库已满，无法取出', 'danger');
+        return;
+      }
+      removeItem(char.stash, item);
+      char.bag.push(item);
+      ui.toast(`「${item.name}」已取出`, 'gold');
+      persist();
+    }
+
+    function discard(item, source) {
+      ui.confirm(`丢弃「${item.name}」？丢弃后无法找回。`, () => {
+        removeItem(source === 'stash' ? char.stash : char.bag, item);
+        ui.toast(`已丢弃「${item.name}」`);
+        persist();
+      }, { danger: true, okText: '丢弃' });
+    }
+
+    // 一键分解：默认只处理白装与蓝装，紫 / 套装 / 暗金保留
+    function dismantle() {
+      const junk = char.bag.filter(it => it && (it.rarity === 'normal' || it.rarity === 'magic'));
+      if (!junk.length) {
+        ui.toast('没有可分解的白装或蓝装', 'danger');
+        return;
+      }
+      ui.confirm(`分解 ${junk.length} 件白装 / 蓝装？分解后无法找回。`, () => {
+        char.bag = char.bag.filter(it => !(it && (it.rarity === 'normal' || it.rarity === 'magic')));
+        ui.toast(`已分解 ${junk.length} 件装备`, 'gold');
+        persist();
+      }, { danger: true, okText: '分解' });
+    }
+
+    function openDetail(item, source) {
+      const compare = source === 'bag' ? (char.equipment[item.slot] || null) : undefined;
+      const body = U.el('div', 'eq-detail');
+      body.innerHTML = ui.itemDetailHtml(item, compare);
+      const foot = U.el('div', 'eq-detail-actions');
+      const modal = ui.modal({ title: '装备详情', body, footer: foot });
+
+      const add = (text, kind, fn) => {
+        const btn = U.el('button', 'eq-dbtn' + (kind ? ' ' + kind : ''), text);
+        btn.addEventListener('click', () => { modal.close(); fn(); });
+        foot.appendChild(btn);
+      };
+
+      if (source === 'bag') {
+        add(char.equipment[item.slot] ? '替换装备' : '装 备', 'red', () => equipItem(item));
+        add('存入仓库', '', () => toStash(item));
+        add('丢 弃', '', () => discard(item, 'bag'));
+      } else if (source === 'equip') {
+        add('卸 下', '', () => unequip(item.slot));
+      } else {
+        add('取 出', 'red', () => fromStash(item));
+        add('丢 弃', '', () => discard(item, 'stash'));
+      }
+    }
+
+    function render() {
+      const stats = DG.stats.compute(char);
+      const cls = DG.data.classes[char.cls];
+      const used = DG.character.bagUsed(char);
+      const cap = C.BAG_SIZE;
+      const tabIndex = Math.max(0, TABS.findIndex(t => t.id === tab));
+
+      const statRows = [
+        ['最大生命', U.fmt(stats.maxHp)],
+        ['攻击力', stats.atk],
+        ['护甲', { v: stats.armor, n: '减伤 ' + DG.stats.mitigation(stats.armor) + '%' }],
+        ['暴击率', stats.crit + '%'],
+        ['暴击伤害', stats.critDmg + '%'],
+        ['移动速度', stats.moveSpeed],
+        ['攻击速度', stats.attackSpeed + '/秒'],
+        ['生命回复', stats.hpRegen + '/秒']
+      ].map(r => {
+        const v = r[1];
+        if (v && typeof v === 'object') {
+          return `<li><span class="k">${r[0]}</span><span class="v">${v.v}<em>${v.n}</em></span></li>`;
+        }
+        return `<li><span class="k">${r[0]}</span><span class="v">${v}</span></li>`;
+      }).join('');
+
+      canvas.innerHTML = `
+        <div class="eq-bg"></div>
+        <div class="eq-title">背包</div>
+        <button class="eq-close" aria-label="关闭"></button>
+
+        <div class="eq-hero">
+          <div class="eq-hero-frame"></div>
+          <div class="eq-portrait"><img src="${ASSET}avatar.png" alt=""></div>
+          <div class="eq-hero-name">${U.escapeHtml(char.name)}<span class="lv">${char.level}级</span></div>
+          <div class="eq-hero-sub">${U.escapeHtml(cls.name)} · ${U.escapeHtml(cls.title)}</div>
+          <div class="eq-power"><span>战力</span><b>${U.fmt(stats.power)}</b></div>
+        </div>
+
+        <div class="eq-page eq-equip-page"><div class="eq-page-title">装备栏</div></div>
+
+        <div class="eq-stats">
+          <div class="eq-stats-title">角色属性</div>
+          <ul class="eq-stat-list">${statRows}</ul>
+        </div>
+
+        ${page === 'bag' ? `
+        <div class="eq-bag-page">
+          <div class="eq-tabs">
+            <div class="eq-tab-pill" style="left:${tabIndex * 125}px"></div>
+            ${TABS.map((t, i) =>
+              `<button class="eq-tab${t.id === tab ? ' on' : ''}" data-tab="${t.id}" style="left:${i * 125}px">${t.name}</button>`
+            ).join('')}
+          </div>
+          <button class="eq-btn stash">装备库</button>
+          <button class="eq-btn dismantle">分解</button>
+          <div class="eq-cap">容量：<b>${used}</b>/${cap}</div>
+          <div class="eq-grid-wrap"><div class="eq-grid"></div></div>
+          <div class="eq-empty hidden"></div>
+        </div>` : ''}
+      `;
+
+      // ---------- 头部 ----------
+      canvas.querySelector('.eq-close').addEventListener('click', close);
+      canvas.querySelectorAll('.eq-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (tab === btn.dataset.tab) return;
+          tab = btn.dataset.tab;
+          bagScroll = 0;
+          render();
+        });
+      });
+
+      // ---------- 装备栏 10 个格子 ----------
+      const equipPage = canvas.querySelector('.eq-equip-page');
+      C.SLOTS.forEach(slot => {
+        const pos = SLOT_POS[slot.id];
+        if (!pos) return;
+        const item = char.equipment[slot.id];
+        const cell = U.el('button', 'eq-cell eq-slot');
+        cell.style.left = pos[0] + 'px';
+        cell.style.top = pos[1] + 'px';
+        fillCell(cell, item, slot);
+        if (item) cell.addEventListener('click', () => openDetail(item, 'equip'));
+        equipPage.appendChild(cell);
+      });
+
+      // ---------- 临时装备库 ----------
+      const bagPage = canvas.querySelector('.eq-bag-page');
+      if (bagPage) {
+        bagPage.querySelector('.eq-btn.stash').addEventListener('click', () => {
+          page = 'stash';
+          render();
+        });
+        bagPage.querySelector('.eq-btn.dismantle').addEventListener('click', dismantle);
+
+        const grid = bagPage.querySelector('.eq-grid');
+        const list = tab === 'equip' ? char.bag.filter(Boolean) : [];
+        list.forEach(item => {
+          const cell = U.el('button', 'eq-cell');
+          fillCell(cell, item, slotOf(item));
+          cell.addEventListener('click', () => openDetail(item, 'bag'));
+          grid.appendChild(cell);
+        });
+        // 装备页按容量补齐空格，直观看出还剩多少位置
+        if (tab === 'equip') {
+          for (let i = list.length; i < cap; i++) grid.appendChild(U.el('div', 'eq-cell empty'));
+        } else if (!list.length) {
+          const hint = bagPage.querySelector('.eq-empty');
+          hint.classList.remove('hidden');
+          hint.textContent = tab === 'item' ? '暂无道具' : '暂无其他物品';
+        }
+
+        const wrap = bagPage.querySelector('.eq-grid-wrap');
+        wrap.scrollTop = bagScroll;
+        wrap.addEventListener('scroll', () => { bagScroll = wrap.scrollTop; });
+      }
+
+      // ---------- 大装备仓库 ----------
+      if (page === 'stash') {
+        const stashPage = U.el('div', 'eq-stash-page');
+        stashPage.innerHTML = `
+          <div class="eq-stash-title">装备库</div>
+          <div class="eq-stash-count">已收藏 ${char.stash.length} 件</div>
+          <button class="eq-btn stash-back">返回</button>
+          <div class="eq-stash-inner">
+            <div class="eq-stash-grid-wrap"><div class="eq-grid"></div></div>
+          </div>`;
+        canvas.appendChild(stashPage);
+        stashPage.querySelector('.stash-back').addEventListener('click', () => {
+          page = 'bag';
+          render();
+        });
+
+        const grid = stashPage.querySelector('.eq-grid');
+        char.stash.forEach(item => {
+          const cell = U.el('button', 'eq-cell');
+          fillCell(cell, item, slotOf(item));
+          cell.addEventListener('click', () => openDetail(item, 'stash'));
+          grid.appendChild(cell);
+        });
+        if (!char.stash.length) {
+          stashPage.querySelector('.eq-stash-inner')
+            .appendChild(U.el('div', 'eq-empty show', '仓库还是空的'));
+        }
+
+        const wrap = stashPage.querySelector('.eq-stash-grid-wrap');
+        wrap.scrollTop = stashScroll;
+        wrap.addEventListener('scroll', () => { stashScroll = wrap.scrollTop; });
+      }
+    }
+
+    render();
+    return { close };
   };
 })();

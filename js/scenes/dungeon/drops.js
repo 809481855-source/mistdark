@@ -31,7 +31,8 @@
       if (DG.quests) DG.quests.progress(this.char, 'loot', 1);
       if (DG.audio) DG.audio.play('stageEquip', { vol: 0.7 });
       DG.game.save();
-      DG.ui.toast(`拾取：${d.item.name}`, d.item.rarity === 'legend' ? 'gold' : 'blue');
+      const hot = d.item.rarity === 'legend' || d.item.rarity === 'set';
+      DG.ui.toast(`拾取：${d.item.name}`, hot ? 'gold' : 'blue');
       this.updateHud();
       return true;
     }

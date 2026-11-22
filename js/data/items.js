@@ -22,6 +22,14 @@
     { id: 'boots', slot: 'boots', name: '皮靴', implicit: { armor: [2, 4], moveSpeed: [3, 6] } },
     { id: 'greaves', slot: 'boots', name: '胫甲', implicit: { armor: [6, 9] } },
     { id: 'sandals', slot: 'boots', name: '轻履', implicit: { armor: [2, 3], moveSpeed: [4, 7] } },
+    { id: 'pauldron', slot: 'shoulder', name: '铁护肩', implicit: { armor: [3, 6] } },
+    { id: 'spaulder', slot: 'shoulder', name: '皮革护肩', implicit: { armor: [2, 4], hp: [6, 12] } },
+    { id: 'legging', slot: 'pants', name: '皮裤', implicit: { armor: [3, 5] } },
+    { id: 'legplate', slot: 'pants', name: '腿甲', implicit: { armor: [5, 8] } },
+    { id: 'clothpants', slot: 'pants', name: '布裤', implicit: { armor: [2, 3], hp: [8, 16] } },
+    { id: 'shield', slot: 'offhand', name: '圆盾', cls: 'warrior', implicit: { armor: [5, 9] } },
+    { id: 'orb', slot: 'offhand', name: '法球', cls: 'mage', implicit: { atk: [3, 6] } },
+    { id: 'quiver', slot: 'offhand', name: '箭袋', cls: 'ranger', implicit: { atk: [2, 4], crit: [1, 2] } },
     { id: 'ring', slot: 'ring', name: '指环', implicit: {} },
     { id: 'amulet', slot: 'amulet', name: '护符', implicit: {} }
   ];
@@ -84,12 +92,29 @@
   const rareSuffix = ['迷雾', '残响', '黎明', '沉沦', '断罪', '低语'];
   const legendNames = {
     weapon: '灭雾者',
+    offhand: '守夜之壁',
     helm: '雾隐之冠',
     armor: '不眠壁垒',
+    shoulder: '碎誓者',
     gloves: '碎岩之握',
+    pants: '长夜行者',
     boots: '追风踏',
     ring: '回响之戒',
     amulet: '亡者低语'
+  };
+
+  // 套装名：绿装按部位取固定套装名，便于一眼看出成套
+  const setNames = {
+    weapon: '裂魂',
+    offhand: '守誓',
+    helm: '夜视',
+    armor: '不眠',
+    shoulder: '铁誓',
+    gloves: '缚灵',
+    pants: '长夜',
+    boots: '逐暗',
+    ring: '回响',
+    amulet: '低语'
   };
 
   // 流派词缀的显示文案：skill.<id>.<字段>
@@ -111,9 +136,9 @@
     return U.weighted(list);
   }
 
-  function rollImplicit(base, ilvl) {
+  function rollImplicit(base, ilvl, mul) {
     const out = {};
-    const factor = 1 + Math.max(0, ilvl - 1) * 0.12;
+    const factor = (1 + Math.max(0, ilvl - 1) * 0.12) * (mul || 1);
     for (const key in base.implicit) {
       const [a, b] = base.implicit[key];
       const meta = C.STAT_META[key] || {};
@@ -233,11 +258,16 @@
         base = U.pick(list.length ? list : bases);
       }
 
-      const implicit = rollImplicit(base, ilvl);
+      // 远古：仅套装与暗金可出，属性与词缀数量都更强
+      const ancient = (rarity.id === 'set' || rarity.id === 'legend') &&
+        (opts.ancient != null ? !!opts.ancient : U.chance(0.12));
+
+      const implicit = rollImplicit(base, ilvl, ancient ? 1.3 : 1);
 
       // 词缀数量
       let count = U.randInt(rarity.affix[0], rarity.affix[1]);
       if (rarity.id === 'legend') count = Math.max(count, 4);
+      if (ancient) count += 1;
 
       // 职业限定的流派词缀只对对应职业掉落，避免给别的职业一堆无效词条
       const pool = affixes.filter(a => {
@@ -254,6 +284,7 @@
         used[def.stat] = true;
         let value = rollAffixValue(def, ilvl);
         if (rarity.id === 'legend') value = U.round(value * 1.15, def.decimals || 0);
+        if (ancient) value = U.round(value * 1.3, def.decimals || 0);
         chosen.push({ stat: def.stat, value });
       }
 
@@ -263,10 +294,13 @@
       if (rarity.id === 'magic') name = U.pick(magicPrefix) + base.name;
       else if (rarity.id === 'rare') {
         name = (mainFamily && families[mainFamily] ? families[mainFamily] + '之' : '') + base.name + ' · ' + U.pick(rareSuffix);
+      } else if (rarity.id === 'set') {
+        name = (setNames[base.slot] || '套装') + '·' + base.name;
       } else if (rarity.id === 'legend') {
         name = legendNames[base.slot] || base.name;
         if (mainFamily && families[mainFamily]) name = families[mainFamily] + ' · ' + name;
       }
+      if (ancient) name = '远古·' + name;
 
       return {
         id: U.uid(),
@@ -274,6 +308,7 @@
         baseId: base.id,
         name,
         rarity: rarity.id,
+        ancient,
         ilvl,
         implicit,
         affixes: chosen
@@ -284,7 +319,7 @@
     // 作为金币的主要消耗出口，价格随装备等级与品质上涨
     rerollCost(item) {
       if (!item) return 0;
-      const mul = { normal: 0.6, magic: 1, rare: 2, legend: 3.5 }[item.rarity] || 0.6;
+      const mul = { normal: 0.6, magic: 1, rare: 2, set: 2.6, legend: 3.5 }[item.rarity] || 0.6;
       return Math.round((100 + (item.ilvl || 1) * 100) * mul);
     },
 
@@ -293,7 +328,8 @@
       const fresh = items.generate(item.ilvl || 1, {
         baseId: item.baseId,
         rarity: item.rarity,
-        cls
+        cls,
+        ancient: item.ancient
       });
       fresh.id = item.id;
       return fresh;
@@ -305,6 +341,12 @@
 
     rarityInfo(item) {
       return DG.data.rarityById[item && item.rarity] || DG.data.rarity[0];
+    },
+
+    // 品质文案：普通 / 魔法 / 稀有 / 套装 / 暗金，远古前缀
+    qualityLabel(item) {
+      const r = items.rarityInfo(item);
+      return (item && item.ancient ? '远古' : '') + r.name;
     }
   };
 })();

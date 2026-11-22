@@ -7,15 +7,18 @@
     BAG_SIZE: 24,
     MAX_SKILL_LEVEL: 10,
     MAX_LEVEL: 60,
-    // 装备槽位：武器/头盔/护甲/手套/靴子/戒指/护符
+    // 装备槽位：与装备界面 PSD 的 10 个格子一一对应
     SLOTS: [
       { id: 'weapon', name: '武器', glyph: '刃' },
+      { id: 'offhand', name: '武器', glyph: '盾' },
       { id: 'helm', name: '头盔', glyph: '盔' },
-      { id: 'armor', name: '护甲', glyph: '甲' },
+      { id: 'armor', name: '胸甲', glyph: '甲' },
+      { id: 'shoulder', name: '护肩', glyph: '肩' },
       { id: 'gloves', name: '手套', glyph: '手' },
-      { id: 'boots', name: '靴子', glyph: '履' },
+      { id: 'pants', name: '裤子', glyph: '裤' },
+      { id: 'boots', name: '鞋子', glyph: '履' },
       { id: 'ring', name: '戒指', glyph: '戒' },
-      { id: 'amulet', name: '护符', glyph: '符' }
+      { id: 'amulet', name: '项链', glyph: '链' }
     ],
     STAT_META: {
       atk: { label: '攻击力', suffix: '', decimals: 0 },
@@ -30,12 +33,14 @@
     }
   };
 
-  // 稀有度（对应掉落权重 / 词缀数量）
+  // 品质（对应掉落权重 / 词缀数量）：白 → 蓝 → 紫 → 绿（套装）→ 橙（暗金）
+  // 套装与暗金有概率roll出「远古」版本，基础属性与词缀数值更高
   DG.data.rarity = [
-    { id: 'normal', name: '普通', color: '#a8a49a', weight: 52, affix: [0, 0] },
-    { id: 'magic', name: '魔法', color: '#5b8bd6', weight: 32, affix: [1, 2] },
-    { id: 'rare', name: '稀有', color: '#d9b24a', weight: 13, affix: [3, 4] },
-    { id: 'legend', name: '传奇', color: '#e07b33', weight: 3, affix: [4, 5] }
+    { id: 'normal', name: '普通', color: '#cfc9bb', weight: 52, affix: [0, 0] },
+    { id: 'magic', name: '魔法', color: '#5b8bd6', weight: 31, affix: [1, 2] },
+    { id: 'rare', name: '稀有', color: '#b06fd8', weight: 12, affix: [3, 4] },
+    { id: 'set', name: '套装', color: '#5fae5a', weight: 3, affix: [3, 4] },
+    { id: 'legend', name: '暗金', color: '#e8853c', weight: 2, affix: [4, 5] }
   ];
 
   DG.data.rarityById = {};
@@ -59,7 +64,7 @@
       pool: ['wolf', 'skeleton', 'pea', 'fleece', 'foxraider', 'deepfin', 'bat', 'hornet'],
       elitePool: ['mawflower'],
       bossId: 'eyehorror',
-      bossPool: ['eyehorror', 'croc', 'piratecrab'],
+      bossPool: ['eyehorror', 'croc', 'mawfish'],
       mapStyle: 'grove',
       map: { minRooms: 10, maxRooms: 13 },
       desc: '被迷雾吞没的林地，腐化野狼与游荡骸骨在树影间徘徊，血翼蝠与毒刺蜂穿梭其间。'
@@ -71,7 +76,7 @@
       pool: ['wolf', 'skeleton', 'pea', 'musketeer', 'foxraider', 'hornet', 'bat', 'fleece'],
       elitePool: ['mawflower'],
       bossId: 'croc',
-      bossPool: ['croc', 'piratecrab', 'mawfish', 'goatbrute'],
+      bossPool: ['croc', 'mawfish', 'mummyking'],
       mapStyle: 'grove',
       map: { minRooms: 9, maxRooms: 12 },
       desc: '荆棘封住的小径上，菌帽枪手占据高处，狐掠手成群结队，沼泽巨鳄在泥水中伺机而动。'
@@ -83,7 +88,7 @@
       pool: ['deepfin', 'angler', 'mistwalker', 'bat', 'hornet', 'pea', 'fleece', 'mawflower'],
       elitePool: ['mawflower'],
       bossId: 'mawfish',
-      bossPool: ['mawfish', 'piratecrab', 'croc', 'goatbrute'],
+      bossPool: ['mawfish', 'eyehorror', 'croc'],
       mapStyle: 'grove',
       map: { minRooms: 9, maxRooms: 12 },
       desc: '腐水没膝，黑灯鮟鱇在水下亮起幽光，迷雾行者拖着自己的影子在雾里游走。'
@@ -94,8 +99,8 @@
       waves: [7, 10],
       pool: ['frostwolf', 'skeleton', 'mistwalker', 'pea', 'pumpkin', 'frostslime', 'beetle', 'cinderraven', 'candle', 'cowlbandit', 'angler'],
       elitePool: ['plaguedoc'],
-      bossId: 'reaper',
-      bossPool: ['reaper', 'mummyking', 'silverknight', 'cauldron', 'snakeking'],
+      bossId: 'mummyking',
+      bossPool: ['mummyking', 'croc', 'mawfish'],
       mapStyle: 'crypt',
       map: { minRooms: 9, maxRooms: 12 },
       desc: '墓穴深处渗出寒气，黑焰鸦在远处盘旋，紫壳甲虫在石棺间爬行，缠尸武士守着更深的墓道。'
@@ -106,8 +111,8 @@
       waves: [7, 10],
       pool: ['skeleton', 'mistwalker', 'boneknight', 'beetle', 'cinderraven', 'candle', 'frostslime', 'cowlbandit'],
       elitePool: ['plaguedoc'],
-      bossId: 'mummyking',
-      bossPool: ['mummyking', 'reaper', 'silverknight', 'snakeking'],
+      bossId: 'eyehorror',
+      bossPool: ['eyehorror', 'mummyking', 'croc'],
       mapStyle: 'crypt',
       map: { minRooms: 8, maxRooms: 11 },
       desc: '窄长的墓道里骸骨卫士排成阵列，火烛无风自动，缠尸武士的绷带在阴影里拖出一道长痕。'
@@ -121,7 +126,7 @@
       pool: ['cinderraven', 'candle', 'emberdrake', 'boneknight', 'cowlbandit', 'beetle', 'urchin'],
       elitePool: ['warlock'],
       bossId: 'cauldron',
-      bossPool: ['cauldron', 'golem', 'blueogre', 'goatbrute'],
+      bossPool: ['cauldron', 'golem', 'blueogre'],
       mapStyle: 'abyss',
       map: { minRooms: 9, maxRooms: 12 },
       desc: '灰烬没到脚踝，赤棘龙在余烬中穿行，魔锅巫师的药汤在远处翻滚出紫色气泡。'
@@ -133,7 +138,7 @@
       pool: ['boneknight', 'mistwalker', 'frostwolf', 'pumpkin', 'frostslime', 'musketeer', 'beetle', 'cinderraven', 'bulwark', 'emberdrake', 'venomlisk', 'urchin'],
       elitePool: ['warlock', 'plaguedoc'],
       bossId: 'abysseye',
-      bossPool: ['abysseye', 'hierophant', 'octoking', 'crystalcrab', 'shadowdemon', 'blueogre', 'golem'],
+      bossPool: ['abysseye', 'cauldron', 'goatbrute'],
       mapStyle: 'abyss',
       map: { minRooms: 8, maxRooms: 11 },
       desc: '深渊的裂隙不断涌出腐化之物，巨眼、深渊主教与骷髅章鱼王在裂隙另一侧注视着你。'
@@ -144,11 +149,11 @@
       waves: [8, 11],
       pool: ['boneknight', 'mistwalker', 'cinderraven', 'cowlbandit', 'urchin', 'venomlisk', 'bulwark', 'candle'],
       elitePool: ['warlock'],
-      bossId: 'hierophant',
-      bossPool: ['hierophant', 'shadowdemon', 'abysseye', 'crystalcrab'],
+      bossId: 'golem',
+      bossPool: ['golem', 'blueogre', 'goatbrute'],
       mapStyle: 'abyss',
       map: { minRooms: 8, maxRooms: 11 },
-      desc: '回廊在眼前折叠，脚下的石板翻出另一片天空，深渊主教在错位的尽头低声诵念。'
+      desc: '回廊在眼前折叠，脚下的石板翻出另一片天空，灰岩魔像在错位的尽头缓缓抬头。'
     },
     {
       id: 'furnace', act: 2, name: '熔火工坊',
@@ -156,11 +161,11 @@
       waves: [8, 11],
       pool: ['emberdrake', 'cinderraven', 'candle', 'bulwark', 'beetle', 'urchin', 'blueogre'],
       elitePool: ['warlock'],
-      bossId: 'golem',
-      bossPool: ['golem', 'blueogre', 'crystalcrab', 'cauldron'],
+      bossId: 'blueogre',
+      bossPool: ['blueogre', 'cauldron', 'golem'],
       mapStyle: 'abyss',
       map: { minRooms: 8, maxRooms: 11 },
-      desc: '熔炉昼夜不熄，灰岩魔像拖着烧红的躯体巡逻，蓝甲兽的甲片被炉火烤得发亮。'
+      desc: '熔炉昼夜不熄，蓝甲兽的甲片被炉火烤得发亮，魔锅巫师的药汤在炉口翻滚。'
     },
     {
       id: 'plague', act: 2, name: '疫病巢穴',
@@ -168,8 +173,8 @@
       waves: [9, 11],
       pool: ['urchin', 'venomlisk', 'frostslime', 'beetle', 'pumpkin', 'mistwalker', 'cowlbandit', 'plaguedoc'],
       elitePool: ['plaguedoc', 'warlock'],
-      bossId: 'snakeking',
-      bossPool: ['snakeking', 'mummyking', 'cauldron', 'octoking'],
+      bossId: 'goatbrute',
+      bossPool: ['goatbrute', 'cauldron', 'blueogre'],
       mapStyle: 'crypt',
       map: { minRooms: 8, maxRooms: 11 },
       desc: '巢穴里连空气都是绿的，紫棘球的尖刺上挂着毒液，蓝鳞蛇王的鳞片在暗处反光。'
@@ -183,7 +188,7 @@
       pool: ['deepfin', 'angler', 'musketeer', 'cowlbandit', 'fleece', 'urchin', 'piratecrab'],
       elitePool: ['plaguedoc'],
       bossId: 'piratecrab',
-      bossPool: ['piratecrab', 'mawfish', 'croc', 'octoking'],
+      bossPool: ['piratecrab', 'octoking', 'silverknight'],
       mapStyle: 'grove',
       map: { minRooms: 9, maxRooms: 12 },
       desc: '搁浅的船骸排成一片，海盗巨蟹在残帆间横行，青兜劫掠者把这里当成了他们的地盘。'
@@ -195,7 +200,7 @@
       pool: ['deepfin', 'angler', 'frostslime', 'mistwalker', 'urchin', 'venomlisk', 'cowlbandit'],
       elitePool: ['warlock'],
       bossId: 'octoking',
-      bossPool: ['octoking', 'mawfish', 'crystalcrab', 'shadowdemon'],
+      bossPool: ['octoking', 'piratecrab', 'silverknight'],
       mapStyle: 'abyss',
       map: { minRooms: 8, maxRooms: 11 },
       desc: '潮水在洞窟里涨落，幽蓝鳍怪贴着水面滑行，骷髅章鱼王的触手在深处缓慢张开。'
@@ -207,7 +212,7 @@
       pool: ['frostwolf', 'frostslime', 'boneknight', 'cinderraven', 'beetle', 'candle', 'mistwalker'],
       elitePool: ['plaguedoc'],
       bossId: 'silverknight',
-      bossPool: ['silverknight', 'mummyking', 'golem', 'blueogre'],
+      bossPool: ['silverknight', 'snakeking', 'octoking'],
       mapStyle: 'crypt',
       map: { minRooms: 8, maxRooms: 11 },
       desc: '要塞的旗帜冻成硬片，霜牙狼在垛口间游荡，白银骑士的甲胄上覆着一层薄冰。'
@@ -218,8 +223,8 @@
       waves: [9, 12],
       pool: ['skeleton', 'boneknight', 'mistwalker', 'candle', 'cinderraven', 'beetle', 'pumpkin'],
       elitePool: ['warlock'],
-      bossId: 'mummyking',
-      bossPool: ['mummyking', 'hierophant', 'reaper', 'silverknight'],
+      bossId: 'snakeking',
+      bossPool: ['snakeking', 'silverknight', 'octoking'],
       mapStyle: 'crypt',
       map: { minRooms: 8, maxRooms: 11 },
       desc: '圣所的祷声早已停歇，长明灯却还亮着，穿法袍的骸骨仍在原地重复着跪拜。'
@@ -230,11 +235,11 @@
       waves: [9, 12],
       pool: ['mistwalker', 'urchin', 'venomlisk', 'cinderraven', 'bulwark', 'emberdrake', 'pumpkin'],
       elitePool: ['warlock', 'plaguedoc'],
-      bossId: 'shadowdemon',
-      bossPool: ['shadowdemon', 'abysseye', 'hierophant', 'crystalcrab'],
+      bossId: 'snakeking',
+      bossPool: ['snakeking', 'piratecrab', 'octoking'],
       mapStyle: 'abyss',
       map: { minRooms: 8, maxRooms: 11 },
-      desc: '门框里没有门，只有一片会呼吸的黑。暗角魔从影子里站起来，轮廓比黑暗更深。'
+      desc: '门框里没有门，只有一片会呼吸的黑。蓝鳞蛇王盘在门框的阴影里，鳞片比黑暗更深。'
     },
 
     // ---------- 第四章 · 王座终局 ----------
@@ -245,7 +250,7 @@
       pool: ['boneknight', 'skeleton', 'pumpkin', 'candle', 'beetle', 'mistwalker', 'frostslime'],
       elitePool: ['plaguedoc'],
       bossId: 'reaper',
-      bossPool: ['reaper', 'mummyking', 'silverknight', 'golem'],
+      bossPool: ['reaper', 'crystalcrab', 'shadowdemon'],
       mapStyle: 'crypt',
       map: { minRooms: 8, maxRooms: 11 },
       desc: '整座大殿由骸骨砌成，台阶是肋骨，穹顶是颅骨，幽镰收割者在最深处磨着镰刃。'
@@ -256,11 +261,11 @@
       waves: [10, 13],
       pool: ['emberdrake', 'cinderraven', 'candle', 'bulwark', 'venomlisk', 'mistwalker'],
       elitePool: ['warlock'],
-      bossId: 'cauldron',
-      bossPool: ['cauldron', 'golem', 'blueogre', 'crystalcrab'],
+      bossId: 'crystalcrab',
+      bossPool: ['crystalcrab', 'hierophant', 'shadowdemon'],
       mapStyle: 'abyss',
       map: { minRooms: 8, maxRooms: 11 },
-      desc: '王座下的火池从未冷却，赤棘龙的鳞片像烧红的铁，魔锅巫师的药汤已经熬成了岩浆。'
+      desc: '王座下的火池从未冷却，赤棘龙的鳞片像烧红的铁，熔火晶蟹的甲壳在火池边反光。'
     },
     {
       id: 'shadowcourt', act: 4, name: '暗影回廊',
@@ -268,8 +273,8 @@
       waves: [10, 13],
       pool: ['mistwalker', 'cowlbandit', 'urchin', 'venomlisk', 'boneknight', 'bulwark', 'cinderraven'],
       elitePool: ['warlock'],
-      bossId: 'hierophant',
-      bossPool: ['hierophant', 'shadowdemon', 'abysseye', 'snakeking'],
+      bossId: 'shadowdemon',
+      bossPool: ['shadowdemon', 'hierophant', 'crystalcrab'],
       mapStyle: 'abyss',
       map: { minRooms: 8, maxRooms: 11 },
       desc: '回廊两侧站满石像，每一尊的影子里都多站着一个影子，深渊主教在尽头等你抬头。'
@@ -280,11 +285,11 @@
       waves: [10, 13],
       pool: ['bulwark', 'emberdrake', 'venomlisk', 'mistwalker', 'cinderraven', 'urchin', 'boneknight', 'beetle'],
       elitePool: ['warlock', 'plaguedoc'],
-      bossId: 'golem',
-      bossPool: ['golem', 'crystalcrab', 'blueogre', 'shadowdemon'],
+      bossId: 'hierophant',
+      bossPool: ['hierophant', 'shadowdemon', 'crystalcrab'],
       mapStyle: 'abyss',
       map: { minRooms: 8, maxRooms: 11 },
-      desc: '大地在这里裂开一道看不到底的痕，灰岩魔像从裂缝里爬出，身上还嵌着别的世界。'
+      desc: '大地在这里裂开一道看不到底的痕，深渊主教从裂缝里走出，袍角还挂着别的世界。'
     },
     {
       id: 'finalgate', act: 4, name: '终焉之门',
@@ -292,11 +297,11 @@
       waves: [10, 14],
       pool: ['bulwark', 'emberdrake', 'venomlisk', 'mistwalker', 'cinderraven', 'urchin', 'boneknight', 'pumpkin', 'beetle'],
       elitePool: ['warlock', 'plaguedoc', 'mawflower'],
-      bossId: 'abysseye',
-      bossPool: ['abysseye', 'shadowdemon', 'hierophant', 'golem', 'octoking', 'silverknight', 'reaper'],
+      bossId: 'reaper',
+      bossPool: ['reaper', 'hierophant', 'shadowdemon', 'crystalcrab'],
       mapStyle: 'abyss',
       map: { minRooms: 9, maxRooms: 12 },
-      desc: '所有腐化的尽头都收束在这扇门前，深渊之瞳在门后睁开，注视着走进来的每一个人。'
+      desc: '所有腐化的尽头都收束在这扇门前，幽镰收割者守在门后，注视着走进来的每一个人。'
     }
   ];
 
@@ -376,24 +381,24 @@
   // 每章 3 套刷怪模板轮换使用；所有 id 均已存在于怪物数据中
   const ACT_TEMPLATES = {
     1: [
-      { pool: ['wolf', 'skeleton', 'mistwalker', 'pea', 'foxraider'], elitePool: ['mawflower'], bossPool: ['croc', 'eyehorror', 'snakeking'] },
-      { pool: ['skeleton', 'musketeer', 'pumpkin', 'slime', 'frostwolf'], elitePool: ['plaguedoc'], bossPool: ['reaper', 'mummyking', 'silverknight'] },
-      { pool: ['wolf', 'fleece', 'foxraider', 'cowlbandit', 'bat'], elitePool: ['mawflower', 'plaguedoc'], bossPool: ['eyehorror', 'croc', 'octoking'] }
+      { pool: ['wolf', 'skeleton', 'mistwalker', 'pea', 'foxraider'], elitePool: ['mawflower'], bossPool: ['eyehorror', 'croc', 'mawfish'] },
+      { pool: ['skeleton', 'musketeer', 'pumpkin', 'slime', 'frostwolf'], elitePool: ['plaguedoc'], bossPool: ['mummyking', 'eyehorror', 'croc'] },
+      { pool: ['wolf', 'fleece', 'foxraider', 'cowlbandit', 'bat'], elitePool: ['mawflower', 'plaguedoc'], bossPool: ['croc', 'mummyking', 'mawfish'] }
     ],
     2: [
       { pool: ['beetle', 'cinderraven', 'candle', 'urchin', 'bat'], elitePool: ['warlock'], bossPool: ['cauldron', 'golem', 'blueogre'] },
-      { pool: ['skeleton', 'boneknight', 'mistwalker', 'venomlisk', 'slime'], elitePool: ['plaguedoc'], bossPool: ['mummyking', 'reaper', 'silverknight'] },
-      { pool: ['wolf', 'pumpkin', 'foxraider', 'bulwark', 'deepfin'], elitePool: ['mawflower'], bossPool: ['croc', 'octoking', 'piratecrab'] }
+      { pool: ['skeleton', 'boneknight', 'mistwalker', 'venomlisk', 'slime'], elitePool: ['plaguedoc'], bossPool: ['abysseye', 'goatbrute', 'cauldron'] },
+      { pool: ['wolf', 'pumpkin', 'foxraider', 'bulwark', 'deepfin'], elitePool: ['mawflower'], bossPool: ['golem', 'blueogre', 'goatbrute'] }
     ],
     3: [
-      { pool: ['deepfin', 'angler', 'urchin', 'frostslime', 'bat'], elitePool: ['warlock'], bossPool: ['octoking', 'mawfish', 'piratecrab'] },
-      { pool: ['frostwolf', 'frostslime', 'fleece', 'bulwark', 'mistwalker'], elitePool: ['plaguedoc'], bossPool: ['silverknight', 'crystalcrab', 'golem'] },
-      { pool: ['cowlbandit', 'deepfin', 'venomlisk', 'bat', 'skeleton'], elitePool: ['warlock'], bossPool: ['piratecrab', 'abysseye', 'hierophant'] }
+      { pool: ['deepfin', 'angler', 'urchin', 'frostslime', 'bat'], elitePool: ['warlock'], bossPool: ['piratecrab', 'octoking', 'silverknight'] },
+      { pool: ['frostwolf', 'frostslime', 'fleece', 'bulwark', 'mistwalker'], elitePool: ['plaguedoc'], bossPool: ['snakeking', 'silverknight', 'octoking'] },
+      { pool: ['cowlbandit', 'deepfin', 'venomlisk', 'bat', 'skeleton'], elitePool: ['warlock'], bossPool: ['octoking', 'piratecrab', 'snakeking'] }
     ],
     4: [
-      { pool: ['bulwark', 'emberdrake', 'venomlisk', 'mistwalker', 'cinderraven'], elitePool: ['warlock', 'plaguedoc'], bossPool: ['golem', 'blueogre', 'crystalcrab'] },
-      { pool: ['boneknight', 'skeleton', 'pumpkin', 'candle', 'beetle'], elitePool: ['plaguedoc'], bossPool: ['reaper', 'mummyking', 'silverknight'] },
-      { pool: ['frostwolf', 'frostslime', 'fleece', 'bulwark', 'wolf'], elitePool: ['warlock'], bossPool: ['blueogre', 'golem', 'octoking'] }
+      { pool: ['bulwark', 'emberdrake', 'venomlisk', 'mistwalker', 'cinderraven'], elitePool: ['warlock', 'plaguedoc'], bossPool: ['reaper', 'crystalcrab', 'hierophant'] },
+      { pool: ['boneknight', 'skeleton', 'pumpkin', 'candle', 'beetle'], elitePool: ['plaguedoc'], bossPool: ['shadowdemon', 'hierophant', 'crystalcrab'] },
+      { pool: ['frostwolf', 'frostslime', 'fleece', 'bulwark', 'wolf'], elitePool: ['warlock'], bossPool: ['crystalcrab', 'reaper', 'shadowdemon'] }
     ]
   };
   // 追加关卡的临时强度上限（随后会按 80 关统一重排为单调曲线）
@@ -458,15 +463,18 @@
     return max;
   };
 
-  // 解锁规则：进度之前的关卡一律视为已开启（连续前缀），
-  // 下一关只看等级；再往后的关卡需要先推进到前面。
-  // 这样旧存档在章节中插入新关卡后不会出现「中间一关锁着、后面却开着」的断链。
+  // 解锁规则：进度之前的关卡一律视为已开启（连续前缀）。
+  // 只要上一关已通关，下一关（含跨章的第一关）立即开放，等级只作为推荐值展示；
+  // 等级门槛仅在「上一关尚未通关」时兜底，避免经验曲线调整或旧存档造成
+  // 「已经通关却被等级卡在下一章」的死锁。
   DG.data.stageUnlocked = function (char, def) {
     if (!char || !def) return false;
     const idx = DG.data.dungeons.indexOf(def);
     if (idx < 0) return false;
     const max = DG.data.progressIndex(char);
     if (idx <= max) return true;
+    const prev = DG.data.dungeons[idx - 1];
+    if (prev && char.cleared && char.cleared[prev.id]) return true;
     if (idx > max + 1) return false;
     return char.level >= (def.reqLevel || 1);
   };

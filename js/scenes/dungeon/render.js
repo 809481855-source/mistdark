@@ -70,6 +70,8 @@
     this.drawGround(ctx);
     // 血迹贴地：在所有掉落、特效与怪物之下
     this.drawBlood(ctx);
+    // 场地机制与天气地形贴地绘制（火圈/血泊/草丛/枫叶堆/水洼）
+    this.drawFieldGround(ctx);
     // 贴地骨头：压在血迹之上、所有实体之下
     this.drawBones(ctx);
     this.drawChests(ctx);
@@ -98,6 +100,8 @@
 
     // 天气：在实体/特效之上、暗角与受击红闪之下，保证战斗信息优先
     this.drawWeather(ctx);
+    // 场地视野压制与隐匿提示：压在天气之后、UI 之前
+    this.drawFieldOverlay(ctx);
     this.drawScreenOverlay(ctx);
   },
   // 世界坐标下的可视矩形（含 margin 余量），用于剔除屏幕外的单位/掉落/特效
@@ -608,7 +612,8 @@
         const rar = DG.items.rarityInfo(d.item);
         ctx.save();
         ctx.translate(d.x, d.y + bob);
-        const gr = d.item.rarity === 'legend' ? 26 : 18;
+        const gr = (d.item.rarity === 'legend' ? 26 : d.item.rarity === 'set' ? 22 : 18) *
+          (d.item.ancient ? 1.2 : 1);
         ctx.globalCompositeOperation = 'lighter';
         ctx.drawImage(this.glowSprite(rar.color), -gr, -gr, gr * 2, gr * 2);
         ctx.globalCompositeOperation = 'source-over';
@@ -699,10 +704,34 @@
         ctx.stroke();
       }
       if (m.elite) {
-        ctx.strokeStyle = 'rgba(201,162,95,0.65)';
-        ctx.lineWidth = 2;
+        const affixes = m.affixes || [];
+        const table = DG.scenes.dungeon.ELITE_AFFIXES || {};
+        if (affixes.length) {
+          // 词缀环：一条词缀一道色环，玩家看颜色就知道要防什么
+          for (let i = 0; i < affixes.length; i++) {
+            ctx.globalAlpha = 0.7;
+            ctx.strokeStyle = (table[affixes[i]] && table[affixes[i]].color) || 'rgba(201,162,95,0.65)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(0, 0, m.r + 5 + i * 4, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+          ctx.globalAlpha = 1;
+        } else {
+          ctx.strokeStyle = 'rgba(201,162,95,0.65)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(0, 0, m.r + 5, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+      // 护盾：沿精英外圈画一道青色弧，剩余量一目了然
+      if (m.shield > 0 && m.maxShield) {
+        const ratio = Math.max(0, Math.min(1, m.shield / m.maxShield));
+        ctx.strokeStyle = 'rgba(127,208,192,0.85)';
+        ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(0, 0, m.r + 5, 0, Math.PI * 2);
+        ctx.arc(0, 0, m.r + 14, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * ratio);
         ctx.stroke();
       }
       if (m.slow > 0) {
@@ -740,14 +769,15 @@
   drawMonsterBars(ctx) {
     const v = this.viewRect(220);
     for (const m of (this._drawMonsters || this.monsters)) {
-      if (m.dead || m.boss || m.hitT <= 0) continue;
+      // 精英常驻血条与名字；普通怪只在受击后短暂显示
+      if (m.dead || m.boss || (!m.elite && m.hitT <= 0)) continue;
       if (m.x < v.l || m.x > v.r || m.y < v.t || m.y > v.b) continue;
       const artMob = !!(m.art && DG.art.monsters && DG.art.monsters.has(m.art));
       // 比角色头顶的状态条略小一号，拉高到 8px，便于看清
       const w = m.r * 2 + 10;
       const h = 8;
       const y = m.y + (artMob ? m.r * 0.72 - DG.art.monsters.displayHeight(m) - 10 : -m.r - 12);
-      ctx.globalAlpha = U.clamp(m.hitT / 0.35, 0, 1);
+      ctx.globalAlpha = m.elite ? 1 : U.clamp(m.hitT / 0.35, 0, 1);
       ctx.fillStyle = 'rgba(18,13,13,0.92)';
       ctx.fillRect(m.x - w / 2, y, w, h);
       ctx.fillStyle = m.elite ? '#d9b24a' : '#b8463f';
@@ -755,6 +785,26 @@
       ctx.strokeStyle = 'rgba(0,0,0,0.95)';
       ctx.lineWidth = 2;
       ctx.strokeRect(m.x - w / 2 - 1, y - 1, w + 2, h + 2);
+      // 精英名字：字号随体型微调且不超过 11px，宽度严格限制在血条内
+      if (m.elite) {
+        const fs = Math.max(9, Math.min(11, m.r * 0.5));
+        let label = (m.baseName || m.name || '').replace(/^精英\s*·\s*/, '');
+        ctx.font = `600 ${fs}px "Noto Sans SC", "Microsoft YaHei", sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'alphabetic';
+        // 超宽时逐字裁掉并补省略号，避免压到旁边的怪
+        if (ctx.measureText(label).width > w) {
+          while (label.length > 1 && ctx.measureText(label + '…').width > w) {
+            label = label.slice(0, -1);
+          }
+          label += '…';
+        }
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+        ctx.strokeText(label, m.x, y - 4);
+        ctx.fillStyle = '#ead9a8';
+        ctx.fillText(label, m.x, y - 4);
+      }
       ctx.globalAlpha = 1;
     }
     // 眩晕图标：不受血条显隐限制，眩晕期间常驻头顶
@@ -763,7 +813,8 @@
       if (m.x < v.l || m.x > v.r || m.y < v.t || m.y > v.b) continue;
       const artMob = !!(m.art && DG.art.monsters && DG.art.monsters.has(m.art));
       const barY = m.y + (artMob ? m.r * 0.72 - DG.art.monsters.displayHeight(m) - 10 : -m.r - 12);
-      const cx = m.x, cy = barY - 12;
+      // 精英头顶多了一行名字，眩晕星再上移一档，避免压住文字
+      const cx = m.x, cy = barY - (m.elite ? 24 : 12);
       const rot = this.time * 5;
       ctx.save();
       ctx.translate(cx, cy);

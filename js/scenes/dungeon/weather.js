@@ -92,7 +92,7 @@
   // projDrift=敌方弹道每秒偏转角 / packBonus=每群额外怪 / spread=怪群散布倍率
   const RULES = {
     rain: {
-      desc: '泥泞：怪物移速 -10%、起手更慢，水栖怪增多',
+      desc: '泥泞：水洼会拖慢怪物，可把怪引进水洼风筝',
       monSpeed: 0.9, windup: 1.15, packBonus: 1,
       bias: ['slime', 'frostslime', 'deepfin', 'angler', 'pea']
     },
@@ -102,42 +102,42 @@
       bias: ['bat', 'cinderraven', 'hornet', 'mistwalker', 'musketeer']
     },
     snow: {
-      desc: '严寒：怪物移速 -14%，命中会附加冰缓',
+      desc: '严寒：积雪会拖住怪物脚步，命中附加冰缓',
       monSpeed: 0.86, chill: 0.3,
       bias: ['frostwolf', 'frostslime', 'wolf', 'fleece']
     },
     wind: {
-      desc: '强风：怪物更迅捷，敌方弹道被吹偏，怪群更分散',
+      desc: '强风：风带会把你推快、把怪物拖慢',
       monSpeed: 1.06, projDrift: 0.3, spread: 1.7,
       bias: ['foxraider', 'cowlbandit', 'wolf', 'hornet']
     },
     sandstorm: {
-      desc: '沙尘蔽目：怪物视野缩短，伏击型怪物增多',
+      desc: '沙尘蔽目：流沙会陷住怪物，视野同时缩短',
       monSpeed: 0.95, sight: 0.62, spread: 0.85,
       bias: ['skeleton', 'bat', 'foxraider', 'mimic', 'beetle']
     },
     purplewind: {
-      desc: '紫焰狂风：怪物更迅捷，敌方弹道被吹偏，焰属怪增多',
+      desc: '紫焰狂风：余烬地火会灼伤怪物，焰属怪增多',
       monSpeed: 1.05, projDrift: 0.28, spread: 1.5,
       bias: ['candle', 'cinderraven', 'beetle', 'emberdrake', 'warlock']
     },
     blizzard: {
-      desc: '暴雪：怪物移速 -18%，命中附加冰缓，寒霜怪增多',
+      desc: '暴雪：视野与索敌被压低，雪地会拖慢怪物，可借机脱战',
       monSpeed: 0.82, chill: 0.38,
       bias: ['frostwolf', 'frostslime', 'wolf', 'fleece', 'bulwark']
     },
     bloodrain: {
-      desc: '血雨：怪物起手更快，嗜血怪增多',
+      desc: '血雨：血泊会减速并腐蚀怪物，嗜血怪增多',
       monSpeed: 1.02, windup: 0.9,
       bias: ['bat', 'hornet', 'foxraider', 'skeleton', 'mimic']
     },
     grasswind: {
-      desc: '草原疾风：怪群更分散，兽群增多',
+      desc: '草原疾风：高草可以藏身，怪群更分散',
       monSpeed: 1.04, spread: 1.6,
       bias: ['wolf', 'foxraider', 'fleece', 'venomlisk']
     },
     maplefall: {
-      desc: '枫落：怪物视野缩短，林间伏击增多',
+      desc: '枫落：枫叶堆会被踩爆，可把怪物引上去',
       sight: 0.7, spread: 1.15,
       bias: ['wolf', 'mistwalker', 'pumpkin', 'musketeer']
     }

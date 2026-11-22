@@ -611,7 +611,8 @@
         }
         for (const m of hit) {
           const r = this.rollHit(mult, sk, m);
-          this.hitMonster(m, r.dmg, r.crit);
+          // 劈砍（野蛮人专属刀光）命中时附带方向性血幕与短时出血
+          this.hitMonster(m, r.dmg, r.crit, sk.slashFx ? { chop: true, angle: ang } : undefined);
         }
         // 野蛮人劈砍的刀光由英雄模块自己沿斧刃绘制，其他职业仍走程序化弧线
         if (!sk.slashFx) {

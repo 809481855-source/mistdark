@@ -181,6 +181,77 @@
         });
       }
     },
+    // 劈砍专属：沿刀锋切向甩出一片横向血幕，比普通受击喷溅更厚更远。
+    // 与 sprayBlood 各自独立发射，致死时也会和死亡迸血同时出现
+    slashBlood(m, angle, dmg, crit) {
+      if (!m || this.finished || !this.blood) return;
+      const def = STYLES[this.bloodStyle];
+      const ratio = U.clamp(dmg / m.maxHp, 0.05, 0.75);
+      const stage = Math.min(4, 1 + Math.floor(ratio * 4));
+      const base = (typeof angle === 'number') ? angle : U.angle(this.player, m);
+      // 血沿刃口两侧甩出：以刀锋切向为主轴铺开，读起来像被劈开的口子
+      const side = Math.random() < 0.5 ? 1 : -1;
+      const axis = base + side * (Math.PI / 2);
+      const n = 7 + stage * 3 + (crit ? 4 : 0) + (m.boss ? 4 : (m.elite ? 2 : 0));
+      const px = m.x, py = m.y - m.r * 0.55;
+      for (let i = 0; i < n; i++) {
+        const spread = (i / (n - 1 || 1) - 0.5) * 2;   // -1..1 均匀铺满扇形
+        const a = axis + spread * 1.0;
+        const sp = U.rand(150, 380) * (0.85 + stage * 0.09);
+        this.effects.push({
+          kind: 'blood',
+          x: px + Math.cos(a) * m.r * 0.35,
+          y: py + Math.sin(a) * m.r * 0.35,
+          vx: Math.cos(a) * sp,
+          vy: Math.sin(a) * sp - U.rand(20, 90),
+          r: U.rand(2.0, 3.4) + (stage - 1) * 0.45,
+          color: i % 3 === 0 ? def.light : def.main,
+          life: U.rand(0.30, 0.55),
+          max: 0.55
+        });
+      }
+      // 少量慢速重血珠：大颗、下落更沉，补足“血会掉到地上”的重量感
+      const heavy = 2 + stage;
+      for (let i = 0; i < heavy; i++) {
+        const a = axis + U.rand(-0.7, 0.7);
+        this.effects.push({
+          kind: 'blood',
+          x: px + U.rand(-m.r * 0.4, m.r * 0.4),
+          y: py + U.rand(-m.r * 0.4, m.r * 0.4),
+          vx: Math.cos(a) * U.rand(50, 130),
+          vy: Math.sin(a) * U.rand(30, 80) - 20,
+          r: U.rand(3.0, 4.4),
+          color: i === 0 ? def.light : def.main,
+          life: U.rand(0.5, 0.75),
+          max: 0.75
+        });
+      }
+    },
+    // 出血状态：中刀后一段时间从伤口持续滴血，纯表现，不结算伤害
+    bleedTick(m, dt) {
+      if (!m.bleedT || m.bleedT <= 0 || !this.blood) return;
+      m.bleedT -= dt;
+      m.bleedAcc = (m.bleedAcc || 0) + dt;
+      if (m.bleedAcc < 0.14) return;
+      m.bleedAcc = 0;
+      const def = STYLES[this.bloodStyle];
+      const k = Math.max(0.12, m.bleedT / 1.4);
+      const x = m.x + U.rand(-m.r * 0.5, m.r * 0.5);
+      const y = m.y - m.r * 0.5;
+      const n = m.bleedT > 0.7 ? 2 : 1;
+      for (let i = 0; i < n; i++) {
+        this.effects.push({
+          kind: 'blood',
+          x: x + U.rand(-3, 3), y,
+          vx: U.rand(-32, 32),
+          vy: U.rand(-26, 24),
+          r: U.rand(1.2, 2.2) * (0.7 + k * 0.5),
+          color: i === 0 ? def.light : def.main,
+          life: U.rand(0.30, 0.50),
+          max: 0.50
+        });
+      }
+    },
     // 受伤时在怪物脚下留血迹：阶段随伤势提升，只有变大时才换新块
     addBlood(m) {
       if (!m || this.finished || !this.blood) return;

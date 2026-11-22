@@ -371,9 +371,11 @@
         if (ev.pointerType === 'mouse' && ev.button !== 0) return;
         if (document.querySelector('.modal-mask')) return;
         const rect = screen.getBoundingClientRect();
-        const scale = rect.width / VIEW_W;
-        const x = (ev.clientX - rect.left) / scale + camX;
-        const y = (ev.clientY - rect.top) / scale;
+        // 舞台可能按屏幕宽高非等比铺满，横竖坐标需分别用各自的缩放比例换算
+        const scaleX = rect.width / VIEW_W;
+        const scaleY = rect.height / VIEW_H;
+        const x = (ev.clientX - rect.left) / scaleX + camX;
+        const y = (ev.clientY - rect.top) / scaleY;
         // 点在地图边缘外也能走：把落点收进可站立区域，避免点了没反应
         const p = clampIntoWalk(x, y);
         if (p) target = p;

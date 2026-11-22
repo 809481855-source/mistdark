@@ -163,6 +163,7 @@
         `从装备栏或背包中选择一件物品<br>查看属性与战力对比。</div>`;
     }
     const rar = DG.items.rarityInfo(item);
+    const quality = DG.items.qualityLabel(item);
     const slot = DG.items.slotInfo(item.slot);
     const lines = DG.items.describe(item)
       .map(l => `<div class="item-stat"><span>${U.escapeHtml(l.label)}</span><span>${U.escapeHtml(l.text)}</span></div>`)
@@ -185,8 +186,8 @@
     }
 
     return `<div class="item-name r-${item.rarity}">${U.escapeHtml(item.name)}` +
-      `<span class="rarity-tag" style="color:${rar.color}">${rar.name}</span></div>` +
-      `<div class="item-type">${U.escapeHtml(rar.name)} ${U.escapeHtml(slot.name)} · 物品等级 ${item.ilvl}</div>` +
+      `<span class="rarity-tag" style="color:${rar.color}">${U.escapeHtml(quality)}</span></div>` +
+      `<div class="item-type">${U.escapeHtml(quality)} ${U.escapeHtml(slot.name)} · 物品等级 ${item.ilvl}</div>` +
       (lines || '<div class="item-stat"><span>附加属性</span><span>无</span></div>') +
       compareHtml;
   };

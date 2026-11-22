@@ -24,8 +24,8 @@
     el.innerHTML = `
       <div class="dg-top">
         <div class="dg-progress">
-          <img class="dp-plate" src="assets/ui/battle/progress-plate.png" alt="">
-          <img class="dp-hourglass" src="assets/ui/battle/progress-hourglass.png" alt="">
+          <img class="dp-plate" src="assets/ui/battle/progress-plate.png?v=20261122m" alt="">
+          <span class="dp-hourglass-glow"><img class="dp-hourglass" src="assets/ui/battle/progress-hourglass.png?v=20261122m" alt=""></span>
           <div class="dp-track"><i data-zone-fill></i></div>
           <div class="dp-text"><span data-wave>准备中</span></div>
         </div>
@@ -104,6 +104,7 @@
     this.$announce = el.querySelector('[data-announce]');
     this.$xp = el.querySelector('[data-xp]');
     this.$zoneFill = el.querySelector('[data-zone-fill]');
+    this.$hourglass = el.querySelector('.dp-hourglass');
     this.$bossWrap = el.querySelector('[data-boss-wrap]');
     this.$bossName = el.querySelector('[data-boss-name]');
     this.$bossFill = el.querySelector('[data-boss-fill]');
@@ -230,6 +231,11 @@
       this.$explore.textContent = `探索 ${Math.round(this.explorePct() * 100)}%`;
     }
     this.updateCompass();
+
+    // 沙漏由帧循环驱动旋转（10 秒一圈），不依赖 CSS 动画，避免与光晕动画抢占合成层
+    if (this.$hourglass) {
+      this.$hourglass.style.transform = `rotate(${((performance.now() / 10000) * 360) % 360}deg)`;
+    }
 
     this.setCd(0, this.attackCd, 1 / this.attackSpeedNow());
     for (let i = 1; i < this.skillList.length; i++) {

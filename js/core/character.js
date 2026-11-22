@@ -34,6 +34,8 @@
         talents: {},
         equipment,
         bag: [],
+        // 大仓库：临时装备页收藏进来的物品，容量无上限
+        stash: [],
         // 关卡通关记录：解锁下一关的依据
         cleared: {},
         quests: null,
@@ -99,6 +101,7 @@
         if (!(slot.id in char.equipment)) char.equipment[slot.id] = null;
       });
       if (!Array.isArray(char.bag)) char.bag = [];
+      if (!Array.isArray(char.stash)) char.stash = [];
       if (DG.talents && DG.talents.ensure) DG.talents.ensure(char);
       if (DG.quests && DG.quests.ensure) DG.quests.ensure(char);
       return char;

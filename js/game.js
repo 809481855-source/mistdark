@@ -108,8 +108,17 @@
       const width = doc.clientWidth || window.innerWidth;
       const height = doc.clientHeight || window.innerHeight;
       if (!width || !height) return;
-      const scale = Math.min(width / 720, height / 1440);
-      stage.style.transform = `scale(${scale})`;
+      // 铺满屏幕：横竖分别按屏幕尺寸缩放，消除 16:9 等宽屏手机左右两侧的黑边；
+      // 非等比拉伸最多容忍 30%，桌面 / 平板等比例差异过大时仍保持等比，避免画面明显变形。
+      const sx = width / 720;
+      const sy = height / 1440;
+      const ratio = sx / sy;
+      const MAX_STRETCH = 1.3;
+      let rx = sx;
+      const ry = sy;
+      if (ratio > MAX_STRETCH) rx = sy * MAX_STRETCH;
+      else if (ratio < 1 / MAX_STRETCH) rx = sy / MAX_STRETCH;
+      stage.style.transform = `scale(${rx}, ${ry})`;
       // 画布后备像素跟随设备物理像素，避免拉伸显示导致角色模糊
       this.setRenderScale(this.nativeRenderScale());
     },

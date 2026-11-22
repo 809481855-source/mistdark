@@ -32,6 +32,9 @@
       if (t.killRush > 0) speed *= 1.15;
       if (t.postHurt > 0) speed *= 1.2;
       if (this.whirl) speed *= 1.3;              // 旋风期间移速提升 30%
+      if (this.player && this.player.chillT > 0) speed *= 0.72;   // 精英冰冻
+      if (this.playerSlowT > 0) speed *= (this.playerSlowMul || 1);
+      if (this.fieldZoneBoost > 1) speed *= this.fieldZoneBoost;  // 风带加速
       return speed;
     },
 
