@@ -479,6 +479,27 @@
       if (r.t >= r.total) this.roar = null;
     },
 
+    // 劈砍：刀光扫出后再结算，命中范围与刀光亮部完全一致
+    updateChop(dt) {
+      const st = this.chopStrike;
+      if (!st) return;
+      st.t += dt;
+      if (st.t < st.delay) return;
+      this.chopStrike = null;
+      if (this.finished || this.ending || this.player.hp <= 0) return;
+      const fx = DG.art.barbarian;
+      const arc = fx ? fx.slashArc : this.skillArc(st.sk);
+      const reach = fx ? fx.slashReach : st.sk.range;
+      for (const m of this.monsters) {
+        if (m.dead) continue;
+        if (U.dist(this.player, m) > reach + m.r) continue;
+        if (U.angleDiff(U.angle(this.player, m), st.ang) > arc / 2) continue;
+        const r = this.rollHit(st.mult, st.sk, m);
+        // 方向性血幕 + 短时出血，与死亡迸血可同时存在
+        this.hitMonster(m, r.dmg, r.crit, { chop: true, angle: st.ang });
+      }
+    },
+
     releaseWarcry(r) {
       const sk = r.sk;
       for (const m of this.monsters) {
@@ -599,23 +620,36 @@
       }
 
       if (sk.type === 'melee') {
-        const hit = [];
-        const arc = this.skillArc(sk);
-        for (const m of this.monsters) {
-          if (m.dead) continue;
-          const d = U.dist(this.player, m);
-          if (d > sk.range + m.r) continue;
-          const a = U.angle(this.player, m);
-          if (U.angleDiff(a, ang) > arc / 2) continue;
-          hit.push(m);
-        }
-        for (const m of hit) {
-          const r = this.rollHit(mult, sk, m);
-          // 劈砍（野蛮人专属刀光）命中时附带方向性血幕与短时出血
-          this.hitMonster(m, r.dmg, r.crit, sk.slashFx ? { chop: true, angle: ang } : undefined);
+        // 野蛮人劈砍的刀光由英雄自绘：命中扇形与半径直接取刀光可见亮部的真实参数，
+        // 否则会出现“刀光明明扫到敌人却没判中”的错位。其他职业仍用技能配置。
+        const fxHero = sk.slashFx ? DG.art.barbarian : null;
+        if (fxHero) {
+          // 与刀光同步：等刃口真正扫出后再结算，让血幕、数字和刀光落在同一拍。
+          // 结算瞬间按当时站位重算，怪物在挥砍过程中走进/走出刀光都能正确判定。
+          this.chopStrike = {
+            t: 0,
+            delay: Math.max(0.08, (this.player.atkDur || 0.46) * 0.34),
+            ang, mult, sk
+          };
+        } else {
+          const arc = this.skillArc(sk);
+          const hit = [];
+          for (const m of this.monsters) {
+            if (m.dead) continue;
+            const d = U.dist(this.player, m);
+            if (d > sk.range + m.r) continue;
+            const a = U.angle(this.player, m);
+            if (U.angleDiff(a, ang) > arc / 2) continue;
+            hit.push(m);
+          }
+          for (const m of hit) {
+            const r = this.rollHit(mult, sk, m);
+            this.hitMonster(m, r.dmg, r.crit);
+          }
         }
         // 野蛮人劈砍的刀光由英雄模块自己沿斧刃绘制，其他职业仍走程序化弧线
         if (!sk.slashFx) {
+          const arc = this.skillArc(sk);
           this.effects.push({
             kind: 'slash', x: this.player.x, y: this.player.y,
             angle: ang, radius: sk.range, arc,

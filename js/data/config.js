@@ -483,4 +483,38 @@
     const idx = DG.data.dungeons.findIndex(d => d.id === id);
     return idx >= 0 ? DG.data.dungeons[idx + 1] || null : null;
   };
+
+  // 关卡难度曲线：怪物数量完全不改，只重排数值成长与首领节奏。
+  // 设计目标：
+  //   1. 新号前 10 关击杀干脆、挨打不疼，第一只首领 20 秒内能打完；
+  //   2. 中期平滑抬升，让装备与技能开始接管强度；
+  //   3. 后期伤害二次增长，保留精英/首领的压迫感，避免变成无脑割草。
+  DG.data.stageTuning = function (def) {
+    const list = DG.data.dungeons || [];
+    const idx = Math.max(1, (def && def.index) || (list.indexOf(def) + 1) || 1);
+    const n = Math.max(1, list.length);
+    const p = Math.min(1, (idx - 1) / Math.max(1, n - 1));
+    const ilvl = Math.max(1, (def && def.ilvl) || 1);
+    const q = ilvl - 1;
+    // 新手保护：前 11 关逐级减弱，之后完全消失
+    const rookie = Math.max(0, 1 - (idx - 1) / 11);
+    return {
+      index: idx,
+      progress: p,
+      rookie,
+      // 小怪：血量增长放缓；伤害前期低、后期重新变陡
+      mobHp: (1 + q * 0.26 + q * q * 0.003) * (1 - rookie * 0.12),
+      mobDmg: (1 + q * 0.16 + q * q * 0.006) * (1 - rookie * 0.22),
+      // 首领：血量单独走更缓的曲线，缩短单场首领耗时；伤害保留后期压力
+      bossHp: (1 + q * 0.14 + q * q * 0.0035) * (1 - rookie * 0.3),
+      bossDmg: (1 + q * 0.14 + q * q * 0.006) * (1 - rookie * 0.2),
+      // 精英：前期更轻、出现率略低，后期回到原来的威胁（怪物总数不变）
+      eliteHp: 1.45 + 0.75 * p,
+      eliteDmg: 1.28 + 0.12 * p,
+      eliteChance: 0.2 + 0.12 * p,
+      randomElite: 0.05 + 0.04 * p,
+      // 经验：让新号正常推图就能跟上技能解锁与推荐等级
+      xp: (1 + q * 0.18) * (1 + rookie * 0.35)
+    };
+  };
 })();

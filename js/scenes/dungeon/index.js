@@ -24,6 +24,8 @@
     constructor(opts) {
       this.char = opts.char;
       this.def = opts.def;
+      // 本关难度曲线：怪物数量不变，只按关卡进度缩放小怪/首领强度
+      this.tune = DG.data.stageTuning(this.def);
       this.onFinish = opts.onFinish;
       this.root = opts.root;
       this.canvas = DG.game.canvas;
@@ -446,6 +448,7 @@
       this.updateWhirl(dt);
       this.updateTornadoes(dt);
       this.updateRoar(dt);
+      this.updateChop(dt);
       this.updateMonsters(dt);
       this.updateProjectiles(dt);
       this.updateDrops(dt);

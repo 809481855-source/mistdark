@@ -783,6 +783,20 @@
         ctx.fill();
       }
 
+      // 素材怪不会像几何怪那样整体变白：受击时补一圈白光轮廓，保证每一刀都有清晰反馈
+      if ((artBoss || artMob) && m.flash > 0) {
+        const fa = Math.min(1, m.flash / 0.13);
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = fa * 0.5;
+        ctx.strokeStyle = '#fff0da';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.ellipse(0, -m.r * 0.12, m.r * 0.92, m.r * 1.12, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
       ctx.restore();
     }
   },

@@ -20,8 +20,8 @@
 .sk-title{
   position:absolute;left:0;right:0;top:24px;height:58px;line-height:58px;
   text-align:center;font-size:46px;font-weight:800;letter-spacing:4px;
-  color:#c8b188;-webkit-text-stroke:2px #3a0d0f;paint-order:stroke fill;
-  text-shadow:0 3px 0 #4a1010,0 0 14px rgba(0,0,0,.65);
+  color:#fff;-webkit-text-stroke:3px #000;paint-order:stroke fill;
+  text-shadow:none;
   pointer-events:none;
 }
 .sk-close{
@@ -34,7 +34,7 @@
   position:absolute;left:18px;top:30px;height:48px;z-index:5;
   display:flex;align-items:center;gap:8px;padding:0 16px;border-radius:24px;
   background:rgba(46,10,12,.55);border:2px solid rgba(255,149,53,.55);
-  color:#ffcf8a;font-size:19px;font-weight:700;letter-spacing:1px;
+  color:#ffcf8a;font-size:20px;font-weight:700;letter-spacing:1px;
   box-shadow:0 2px 8px rgba(0,0,0,.35);
 }
 .sk-points b{font-size:28px;line-height:1;color:#ff9535;}
@@ -48,12 +48,10 @@
 .sk-band-name{
   position:absolute;left:17px;top:10px;font-size:28px;line-height:1;
   color:#412c1c;font-weight:800;letter-spacing:1px;
-  text-shadow:0 1px 0 rgba(255,240,214,.28),0 0 6px rgba(255,225,170,.15);
 }
 .sk-band-num{
   position:absolute;right:25px;top:8px;font-size:24px;line-height:1;
   color:#ff9535;font-weight:800;letter-spacing:1px;
-  text-shadow:0 1px 0 rgba(255,255,255,.3);
 }
 .sk-band-num b{font-size:30px;margin-left:4px;letter-spacing:0;}
 
@@ -115,8 +113,8 @@
 
 /* 主技能未解锁等级提示（压在灰色图标下沿，避开名称标签） */
 .sk-lock{
-  position:absolute;left:0;right:0;bottom:26px;text-align:center;
-  font-size:20px;font-weight:800;color:#ffcf8a;letter-spacing:1px;
+  position:absolute;left:0;right:0;bottom:26px;text-align:center;z-index:4;
+  font-size:20px;font-weight:800;color:#ffe4b8;letter-spacing:1px;
   text-shadow:0 2px 3px rgba(0,0,0,.9),0 0 8px rgba(0,0,0,.8);
 }
 .sk-tree.locked .sk-aux::after{display:none;}

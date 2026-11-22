@@ -190,7 +190,8 @@
     this.wxProjDrift = rule.projDrift || 0;
     this.wxPackBonus = rule.packBonus || 0;
     this.wxSpreadMul = rule.spread || 1;
-    this.wxEliteChance = rule.eliteChance || 0.3;
+    // 雷雨额外提升精英出现率；基础概率由关卡难度曲线决定
+    this.wxEliteBonus = rule.eliteChance ? Math.max(0, rule.eliteChance - 0.3) : 0;
     this.wxSpawnBias = rule.bias || null;
     // 雷雨天雷：先画预警圈，0.85 秒后落雷
     this.wxStrikes = [];

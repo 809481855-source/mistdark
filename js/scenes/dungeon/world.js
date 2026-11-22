@@ -624,7 +624,8 @@
         }
       }
       // 精英：图鉴大造型，按块额外投放一只（带专属招式读条）
-      if (slots > 0 && this.def.elitePool && this.def.elitePool.length && U.chance(this.wxEliteChance || 0.3)) {
+      const eliteChance = (this.tune ? this.tune.eliteChance : 0.3) + (this.wxEliteBonus || 0);
+      if (slots > 0 && this.def.elitePool && this.def.elitePool.length && U.chance(eliteChance)) {
         const epos = this.nearestFloorPoint(p.x + U.rand(-30, 30), p.y + U.rand(-30, 30), 3) ||
           this.nearestFloorPoint(p.x, p.y, 3) || p;
         const m = this.spawnMonster(this.pickWeatherMonster(this.def.elitePool), epos.x, epos.y, false, p.chunk);
@@ -705,9 +706,10 @@
         m.spawnX = pos.x;
         m.spawnY = pos.y;
       }
-      m.maxHp = Math.round(m.maxHp * 2.2);
+      const tune = this.tune || DG.data.stageTuning(this.def);
+      m.maxHp = Math.round(m.maxHp * tune.eliteHp);
       m.hp = m.maxHp;
-      m.dmg = Math.round(m.dmg * 1.4);
+      m.dmg = Math.round(m.dmg * tune.eliteDmg);
       m.xp = Math.round(m.xp * 2.5);
       m.gold = Math.round(m.gold * 2);
     }
@@ -766,16 +768,16 @@
       }
       return null;
     }
+    const tune = this.tune || DG.data.stageTuning(this.def);
     const ilvl = this.def.ilvl;
-    const hpScale = 1 + (ilvl - 1) * 0.42;
-    const dmgScale = 1 + (ilvl - 1) * 0.3;
-    let hp = t.hp * hpScale;
-    let dmg = t.dmg * dmgScale;
+    const bossMon = !!(t.boss || isBoss);
+    let hp = t.hp * (bossMon ? tune.bossHp : tune.mobHp);
+    let dmg = t.dmg * (bossMon ? tune.bossDmg : tune.mobDmg);
     let elite = false;
-    if (!t.boss && !isBoss && U.chance(0.08)) {
+    if (!bossMon && U.chance(tune.randomElite)) {
       elite = true;
-      hp *= 2.2;
-      dmg *= 1.4;
+      hp *= tune.eliteHp;
+      dmg *= tune.eliteDmg;
     }
     const radius = t.r * (elite ? 1.25 : 1);
     const spawn = this.findMonsterSpawnPoint(x, y, radius);
@@ -800,8 +802,8 @@
       maxHp: Math.round(hp),
       dmg: Math.round(dmg),
       speed: t.speed,
-      // 经验随关卡成长放慢：升级需求已拉长，怪物经验若继续快涨会让中后期连续跳级
-      xp: Math.round(t.xp * (1 + (ilvl - 1) * 0.15) * (elite ? 2.5 : 1)),
+      // 经验按新难度曲线成长：正常推图即可跟上技能解锁与推荐等级
+      xp: Math.round(t.xp * tune.xp * (elite ? 2.5 : 1)),
       gold: Math.round(U.rand(t.gold[0], t.gold[1]) * (1 + (ilvl - 1) * 0.5) * (elite ? 2 : 1)),
       attackRange: t.attackRange,
       attackCd: t.attackCd,

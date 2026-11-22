@@ -856,6 +856,21 @@
     ready: () => pending === 0 && !!(parts.head.img && parts.body.img),
     equipmentSlots: ['head', 'body', 'legL', 'legR', 'weapon', 'hand']
   };
+  // 劈砍命中判定：直接按刀光可见亮部的半径与扇形给出，保证“刀光扫到就判中”。
+  // 半径由右手斧刃绕枢轴的实际轨迹推出（含斧头追手的最大超前角），再乘绘制缩放。
+  const HIT_DX = HANDS.right.x - (HANDS.right.x + HANDS.left.x) / 2;
+  const HIT_DY = HANDS.right.y - (HANDS.right.y + HANDS.left.y) / 2;
+  const TIP_DX = (TIP_IMG.x - weapon.gx) * HANDS.right.scale;
+  const TIP_DY = (TIP_IMG.y - weapon.gy) * HANDS.right.scale;
+  const HIT_LAG = HANDS.right.rot + AXE_MAX;
+  const HIT_BASE = Math.hypot(
+    TIP_DX + HIT_DX * Math.cos(HIT_LAG) - HIT_DY * Math.sin(HIT_LAG),
+    TIP_DY + HIT_DX * Math.sin(HIT_LAG) + HIT_DY * Math.cos(HIT_LAG)
+  ) * SLASH_R;
+  hero.slashArc = Math.abs(SLASH_A1 - SLASH_A0);   // 刀光实际扫过的弧度（约 271°）
+  hero.slashReach = Math.round(
+    HIT_BASE * (1 + SLASH_THICK * 0.565 * 0.5) * 0.7273 + 2
+  );                                               // 亮部外沿（世界单位）
   DG.art.barbarian = hero;
 
   DG.art.registerHero('warrior', {
