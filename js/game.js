@@ -100,8 +100,11 @@
       const dpr = window.devicePixelRatio || 1;
       // 手机端封顶 1.25 倍：810×1680 逻辑画布放大后约 1012×2100，
       // 已高于多数手机的实际显示分辨率，再往上只是白白多画像素、拖低帧率
-      const coarse = !!(window.matchMedia && window.matchMedia('(pointer:coarse)').matches);
-      const cap = coarse ? 1.25 : 2;
+      // 指针类型不会在运行中变化，缓存一次即可，避免反复创建 MediaQueryList
+      if (this._coarse == null) {
+        this._coarse = !!(window.matchMedia && window.matchMedia('(pointer:coarse)').matches);
+      }
+      const cap = this._coarse ? 1.25 : 2;
       return Math.max(1, Math.min(cap, fit * dpr));
     },
 
@@ -399,29 +402,13 @@
       }
     },
 
-    // 自适应降档：战斗中连续 1.5 秒平均帧时超过 24ms（约 42fps 以下），
-    // 就把渲染倍率下调 0.1，最低回到 1.0。只降不升，避免临界点反复切换导致画面忽清忽糊。
-    trackPerf(dt) {
-      this._pfN = (this._pfN || 0) + 1;
-      this._pfSum = (this._pfSum || 0) + dt;
-      if (this._pfN < 90) return;
-      const avg = this._pfSum / this._pfN;
-      this._pfN = 0;
-      this._pfSum = 0;
-      if (avg > 0.024 && this.renderScale > 1.01) {
-        this.setRenderScale(Math.max(1, this.renderScale - 0.1));
-      }
-    },
-
+    // 自适应画质统一由副本场景的 tickRenderQuality 负责：
+    // 两套降档逻辑并行会互相拉扯，导致画布反复重建、帧率更低。
     loop(ts) {
       const dt = Math.min(0.05, this.lastTs ? (ts - this.lastTs) / 1000 : 0);
       this.lastTs = ts;
       if (this.dungeon && !this.dungeon.finished) {
         this.dungeon.frame(dt);
-        this.trackPerf(dt);
-      } else {
-        this._pfN = 0;
-        this._pfSum = 0;
       }
       requestAnimationFrame((t) => this.loop(t));
     }

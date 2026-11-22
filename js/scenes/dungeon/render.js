@@ -505,7 +505,9 @@
     const AD = DG.art && DG.art.terrainDecor;
     const art = !!(AD && AD.ready());
     const v = art ? this.viewRect(360) : null;
-    const list = [];
+    // 复用同一个数组：每帧两次调用不再各自分配
+    const list = this._bandList || (this._bandList = []);
+    list.length = 0;
     if (art) {
       for (const p of this.sceneProps || []) {
         if (p.destroyed || p.zone !== 'inside' || (p.layer || 'prop') !== 'prop') continue;
@@ -520,16 +522,17 @@
       if (t.y <= minY || t.y > maxY) continue;
       list.push({ tornado: t, y: t.y });
     }
-    if (!list.length) { this.drawMonsters(ctx, maxY, minY); return; }
+    if (!list.length) { this.drawMonsters(ctx, maxY, minY, v); return; }
     list.sort((a, b) => a.y - b.y);
     let from = minY;
-    for (const it of list) {
-      this.drawMonsters(ctx, it.y, from);
+    for (let i = 0; i < list.length; i++) {
+      const it = list[i];
+      this.drawMonsters(ctx, it.y, from, v);
       if (it.tornado) this.drawTornado(ctx, it.tornado);
       else AD.draw(ctx, it);
       from = it.y;
     }
-    this.drawMonsters(ctx, maxY, from);
+    this.drawMonsters(ctx, maxY, from, v);
   },
   drawSceneProps(ctx, layer, sub) {
     const AD = DG.art && DG.art.terrainDecor;
@@ -686,13 +689,21 @@
     list.sort((a, b) => a.y - b.y);
   },
   // maxY / minY 把列表拆成玩家身后（y<=maxY）与身前（y>minY）两层
-  drawMonsters(ctx, maxY, minY) {
-    const v = this.viewRect(220);
+  // v 由调用方传入复用，避免每次绘制都新建可视矩形对象
+  drawMonsters(ctx, maxY, minY, v) {
+    const view = v || this.viewRect(220);
+    const sorted = !!this._drawMonsters;
     const list = this._drawMonsters || this.monsters;
-    for (const m of list) {
+    for (let i = 0; i < list.length; i++) {
+      const m = list[i];
       if (m.dead) continue;
-      if (m.y > maxY || m.y <= minY) continue;
-      if (m.x < v.l || m.x > v.r || m.y < v.t || m.y > v.b) continue;
+      if (m.y > maxY) {
+        // 排序后的列表里后面只会更靠前，可直接结束本轮
+        if (sorted) break;
+        continue;
+      }
+      if (m.y <= minY) continue;
+      if (m.x < view.l || m.x > view.r || m.y < view.t || m.y > view.b) continue;
       const artBoss = !!(m.boss && m.art && DG.art.bosses);
       const artMob = !!(m.art && DG.art.monsters && DG.art.monsters.has(m.art));
       ctx.save();

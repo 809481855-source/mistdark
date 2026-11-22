@@ -222,18 +222,40 @@
       this.$zoneFill.style.width = (pct * 100) + '%';
     }
   },
+  // HUD 每 0.1 秒刷新：值没变化就不写 DOM，省掉重复的文本节点重建与样式重算
+  setHudText(el, key, text) {
+    if (!el) return;
+    const c = this._hudCache || (this._hudCache = {});
+    if (c[key] === text) return;
+    c[key] = text;
+    el.textContent = text;
+  },
+  setHudStyle(el, key, prop, value) {
+    if (!el) return;
+    const c = this._hudCache || (this._hudCache = {});
+    if (c[key] === value) return;
+    c[key] = value;
+    el.style[prop] = value;
+  },
+  findBoss() {
+    for (const m of this.monsters) {
+      if (m.boss && !m.dead) return m;
+    }
+    return null;
+  },
   updateHud() {
     if (!this.hud) return;
     const need = DG.character.xpNeed(this.char.level);
-    const xpPct = U.clamp((this.char.xp + this.xpEarned) / need, 0, 1);
-    this.$xp.style.width = (xpPct * 100) + '%';
-    if (this.$xpPct) this.$xpPct.textContent = Math.round(xpPct * 100) + '%';
-    if (this.$xpNum) this.$xpNum.textContent = `${U.fmt(this.char.xp + this.xpEarned)} / ${U.fmt(need)}`;
+    const xp = this.char.xp + this.xpEarned;
+    const xpPct = U.clamp(xp / need, 0, 1);
+    this.setHudStyle(this.$xp, 'xpWidth', 'width', (xpPct * 100) + '%');
+    this.setHudText(this.$xpPct, 'xpPct', Math.round(xpPct * 100) + '%');
+    this.setHudText(this.$xpNum, 'xpNum', `${U.fmt(xp)} / ${U.fmt(need)}`);
+    this.setHudText(this.$explore, 'explore', `探索 ${Math.round(this.explorePct() * 100)}%`);
 
-    if (this.$explore) {
-      this.$explore.textContent = `探索 ${Math.round(this.explorePct() * 100)}%`;
-    }
-    this.updateCompass();
+    // 一次遍历同时供血条与指南针使用，避免每次刷新扫描两遍怪物列表
+    const boss = this.findBoss();
+    this.updateCompass(boss);
 
     // 沙漏由帧循环驱动旋转（10 秒一圈），不依赖 CSS 动画，避免与光晕动画抢占合成层
     if (this.$hourglass) {
@@ -249,44 +271,58 @@
       this.setCd(i, this.skillCd[i], cdMax);
     }
 
-    const boss = this.monsters.find(m => m.boss && !m.dead);
     // 首领血条出现时屏蔽关卡进度与小地图，避免顶部信息互相遮挡
-    this.hud.classList.toggle('boss-mode', !!boss);
+    const bossState = boss
+      ? 'on' + (boss.enraged ? 'e' : '') + (boss.hp / boss.maxHp <= 0.3 ? 'l' : '')
+      : 'off';
+    if (this._bossState !== bossState) {
+      this._bossState = bossState;
+      this.hud.classList.toggle('boss-mode', !!boss);
+      if (boss) {
+        this.$bossWrap.classList.remove('hidden');
+        this.$bossWrap.classList.toggle('enraged', !!boss.enraged);
+        this.$bossWrap.classList.toggle('low', boss.hp / boss.maxHp <= 0.3);
+      } else {
+        this.$bossWrap.classList.add('hidden');
+        this.$bossWrap.classList.remove('enraged');
+        this.$bossWrap.classList.remove('low');
+      }
+    }
     if (boss) {
-      this.$bossWrap.classList.remove('hidden');
-      this.$bossWrap.classList.toggle('enraged', !!boss.enraged);
-      this.$bossWrap.classList.toggle('low', boss.hp / boss.maxHp <= 0.3);
-      this.$bossFill.style.width = (U.clamp(boss.hp / boss.maxHp, 0, 1) * 100) + '%';
-      this.$bossName.textContent = boss.name + (boss.enraged ? ' · 狂暴' : '');
-      this.$bossHp.textContent = `${Math.max(0, Math.ceil(boss.hp))}/${Math.ceil(boss.maxHp)}`;
-    } else {
-      this.$bossWrap.classList.add('hidden');
-      this.$bossWrap.classList.remove('enraged');
-      this.$bossWrap.classList.remove('low');
+      this.setHudStyle(this.$bossFill, 'bossFill', 'width', (U.clamp(boss.hp / boss.maxHp, 0, 1) * 100) + '%');
+      this.setHudText(this.$bossName, 'bossName', boss.name + (boss.enraged ? ' · 狂暴' : ''));
+      this.setHudText(this.$bossHp, 'bossHp', `${Math.max(0, Math.ceil(boss.hp))}/${Math.ceil(boss.maxHp)}`);
     }
   },
-  updateCompass() {
+  updateCompass(boss) {
     if (!this.$compass) return;
-    const boss = this.monsters.find(m => m.boss && !m.dead);
-    if (!boss) {
-      this.$compass.classList.add('hidden');
-      return;
+    if (boss === undefined) boss = this.findBoss();
+    const hidden = !boss;
+    if (this._compassHidden !== hidden) {
+      this._compassHidden = hidden;
+      this.$compass.classList.toggle('hidden', hidden);
     }
-    this.$compass.classList.remove('hidden');
+    if (!boss) return;
     const d = U.dist(this.player, boss);
     const ang = U.angle(this.player, boss);
     // 箭头默认朝上，顺时针旋转到目标方位
-    this.$compassArrow.style.transform = `rotate(${ang + Math.PI / 2}rad)`;
-    this.$compassText.textContent = `首领 · ${DG.scenes.dungeon.dirName(ang)} ${Math.round(d)} 码`;
+    this.setHudStyle(this.$compassArrow, 'compassArrow', 'transform', `rotate(${ang + Math.PI / 2}rad)`);
+    this.setHudText(this.$compassText, 'compassText', `首领 · ${DG.scenes.dungeon.dirName(ang)} ${Math.round(d)} 码`);
   },
   setCd(index, remain, total) {
     const el = this.$cd[index];
     const txt = this.$cdt[index];
     if (!el) return;
     const ratio = total > 0 ? U.clamp(remain / total, 0, 1) : 0;
-    el.style.transform = `scaleY(${ratio})`;
-    txt.textContent = remain > 0.15 ? (remain >= 1 ? Math.ceil(remain) : remain.toFixed(1)) : '';
-    if (el.parentNode) el.parentNode.classList.toggle('ready', remain <= 0.01);
+    this.setHudStyle(el, 'cd' + index, 'transform', `scaleY(${ratio})`);
+    this.setHudText(txt, 'cdt' + index, remain > 0.15 ? (remain >= 1 ? Math.ceil(remain) : remain.toFixed(1)) : '');
+    const ready = remain <= 0.01;
+    const c = this._hudCache || (this._hudCache = {});
+    const key = 'cdr' + index;
+    if (c[key] !== ready) {
+      c[key] = ready;
+      if (el.parentNode) el.parentNode.classList.toggle('ready', ready);
+    }
   }
   });
 })();

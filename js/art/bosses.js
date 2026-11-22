@@ -23,11 +23,11 @@
     eyehorror: { parts: 'grimoire', height: 244, kind: 'eye', glow: '#f0d060' },
     mawflowerking: { parts: 'flowerking', height: 250, kind: 'maw', glow: '#e05a7a' },
     cauldron: { parts: 'potknight', height: 240, kind: 'cauldron', glow: '#ffa54a' },
-    crystalcrab: { src: 'assets/bosses/crystalcrab.png', height: 232, kind: 'crystal', glow: '#b877e0' },
-    pinkdemon: { src: 'assets/bosses/pinkdemon.png', height: 244, kind: 'demon', glow: '#ff7aa0' },
-    pumpkinlord: { src: 'assets/bosses/pumpkinlord.png', height: 248, kind: 'cauldron', glow: '#ff9a3c' },
-    octoking: { src: 'assets/bosses/octoking.png', height: 252, kind: 'octo', glow: '#b07ae0' },
-    mummyking: { src: 'assets/bosses/mummyking.png', height: 238, kind: 'mummy', glow: '#b8c0c8' },
+    crystalcrab: { parts: 'crystalcrab', height: 232, kind: 'crystal', glow: '#b877e0' },
+    pinkdemon: { parts: 'pinkdemon', height: 244, kind: 'demon', glow: '#ff7aa0' },
+    pumpkinlord: { parts: 'pumpkinlord', height: 248, kind: 'cauldron', glow: '#ff9a3c' },
+    octoking: { parts: 'octowing', height: 252, kind: 'octo', glow: '#b07ae0' },
+    mummyking: { parts: 'banshee', height: 238, kind: 'mummy', glow: '#b8c0c8' },
     blueogre: { src: 'assets/bosses/blueogre.png', height: 262, kind: 'ogre', glow: '#6fb0e0' },
     hornedfiend: { src: 'assets/bosses/hornedfiend.png', height: 250, kind: 'demon', glow: '#c07ae0' },
     snakeking: { src: 'assets/bosses/snakeking.png', height: 256, kind: 'snake', glow: '#5fc8d8' },
@@ -155,6 +155,76 @@
         spear: { src: 'boss_h.png', sx: 330, x: 146, y: 10, w: 58, h: 152, px: 172, py: 100 }
       },
       draw: drawPotKnight
+    },
+    // 紫晶蟹王（boss_i 208×157）：四足 / 晶簇主体 / 右晶钳
+    crystalcrab: {
+      w: 208, h: 157,
+      srcs: ['boss_i.png'],
+      parts: {
+        legR2: { src: 'boss_i.png', sx: 0, x: 94, y: 116, w: 51, h: 37, px: 98, py: 120 },
+        legL1: { src: 'boss_i.png', sx: 51, x: 16, y: 114, w: 39, h: 38, px: 50, py: 118 },
+        legL2: { src: 'boss_i.png', sx: 90, x: 53, y: 98, w: 23, h: 59, px: 74, py: 102 },
+        legR1: { src: 'boss_i.png', sx: 113, x: 98, y: 103, w: 20, h: 47, px: 100, py: 106 },
+        claw: { src: 'boss_i.png', sx: 133, x: 135, y: 57, w: 71, h: 75, px: 141, py: 90 },
+        body: { src: 'boss_i.png', sx: 204, x: 3, y: 1, w: 161, h: 143, px: 83, py: 145 }
+      },
+      draw: drawCrystalCrab
+    },
+    // 粉角屠夫（boss_j 205×166）：肩斧 / 双脚 / 躯干 / 双臂 / 头
+    pinkdemon: {
+      w: 205, h: 166,
+      srcs: ['boss_j.png'],
+      parts: {
+        axe: { src: 'boss_j.png', sx: 334, x: 16, y: 10, w: 66, h: 62, px: 76, py: 68 },
+        feet: { src: 'boss_j.png', sx: 0, x: 49, y: 136, w: 97, h: 28, px: 97, py: 140 },
+        body: { src: 'boss_j.png', sx: 97, x: 46, y: 48, w: 107, h: 104, px: 100, py: 148 },
+        armR: { src: 'boss_j.png', sx: 272, x: 2, y: 60, w: 62, h: 74, px: 61, py: 70 },
+        armL: { src: 'boss_j.png', sx: 204, x: 136, y: 72, w: 68, h: 50, px: 141, py: 90 },
+        head: { src: 'boss_j.png', sx: 400, x: 82, y: 0, w: 76, h: 102, px: 120, py: 100 }
+      },
+      draw: drawPinkDemon
+    },
+    // 南瓜领主（boss_k 171×180）：双脚 / 袍身 / 两侧触手 / 南瓜头 / 顶部小手
+    pumpkinlord: {
+      w: 171, h: 180,
+      srcs: ['boss_k.png'],
+      parts: {
+        footR: { src: 'boss_k.png', sx: 0, x: 87, y: 147, w: 31, h: 25, px: 100, py: 150 },
+        footL: { src: 'boss_k.png', sx: 31, x: 66, y: 147, w: 21, h: 25, px: 76, py: 150 },
+        tenL: { src: 'boss_k.png', sx: 52, x: 5, y: 89, w: 56, h: 76, px: 58, py: 100 },
+        tenR: { src: 'boss_k.png', sx: 108, x: 125, y: 92, w: 46, h: 73, px: 128, py: 104 },
+        body: { src: 'boss_k.png', sx: 154, x: 54, y: 101, w: 74, h: 59, px: 91, py: 158 },
+        top: { src: 'boss_k.png', sx: 228, x: 62, y: 2, w: 70, h: 39, px: 97, py: 40 },
+        head: { src: 'boss_k.png', sx: 298, x: 28, y: 28, w: 126, h: 84, px: 91, py: 110 }
+      },
+      draw: drawPumpkinLord
+    },
+    // 触手蠕虫王（boss_l 173×171）：左尾端 / 右尾段 / 分节躯干 / 上段 / 羽状触手
+    octowing: {
+      w: 173, h: 171,
+      srcs: ['boss_l.png'],
+      parts: {
+        tailA: { src: 'boss_l.png', sx: 0, x: 0, y: 129, w: 84, h: 42, px: 80, py: 133 },
+        tailB: { src: 'boss_l.png', sx: 84, x: 63, y: 136, w: 65, h: 35, px: 68, py: 140 },
+        body: { src: 'boss_l.png', sx: 149, x: 17, y: 70, w: 112, h: 92, px: 73, py: 160 },
+        torso: { src: 'boss_l.png', sx: 261, x: 16, y: 8, w: 83, h: 101, px: 58, py: 107 },
+        plume: { src: 'boss_l.png', sx: 344, x: 50, y: 0, w: 123, h: 100, px: 58, py: 96 }
+      },
+      draw: drawOctoWorm
+    },
+    // 灰发女妖（boss_m 171×169）：双脚 / 躯干 / 双臂 / 长发遮面的头
+    banshee: {
+      w: 171, h: 169,
+      srcs: ['boss_m.png'],
+      parts: {
+        footL: { src: 'boss_m.png', sx: 0, x: 100, y: 137, w: 30, h: 31, px: 115, py: 139 },
+        footR: { src: 'boss_m.png', sx: 30, x: 49, y: 136, w: 38, h: 32, px: 68, py: 138 },
+        body: { src: 'boss_m.png', sx: 68, x: 51, y: 86, w: 85, h: 73, px: 94, py: 157 },
+        armL: { src: 'boss_m.png', sx: 153, x: 126, y: 101, w: 44, h: 63, px: 130, py: 105 },
+        armR: { src: 'boss_m.png', sx: 197, x: 3, y: 57, w: 63, h: 107, px: 62, py: 62 },
+        head: { src: 'boss_m.png', sx: 260, x: 43, y: 0, w: 108, h: 118, px: 97, py: 115 }
+      },
+      draw: drawHairBanshee
     }
   };
 
@@ -537,6 +607,222 @@
     part(ctx, m, bone, 'shield', { x: lunge, y: bodyY, rot: shield });
     part(ctx, m, bone, 'head', { x: lunge, y: bodyY, rot: headRot });
     part(ctx, m, bone, 'spear', { x: lunge, y: bodyY, rot: spear });
+  }
+
+  // 紫晶蟹王：晶簇呼吸 / 四足交替爬行 / 晶钳开合夹击
+  function drawCrystalCrab(ctx, m, bone, t, a) {
+    const seed = m.seed || 0;
+    const br = Math.sin(t * 1.9 + seed);
+    const ph = t * 10.5 + seed;
+    const ws = a.moving ? Math.sin(ph) : 0;
+    const pinch = (a.type === 'arc' || a.type === 'slash');
+
+    let bodyY = br * 1.2 + (a.moving ? Math.abs(ws) * 1.2 : 0);
+    let bodyRot = br * 0.012 + (a.moving ? ws * 0.016 : 0);
+    let claw = Math.sin(t * 1.6 + seed) * 0.05;
+    let lunge = 0;
+    const legs = [0, 1, 2, 3].map((i) => (a.moving ? Math.sin(ph + i * Math.PI * 0.5) * 2.2 : 0));
+
+    if (a.windup) {
+      const e = Math.sin(a.k * Math.PI * 0.5);
+      bodyRot -= e * 0.05;
+      bodyY -= e * 1.3;
+      claw -= e * 0.55;
+      lunge = -e * 3;
+    } else if (a.strike) {
+      const e = Math.sin(Math.pow(a.k, 0.5) * Math.PI);
+      bodyRot += e * 0.06;
+      bodyY += e * 0.9;
+      claw += e * (pinch ? 0.85 : 0.3);   // 晶钳开合
+      lunge = e * (pinch ? 7 : 3);
+    }
+
+    part(ctx, m, bone, 'legL1', { y: -Math.max(0, legs[0]) });
+    part(ctx, m, bone, 'legL2', { y: -Math.max(0, legs[1]) });
+    part(ctx, m, bone, 'legR1', { y: -Math.max(0, legs[2]) });
+    part(ctx, m, bone, 'legR2', { y: -Math.max(0, legs[3]) });
+    part(ctx, m, bone, 'body', { x: lunge, y: bodyY, rot: bodyRot });
+    part(ctx, m, bone, 'claw', { x: lunge, y: bodyY, rot: claw });
+  }
+
+  // 粉角屠夫：厚重呼吸 / 左右摇摆 / 肩斧高举抡劈
+  function drawPinkDemon(ctx, m, bone, t, a) {
+    const seed = m.seed || 0;
+    const br = Math.sin(t * 1.8 + seed);
+    const ph = t * 7.6 + seed;
+    const ws = a.moving ? Math.sin(ph) : 0;
+    const heavy = (a.type === 'slash' || a.type === 'arc');
+
+    let bodyY = br * 1.3 + (a.moving ? Math.abs(ws) * 1.6 : 0);
+    let bodyRot = br * 0.012 + (a.moving ? ws * 0.03 : 0);
+    let headRot = Math.sin(t * 1.35 + seed) * 0.03 - (a.moving ? ws * 0.03 : 0);
+    let armL = Math.sin(t * 1.4 + seed) * 0.05;    // 画面右侧手臂
+    let armR = -Math.sin(t * 1.4 + seed) * 0.05;   // 画面左侧手臂
+    let axe = Math.sin(t * 1.2 + seed) * 0.03;
+    let lunge = 0;
+    const feetRot = a.moving ? ws * 0.03 : 0;
+
+    if (a.windup) {
+      const e = Math.sin(a.k * Math.PI * 0.5);
+      bodyRot -= e * 0.05;
+      bodyY -= e * 1.5;
+      headRot -= e * 0.07;
+      axe -= e * 0.8;                 // 肩斧高举
+      armL -= e * 0.25;
+      armR += e * 0.2;
+      lunge = -e * 3;
+    } else if (a.strike) {
+      const e = Math.sin(Math.pow(a.k, 0.55) * Math.PI);
+      bodyRot += e * 0.09;
+      bodyY += e * 1.7;
+      headRot += e * 0.09;
+      axe += e * (heavy ? 1.3 : 0.35);   // 抡斧下劈
+      armL += e * 0.35;
+      armR -= e * 0.25;
+      lunge = e * (heavy ? 6 : 2.5);
+    }
+
+    part(ctx, m, bone, 'axe', { x: lunge, y: bodyY, rot: axe });
+    part(ctx, m, bone, 'feet', { x: lunge * 0.6, rot: feetRot });
+    part(ctx, m, bone, 'body', { x: lunge, y: bodyY, rot: bodyRot });
+    part(ctx, m, bone, 'armR', { x: lunge, y: bodyY, rot: armR });
+    part(ctx, m, bone, 'armL', { x: lunge, y: bodyY, rot: armL });
+    part(ctx, m, bone, 'head', { x: lunge, y: bodyY, rot: headRot });
+  }
+
+  // 南瓜领主：鬼火浮动 / 小步挪动 / 触手后引再前扑缠绕
+  function drawPumpkinLord(ctx, m, bone, t, a) {
+    const seed = m.seed || 0;
+    const hover = Math.sin(t * 1.7 + seed);
+    const ph = t * 7.2 + seed;
+    const ws = a.moving ? Math.sin(ph) : 0;
+    const melee = (a.type === 'arc' || a.type === 'slash');
+
+    let bodyY = hover * 1.3 + (a.moving ? Math.abs(ws) * 1.5 : 0);
+    let bodyRot = hover * 0.01 + (a.moving ? ws * 0.025 : 0);
+    let headRot = Math.sin(t * 1.4 + seed) * 0.035 - (a.moving ? ws * 0.035 : 0);
+    let headY = hover * 0.5;
+    let tenL = Math.sin(t * 1.8 + seed) * 0.12;
+    let tenR = -Math.sin(t * 1.8 + seed) * 0.12;
+    let top = Math.sin(t * 2.2 + seed) * 0.08;
+    let lunge = 0;
+
+    if (a.windup) {
+      const e = Math.sin(a.k * Math.PI * 0.5);
+      bodyRot -= e * 0.05;
+      bodyY -= e * 1.6;
+      headRot -= e * (melee ? 0.22 : 0.1);
+      tenL -= e * 0.45;
+      tenR += e * 0.45;
+      top -= e * 0.3;
+      lunge = -e * 3;
+    } else if (a.strike) {
+      const e = Math.sin(Math.pow(a.k, 0.5) * Math.PI);
+      bodyRot += e * 0.07;
+      bodyY += e * 1.2;
+      headRot += e * (melee ? 0.3 : 0.12);
+      tenL += e * 0.6;                // 触手前缠
+      tenR -= e * 0.6;
+      top += e * 0.4;
+      lunge = e * (melee ? 6 : 2.5);
+    }
+
+    part(ctx, m, bone, 'footL', { x: lunge * 0.5 });
+    part(ctx, m, bone, 'footR', { x: lunge * 0.5 });
+    part(ctx, m, bone, 'body', { x: lunge, y: bodyY, rot: bodyRot });
+    part(ctx, m, bone, 'tenL', { x: lunge, y: bodyY, rot: tenL });
+    part(ctx, m, bone, 'tenR', { x: lunge, y: bodyY, rot: tenR });
+    part(ctx, m, bone, 'head', { x: lunge, y: bodyY + headY, rot: headRot });
+    part(ctx, m, bone, 'top', { x: lunge, y: bodyY + headY, rot: bodyRot + top });
+  }
+
+  // 触手蠕虫王：身体波浪起伏 / 尾段摆动爬行 / 羽状触手后引再前抽
+  function drawOctoWorm(ctx, m, bone, t, a) {
+    const seed = m.seed || 0;
+    const br = Math.sin(t * 1.8 + seed);
+    const ph = t * 7.0 + seed;
+    const ws = a.moving ? Math.sin(ph) : 0;
+    const big = (a.type === 'arc' || a.type === 'slash');
+
+    let bodyY = br * 1.3 + (a.moving ? Math.abs(ws) * 2.2 : 0);
+    let bodyRot = br * 0.015 + (a.moving ? ws * 0.03 : 0);
+    let torsoRot = Math.sin(t * 1.5 + seed) * 0.03 - (a.moving ? ws * 0.04 : 0);
+    let plumeRot = Math.sin(t * 1.6 + seed) * 0.06 + (a.moving ? ws * 0.08 : 0);
+    let tailA = Math.sin(t * 1.9 + seed) * 0.12;
+    let tailB = -Math.sin(t * 1.9 + seed) * 0.1;
+    let lunge = 0;
+
+    if (a.windup) {
+      const e = Math.sin(a.k * Math.PI * 0.5);
+      bodyRot -= e * 0.06;
+      bodyY -= e * 2;
+      torsoRot -= e * 0.12;
+      plumeRot -= e * 0.55;          // 羽状触手后引
+      tailA += e * 0.2;
+      tailB -= e * 0.2;
+      lunge = -e * 4;
+    } else if (a.strike) {
+      const e = Math.sin(Math.pow(a.k, 0.5) * Math.PI);
+      bodyRot += e * 0.08;
+      bodyY += e * 1.5;
+      torsoRot += e * 0.18;
+      plumeRot += e * (big ? 1.0 : 0.45);   // 触手前抽
+      tailA -= e * 0.3;
+      tailB += e * 0.3;
+      lunge = e * (big ? 8 : 4);
+    }
+
+    part(ctx, m, bone, 'tailA', { x: lunge * 0.3, rot: tailA });
+    part(ctx, m, bone, 'tailB', { x: lunge * 0.5, rot: tailB });
+    part(ctx, m, bone, 'body', { x: lunge, y: bodyY, rot: bodyRot });
+    part(ctx, m, bone, 'torso', { x: lunge, y: bodyY, rot: bodyRot + torsoRot });
+    part(ctx, m, bone, 'plume', { x: lunge, y: bodyY, rot: bodyRot + plumeRot });
+  }
+
+  // 灰发女妖：灰发飘动 / 小碎步挪动 / 双臂后引再前扑爪击
+  function drawHairBanshee(ctx, m, bone, t, a) {
+    const seed = m.seed || 0;
+    const br = Math.sin(t * 1.9 + seed);
+    const ph = t * 8.4 + seed;
+    const ws = a.moving ? Math.sin(ph) : 0;
+    const melee = (a.type === 'arc' || a.type === 'slash');
+
+    let bodyY = br * 1.1 + (a.moving ? Math.abs(ws) * 1.6 : 0);
+    let bodyRot = br * 0.012 + (a.moving ? ws * 0.022 : 0);
+    let headRot = Math.sin(t * 1.5 + seed) * 0.045 - (a.moving ? ws * 0.04 : 0);
+    let headY = br * 0.5;
+    let armL = Math.sin(t * 1.6 + seed) * 0.06;    // 画面右侧手臂
+    let armR = -Math.sin(t * 1.6 + seed) * 0.06;   // 画面左侧手臂
+    let lunge = 0;
+    const liftL = a.moving ? Math.max(0, ws) * 2 : 0;
+    const liftR = a.moving ? Math.max(0, -ws) * 2 : 0;
+
+    if (a.windup) {
+      const e = Math.sin(a.k * Math.PI * 0.5);
+      bodyRot -= e * 0.05;
+      bodyY -= e * 1.6;
+      headRot -= e * 0.12;
+      headY -= e * 0.8;
+      armL -= e * 0.45;
+      armR += e * 0.45;
+      lunge = -e * 3;
+    } else if (a.strike) {
+      const e = Math.sin(Math.pow(a.k, 0.5) * Math.PI);
+      bodyRot += e * 0.08;
+      bodyY += e * 1.2;
+      headRot += e * (melee ? 0.22 : 0.1);   // 灰发前甩
+      headY += e * 0.8;
+      armL += e * (melee ? 0.7 : 0.25);      // 双爪前扑
+      armR -= e * (melee ? 0.7 : 0.25);
+      lunge = e * (melee ? 7 : 3);
+    }
+
+    part(ctx, m, bone, 'footL', { x: lunge * 0.5, y: -liftL });
+    part(ctx, m, bone, 'footR', { x: lunge * 0.5, y: -liftR });
+    part(ctx, m, bone, 'body', { x: lunge, y: bodyY, rot: bodyRot });
+    part(ctx, m, bone, 'armR', { x: lunge, y: bodyY, rot: armR });
+    part(ctx, m, bone, 'armL', { x: lunge, y: bodyY, rot: armL });
+    part(ctx, m, bone, 'head', { x: lunge, y: bodyY + headY, rot: headRot });
   }
 
   const cache = {};

@@ -239,6 +239,8 @@
     if (document.hidden) suspendAudio();
     else wakeAudio();
   });
+  // 离开页面（含进入 bfcache）时先挂起：部分内核在音频仍在播放时拒绝缓存页面
+  window.addEventListener('pagehide', () => { suspendAudio(); });
   window.addEventListener('focus', () => {
     if (document.hidden) return;
     wakeAudio();
@@ -869,6 +871,8 @@
     if (!BGM[key]) return;
     bgmKey = key;
     if (!enabled || !musicOn) return;
+    // 切场景时上下文可能仍被系统挂着：先唤醒再起播，避免新场景一路静音
+    if (ctx && ctx.state !== 'running' && !document.hidden) wakeAudio();
 
     if (bgmNodes.src && bgmNodes.key === key) {
       resumeBgm();

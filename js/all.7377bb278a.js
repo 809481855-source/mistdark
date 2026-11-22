@@ -501,6 +501,8 @@
     if (document.hidden) suspendAudio();
     else wakeAudio();
   });
+  // 离开页面（含进入 bfcache）时先挂起：部分内核在音频仍在播放时拒绝缓存页面
+  window.addEventListener('pagehide', () => { suspendAudio(); });
   window.addEventListener('focus', () => {
     if (document.hidden) return;
     wakeAudio();
@@ -1131,6 +1133,8 @@
     if (!BGM[key]) return;
     bgmKey = key;
     if (!enabled || !musicOn) return;
+    // 切场景时上下文可能仍被系统挂着：先唤醒再起播，避免新场景一路静音
+    if (ctx && ctx.state !== 'running' && !document.hidden) wakeAudio();
 
     if (bgmNodes.src && bgmNodes.key === key) {
       resumeBgm();
@@ -5377,11 +5381,11 @@
     eyehorror: { parts: 'grimoire', height: 244, kind: 'eye', glow: '#f0d060' },
     mawflowerking: { parts: 'flowerking', height: 250, kind: 'maw', glow: '#e05a7a' },
     cauldron: { parts: 'potknight', height: 240, kind: 'cauldron', glow: '#ffa54a' },
-    crystalcrab: { src: 'assets/bosses/crystalcrab.png', height: 232, kind: 'crystal', glow: '#b877e0' },
-    pinkdemon: { src: 'assets/bosses/pinkdemon.png', height: 244, kind: 'demon', glow: '#ff7aa0' },
-    pumpkinlord: { src: 'assets/bosses/pumpkinlord.png', height: 248, kind: 'cauldron', glow: '#ff9a3c' },
-    octoking: { src: 'assets/bosses/octoking.png', height: 252, kind: 'octo', glow: '#b07ae0' },
-    mummyking: { src: 'assets/bosses/mummyking.png', height: 238, kind: 'mummy', glow: '#b8c0c8' },
+    crystalcrab: { parts: 'crystalcrab', height: 232, kind: 'crystal', glow: '#b877e0' },
+    pinkdemon: { parts: 'pinkdemon', height: 244, kind: 'demon', glow: '#ff7aa0' },
+    pumpkinlord: { parts: 'pumpkinlord', height: 248, kind: 'cauldron', glow: '#ff9a3c' },
+    octoking: { parts: 'octowing', height: 252, kind: 'octo', glow: '#b07ae0' },
+    mummyking: { parts: 'banshee', height: 238, kind: 'mummy', glow: '#b8c0c8' },
     blueogre: { src: 'assets/bosses/blueogre.png', height: 262, kind: 'ogre', glow: '#6fb0e0' },
     hornedfiend: { src: 'assets/bosses/hornedfiend.png', height: 250, kind: 'demon', glow: '#c07ae0' },
     snakeking: { src: 'assets/bosses/snakeking.png', height: 256, kind: 'snake', glow: '#5fc8d8' },
@@ -5509,6 +5513,76 @@
         spear: { src: 'boss_h.png', sx: 330, x: 146, y: 10, w: 58, h: 152, px: 172, py: 100 }
       },
       draw: drawPotKnight
+    },
+    // 紫晶蟹王（boss_i 208×157）：四足 / 晶簇主体 / 右晶钳
+    crystalcrab: {
+      w: 208, h: 157,
+      srcs: ['boss_i.png'],
+      parts: {
+        legR2: { src: 'boss_i.png', sx: 0, x: 94, y: 116, w: 51, h: 37, px: 98, py: 120 },
+        legL1: { src: 'boss_i.png', sx: 51, x: 16, y: 114, w: 39, h: 38, px: 50, py: 118 },
+        legL2: { src: 'boss_i.png', sx: 90, x: 53, y: 98, w: 23, h: 59, px: 74, py: 102 },
+        legR1: { src: 'boss_i.png', sx: 113, x: 98, y: 103, w: 20, h: 47, px: 100, py: 106 },
+        claw: { src: 'boss_i.png', sx: 133, x: 135, y: 57, w: 71, h: 75, px: 141, py: 90 },
+        body: { src: 'boss_i.png', sx: 204, x: 3, y: 1, w: 161, h: 143, px: 83, py: 145 }
+      },
+      draw: drawCrystalCrab
+    },
+    // 粉角屠夫（boss_j 205×166）：肩斧 / 双脚 / 躯干 / 双臂 / 头
+    pinkdemon: {
+      w: 205, h: 166,
+      srcs: ['boss_j.png'],
+      parts: {
+        axe: { src: 'boss_j.png', sx: 334, x: 16, y: 10, w: 66, h: 62, px: 76, py: 68 },
+        feet: { src: 'boss_j.png', sx: 0, x: 49, y: 136, w: 97, h: 28, px: 97, py: 140 },
+        body: { src: 'boss_j.png', sx: 97, x: 46, y: 48, w: 107, h: 104, px: 100, py: 148 },
+        armR: { src: 'boss_j.png', sx: 272, x: 2, y: 60, w: 62, h: 74, px: 61, py: 70 },
+        armL: { src: 'boss_j.png', sx: 204, x: 136, y: 72, w: 68, h: 50, px: 141, py: 90 },
+        head: { src: 'boss_j.png', sx: 400, x: 82, y: 0, w: 76, h: 102, px: 120, py: 100 }
+      },
+      draw: drawPinkDemon
+    },
+    // 南瓜领主（boss_k 171×180）：双脚 / 袍身 / 两侧触手 / 南瓜头 / 顶部小手
+    pumpkinlord: {
+      w: 171, h: 180,
+      srcs: ['boss_k.png'],
+      parts: {
+        footR: { src: 'boss_k.png', sx: 0, x: 87, y: 147, w: 31, h: 25, px: 100, py: 150 },
+        footL: { src: 'boss_k.png', sx: 31, x: 66, y: 147, w: 21, h: 25, px: 76, py: 150 },
+        tenL: { src: 'boss_k.png', sx: 52, x: 5, y: 89, w: 56, h: 76, px: 58, py: 100 },
+        tenR: { src: 'boss_k.png', sx: 108, x: 125, y: 92, w: 46, h: 73, px: 128, py: 104 },
+        body: { src: 'boss_k.png', sx: 154, x: 54, y: 101, w: 74, h: 59, px: 91, py: 158 },
+        top: { src: 'boss_k.png', sx: 228, x: 62, y: 2, w: 70, h: 39, px: 97, py: 40 },
+        head: { src: 'boss_k.png', sx: 298, x: 28, y: 28, w: 126, h: 84, px: 91, py: 110 }
+      },
+      draw: drawPumpkinLord
+    },
+    // 触手蠕虫王（boss_l 173×171）：左尾端 / 右尾段 / 分节躯干 / 上段 / 羽状触手
+    octowing: {
+      w: 173, h: 171,
+      srcs: ['boss_l.png'],
+      parts: {
+        tailA: { src: 'boss_l.png', sx: 0, x: 0, y: 129, w: 84, h: 42, px: 80, py: 133 },
+        tailB: { src: 'boss_l.png', sx: 84, x: 63, y: 136, w: 65, h: 35, px: 68, py: 140 },
+        body: { src: 'boss_l.png', sx: 149, x: 17, y: 70, w: 112, h: 92, px: 73, py: 160 },
+        torso: { src: 'boss_l.png', sx: 261, x: 16, y: 8, w: 83, h: 101, px: 58, py: 107 },
+        plume: { src: 'boss_l.png', sx: 344, x: 50, y: 0, w: 123, h: 100, px: 58, py: 96 }
+      },
+      draw: drawOctoWorm
+    },
+    // 灰发女妖（boss_m 171×169）：双脚 / 躯干 / 双臂 / 长发遮面的头
+    banshee: {
+      w: 171, h: 169,
+      srcs: ['boss_m.png'],
+      parts: {
+        footL: { src: 'boss_m.png', sx: 0, x: 100, y: 137, w: 30, h: 31, px: 115, py: 139 },
+        footR: { src: 'boss_m.png', sx: 30, x: 49, y: 136, w: 38, h: 32, px: 68, py: 138 },
+        body: { src: 'boss_m.png', sx: 68, x: 51, y: 86, w: 85, h: 73, px: 94, py: 157 },
+        armL: { src: 'boss_m.png', sx: 153, x: 126, y: 101, w: 44, h: 63, px: 130, py: 105 },
+        armR: { src: 'boss_m.png', sx: 197, x: 3, y: 57, w: 63, h: 107, px: 62, py: 62 },
+        head: { src: 'boss_m.png', sx: 260, x: 43, y: 0, w: 108, h: 118, px: 97, py: 115 }
+      },
+      draw: drawHairBanshee
     }
   };
 
@@ -5891,6 +5965,222 @@
     part(ctx, m, bone, 'shield', { x: lunge, y: bodyY, rot: shield });
     part(ctx, m, bone, 'head', { x: lunge, y: bodyY, rot: headRot });
     part(ctx, m, bone, 'spear', { x: lunge, y: bodyY, rot: spear });
+  }
+
+  // 紫晶蟹王：晶簇呼吸 / 四足交替爬行 / 晶钳开合夹击
+  function drawCrystalCrab(ctx, m, bone, t, a) {
+    const seed = m.seed || 0;
+    const br = Math.sin(t * 1.9 + seed);
+    const ph = t * 10.5 + seed;
+    const ws = a.moving ? Math.sin(ph) : 0;
+    const pinch = (a.type === 'arc' || a.type === 'slash');
+
+    let bodyY = br * 1.2 + (a.moving ? Math.abs(ws) * 1.2 : 0);
+    let bodyRot = br * 0.012 + (a.moving ? ws * 0.016 : 0);
+    let claw = Math.sin(t * 1.6 + seed) * 0.05;
+    let lunge = 0;
+    const legs = [0, 1, 2, 3].map((i) => (a.moving ? Math.sin(ph + i * Math.PI * 0.5) * 2.2 : 0));
+
+    if (a.windup) {
+      const e = Math.sin(a.k * Math.PI * 0.5);
+      bodyRot -= e * 0.05;
+      bodyY -= e * 1.3;
+      claw -= e * 0.55;
+      lunge = -e * 3;
+    } else if (a.strike) {
+      const e = Math.sin(Math.pow(a.k, 0.5) * Math.PI);
+      bodyRot += e * 0.06;
+      bodyY += e * 0.9;
+      claw += e * (pinch ? 0.85 : 0.3);   // 晶钳开合
+      lunge = e * (pinch ? 7 : 3);
+    }
+
+    part(ctx, m, bone, 'legL1', { y: -Math.max(0, legs[0]) });
+    part(ctx, m, bone, 'legL2', { y: -Math.max(0, legs[1]) });
+    part(ctx, m, bone, 'legR1', { y: -Math.max(0, legs[2]) });
+    part(ctx, m, bone, 'legR2', { y: -Math.max(0, legs[3]) });
+    part(ctx, m, bone, 'body', { x: lunge, y: bodyY, rot: bodyRot });
+    part(ctx, m, bone, 'claw', { x: lunge, y: bodyY, rot: claw });
+  }
+
+  // 粉角屠夫：厚重呼吸 / 左右摇摆 / 肩斧高举抡劈
+  function drawPinkDemon(ctx, m, bone, t, a) {
+    const seed = m.seed || 0;
+    const br = Math.sin(t * 1.8 + seed);
+    const ph = t * 7.6 + seed;
+    const ws = a.moving ? Math.sin(ph) : 0;
+    const heavy = (a.type === 'slash' || a.type === 'arc');
+
+    let bodyY = br * 1.3 + (a.moving ? Math.abs(ws) * 1.6 : 0);
+    let bodyRot = br * 0.012 + (a.moving ? ws * 0.03 : 0);
+    let headRot = Math.sin(t * 1.35 + seed) * 0.03 - (a.moving ? ws * 0.03 : 0);
+    let armL = Math.sin(t * 1.4 + seed) * 0.05;    // 画面右侧手臂
+    let armR = -Math.sin(t * 1.4 + seed) * 0.05;   // 画面左侧手臂
+    let axe = Math.sin(t * 1.2 + seed) * 0.03;
+    let lunge = 0;
+    const feetRot = a.moving ? ws * 0.03 : 0;
+
+    if (a.windup) {
+      const e = Math.sin(a.k * Math.PI * 0.5);
+      bodyRot -= e * 0.05;
+      bodyY -= e * 1.5;
+      headRot -= e * 0.07;
+      axe -= e * 0.8;                 // 肩斧高举
+      armL -= e * 0.25;
+      armR += e * 0.2;
+      lunge = -e * 3;
+    } else if (a.strike) {
+      const e = Math.sin(Math.pow(a.k, 0.55) * Math.PI);
+      bodyRot += e * 0.09;
+      bodyY += e * 1.7;
+      headRot += e * 0.09;
+      axe += e * (heavy ? 1.3 : 0.35);   // 抡斧下劈
+      armL += e * 0.35;
+      armR -= e * 0.25;
+      lunge = e * (heavy ? 6 : 2.5);
+    }
+
+    part(ctx, m, bone, 'axe', { x: lunge, y: bodyY, rot: axe });
+    part(ctx, m, bone, 'feet', { x: lunge * 0.6, rot: feetRot });
+    part(ctx, m, bone, 'body', { x: lunge, y: bodyY, rot: bodyRot });
+    part(ctx, m, bone, 'armR', { x: lunge, y: bodyY, rot: armR });
+    part(ctx, m, bone, 'armL', { x: lunge, y: bodyY, rot: armL });
+    part(ctx, m, bone, 'head', { x: lunge, y: bodyY, rot: headRot });
+  }
+
+  // 南瓜领主：鬼火浮动 / 小步挪动 / 触手后引再前扑缠绕
+  function drawPumpkinLord(ctx, m, bone, t, a) {
+    const seed = m.seed || 0;
+    const hover = Math.sin(t * 1.7 + seed);
+    const ph = t * 7.2 + seed;
+    const ws = a.moving ? Math.sin(ph) : 0;
+    const melee = (a.type === 'arc' || a.type === 'slash');
+
+    let bodyY = hover * 1.3 + (a.moving ? Math.abs(ws) * 1.5 : 0);
+    let bodyRot = hover * 0.01 + (a.moving ? ws * 0.025 : 0);
+    let headRot = Math.sin(t * 1.4 + seed) * 0.035 - (a.moving ? ws * 0.035 : 0);
+    let headY = hover * 0.5;
+    let tenL = Math.sin(t * 1.8 + seed) * 0.12;
+    let tenR = -Math.sin(t * 1.8 + seed) * 0.12;
+    let top = Math.sin(t * 2.2 + seed) * 0.08;
+    let lunge = 0;
+
+    if (a.windup) {
+      const e = Math.sin(a.k * Math.PI * 0.5);
+      bodyRot -= e * 0.05;
+      bodyY -= e * 1.6;
+      headRot -= e * (melee ? 0.22 : 0.1);
+      tenL -= e * 0.45;
+      tenR += e * 0.45;
+      top -= e * 0.3;
+      lunge = -e * 3;
+    } else if (a.strike) {
+      const e = Math.sin(Math.pow(a.k, 0.5) * Math.PI);
+      bodyRot += e * 0.07;
+      bodyY += e * 1.2;
+      headRot += e * (melee ? 0.3 : 0.12);
+      tenL += e * 0.6;                // 触手前缠
+      tenR -= e * 0.6;
+      top += e * 0.4;
+      lunge = e * (melee ? 6 : 2.5);
+    }
+
+    part(ctx, m, bone, 'footL', { x: lunge * 0.5 });
+    part(ctx, m, bone, 'footR', { x: lunge * 0.5 });
+    part(ctx, m, bone, 'body', { x: lunge, y: bodyY, rot: bodyRot });
+    part(ctx, m, bone, 'tenL', { x: lunge, y: bodyY, rot: tenL });
+    part(ctx, m, bone, 'tenR', { x: lunge, y: bodyY, rot: tenR });
+    part(ctx, m, bone, 'head', { x: lunge, y: bodyY + headY, rot: headRot });
+    part(ctx, m, bone, 'top', { x: lunge, y: bodyY + headY, rot: bodyRot + top });
+  }
+
+  // 触手蠕虫王：身体波浪起伏 / 尾段摆动爬行 / 羽状触手后引再前抽
+  function drawOctoWorm(ctx, m, bone, t, a) {
+    const seed = m.seed || 0;
+    const br = Math.sin(t * 1.8 + seed);
+    const ph = t * 7.0 + seed;
+    const ws = a.moving ? Math.sin(ph) : 0;
+    const big = (a.type === 'arc' || a.type === 'slash');
+
+    let bodyY = br * 1.3 + (a.moving ? Math.abs(ws) * 2.2 : 0);
+    let bodyRot = br * 0.015 + (a.moving ? ws * 0.03 : 0);
+    let torsoRot = Math.sin(t * 1.5 + seed) * 0.03 - (a.moving ? ws * 0.04 : 0);
+    let plumeRot = Math.sin(t * 1.6 + seed) * 0.06 + (a.moving ? ws * 0.08 : 0);
+    let tailA = Math.sin(t * 1.9 + seed) * 0.12;
+    let tailB = -Math.sin(t * 1.9 + seed) * 0.1;
+    let lunge = 0;
+
+    if (a.windup) {
+      const e = Math.sin(a.k * Math.PI * 0.5);
+      bodyRot -= e * 0.06;
+      bodyY -= e * 2;
+      torsoRot -= e * 0.12;
+      plumeRot -= e * 0.55;          // 羽状触手后引
+      tailA += e * 0.2;
+      tailB -= e * 0.2;
+      lunge = -e * 4;
+    } else if (a.strike) {
+      const e = Math.sin(Math.pow(a.k, 0.5) * Math.PI);
+      bodyRot += e * 0.08;
+      bodyY += e * 1.5;
+      torsoRot += e * 0.18;
+      plumeRot += e * (big ? 1.0 : 0.45);   // 触手前抽
+      tailA -= e * 0.3;
+      tailB += e * 0.3;
+      lunge = e * (big ? 8 : 4);
+    }
+
+    part(ctx, m, bone, 'tailA', { x: lunge * 0.3, rot: tailA });
+    part(ctx, m, bone, 'tailB', { x: lunge * 0.5, rot: tailB });
+    part(ctx, m, bone, 'body', { x: lunge, y: bodyY, rot: bodyRot });
+    part(ctx, m, bone, 'torso', { x: lunge, y: bodyY, rot: bodyRot + torsoRot });
+    part(ctx, m, bone, 'plume', { x: lunge, y: bodyY, rot: bodyRot + plumeRot });
+  }
+
+  // 灰发女妖：灰发飘动 / 小碎步挪动 / 双臂后引再前扑爪击
+  function drawHairBanshee(ctx, m, bone, t, a) {
+    const seed = m.seed || 0;
+    const br = Math.sin(t * 1.9 + seed);
+    const ph = t * 8.4 + seed;
+    const ws = a.moving ? Math.sin(ph) : 0;
+    const melee = (a.type === 'arc' || a.type === 'slash');
+
+    let bodyY = br * 1.1 + (a.moving ? Math.abs(ws) * 1.6 : 0);
+    let bodyRot = br * 0.012 + (a.moving ? ws * 0.022 : 0);
+    let headRot = Math.sin(t * 1.5 + seed) * 0.045 - (a.moving ? ws * 0.04 : 0);
+    let headY = br * 0.5;
+    let armL = Math.sin(t * 1.6 + seed) * 0.06;    // 画面右侧手臂
+    let armR = -Math.sin(t * 1.6 + seed) * 0.06;   // 画面左侧手臂
+    let lunge = 0;
+    const liftL = a.moving ? Math.max(0, ws) * 2 : 0;
+    const liftR = a.moving ? Math.max(0, -ws) * 2 : 0;
+
+    if (a.windup) {
+      const e = Math.sin(a.k * Math.PI * 0.5);
+      bodyRot -= e * 0.05;
+      bodyY -= e * 1.6;
+      headRot -= e * 0.12;
+      headY -= e * 0.8;
+      armL -= e * 0.45;
+      armR += e * 0.45;
+      lunge = -e * 3;
+    } else if (a.strike) {
+      const e = Math.sin(Math.pow(a.k, 0.5) * Math.PI);
+      bodyRot += e * 0.08;
+      bodyY += e * 1.2;
+      headRot += e * (melee ? 0.22 : 0.1);   // 灰发前甩
+      headY += e * 0.8;
+      armL += e * (melee ? 0.7 : 0.25);      // 双爪前扑
+      armR -= e * (melee ? 0.7 : 0.25);
+      lunge = e * (melee ? 7 : 3);
+    }
+
+    part(ctx, m, bone, 'footL', { x: lunge * 0.5, y: -liftL });
+    part(ctx, m, bone, 'footR', { x: lunge * 0.5, y: -liftR });
+    part(ctx, m, bone, 'body', { x: lunge, y: bodyY, rot: bodyRot });
+    part(ctx, m, bone, 'armR', { x: lunge, y: bodyY, rot: armR });
+    part(ctx, m, bone, 'armL', { x: lunge, y: bodyY, rot: armL });
+    part(ctx, m, bone, 'head', { x: lunge, y: bodyY + headY, rot: headRot });
   }
 
   const cache = {};
@@ -11742,6 +12032,7 @@
     const canvas = U.el('div', 'eq-canvas');
     screen.appendChild(canvas);
     DG.game.ui.appendChild(screen);
+    if (DG.audio) DG.audio.play('uiOpen', { vol: 0.5, gap: 0.12 });
     // #ui 固定 720×1440 居中，装备页需要覆盖整个舞台（可能是 810×1680）
     const layout = () => {
       const stage = document.getElementById('stage');
@@ -11763,6 +12054,7 @@
     let stashScroll = 0;
 
     function close() {
+      if (DG.audio) DG.audio.play('uiClose', { vol: 0.45, gap: 0.12 });
       document.removeEventListener('keydown', onKey);
       window.removeEventListener('resize', onResize);
       if (screen.parentNode) screen.remove();
@@ -12269,6 +12561,7 @@
     const canvas = U.el('div', 'sk-canvas');
     screen.appendChild(canvas);
     DG.game.ui.appendChild(screen);
+    if (DG.audio) DG.audio.play('uiOpen', { vol: 0.5, gap: 0.12 });
     // 打开时清掉上一场景残留的提示；提示条移到标题与分组条之间的空白处，
     // 避免激活反馈压住技能树节点。内联样式可覆盖主城 / 战斗各自的提示位置
     const toastWrap = document.getElementById('toast-wrap');
@@ -12304,6 +12597,7 @@
     }
 
     function close() {
+      if (DG.audio) DG.audio.play('uiClose', { vol: 0.45, gap: 0.12 });
       document.removeEventListener('keydown', onKey);
       window.removeEventListener('resize', layout);
       if (screen.parentNode) screen.remove();
@@ -13309,9 +13603,21 @@
   const U = DG.util;
   DG.scenes = DG.scenes || {};
 
+  // 选角阶段预热主城地图（570KB）：首次进镇时贴图已下载并解码，
+  // 不会在场景切换瞬间才开始取图，避免进镇第一秒掉帧
+  let townMapWarmed = false;
+  function warmTownMap() {
+    if (townMapWarmed) return;
+    townMapWarmed = true;
+    const img = new Image();
+    img.src = 'assets/town-map.jpg';
+    if (img.decode) img.decode().catch(() => {});
+  }
+
   DG.scenes.character = {
     render(root) {
       if (DG.audio) DG.audio.playBgm('login');
+      warmTownMap();
       const acc = DG.game.account();
       const chars = acc.characters;
       const occupied = chars.map((c, i) => (c ? i : -1)).filter(i => i >= 0);
@@ -14224,6 +14530,15 @@
       this.autoBlocked = 0;
       this.autoDetour = null;
       this.autoDecision = null;
+      this.autoKiteHeld = false;
+      this.autoKiteSide = 0;
+      this.autoRescueCd = 0;
+      this.autoStuckAt = 0;
+      this.autoExploreUntil = 0;
+      this.autoIgnore = null;
+      this.autoIgnoreUntil = 0;
+      this.autoIgnorePack = null;
+      this.autoIgnorePackUntil = 0;
 
       this.attackCd = 0;
       // 索引与 skillList 对齐；0 号位（普攻）沿用 attackCd，其余为主动技能冷却
@@ -14391,6 +14706,26 @@
       this._chunkCache = null;
       this._warmCanvas = null;
       this._warmCtx = null;
+      // 整屏渐变、小地图、描边路径等缓存体积较大：离场立即置空，尽快释放显存
+      this._glowCache = null;
+      this._edgeFade = null;
+      this._vignetteImg = null;
+      this._bossVignette = null;
+      this._minimapCanvas = null;
+      this._outline = null;
+      this._drawMonsters = null;
+      this._bandList = null;
+      this._separationGrid = null;
+      this._hudCache = null;
+      this.sceneProps = null;
+      this.tornadoes = null;
+      this.monsters = null;
+      this.projectiles = null;
+      this.effects = null;
+      this.floaters = null;
+      this.drops = null;
+      this.bones = null;
+      this.blood = null;
       const toastWrap = document.getElementById('toast-wrap');
       if (toastWrap) toastWrap.classList.remove('in-battle');
     }
@@ -14419,6 +14754,7 @@
       this.hurtFlash = Math.max(0, this.hurtFlash - dt * 2);
       this.bossFlash = Math.max(0, this.bossFlash - dt);
       this.bagWarnCd = Math.max(0, this.bagWarnCd - dt);
+      this.autoRescueCd = Math.max(0, (this.autoRescueCd || 0) - dt);
       this.tickTalentTimers(dt);
       this.hudTimer -= dt;
 
@@ -14621,10 +14957,12 @@
     }
 
     frame(dt) {
-      if (!this.finished) {
-        this.update(dt);
-        this.maybePrefetchChunk(dt);
-      }
+      // 结算 / 撤退在 update 内就会 finishNow 并释放资源：
+      // 此时不能再往下走预取和绘制，否则会访问已清空的缓存
+      if (this.finished) return;
+      this.update(dt);
+      if (this.finished) return;
+      this.maybePrefetchChunk(dt);
       this.draw();
     }
   }
@@ -16392,18 +16730,40 @@
       this.$zoneFill.style.width = (pct * 100) + '%';
     }
   },
+  // HUD 每 0.1 秒刷新：值没变化就不写 DOM，省掉重复的文本节点重建与样式重算
+  setHudText(el, key, text) {
+    if (!el) return;
+    const c = this._hudCache || (this._hudCache = {});
+    if (c[key] === text) return;
+    c[key] = text;
+    el.textContent = text;
+  },
+  setHudStyle(el, key, prop, value) {
+    if (!el) return;
+    const c = this._hudCache || (this._hudCache = {});
+    if (c[key] === value) return;
+    c[key] = value;
+    el.style[prop] = value;
+  },
+  findBoss() {
+    for (const m of this.monsters) {
+      if (m.boss && !m.dead) return m;
+    }
+    return null;
+  },
   updateHud() {
     if (!this.hud) return;
     const need = DG.character.xpNeed(this.char.level);
-    const xpPct = U.clamp((this.char.xp + this.xpEarned) / need, 0, 1);
-    this.$xp.style.width = (xpPct * 100) + '%';
-    if (this.$xpPct) this.$xpPct.textContent = Math.round(xpPct * 100) + '%';
-    if (this.$xpNum) this.$xpNum.textContent = `${U.fmt(this.char.xp + this.xpEarned)} / ${U.fmt(need)}`;
+    const xp = this.char.xp + this.xpEarned;
+    const xpPct = U.clamp(xp / need, 0, 1);
+    this.setHudStyle(this.$xp, 'xpWidth', 'width', (xpPct * 100) + '%');
+    this.setHudText(this.$xpPct, 'xpPct', Math.round(xpPct * 100) + '%');
+    this.setHudText(this.$xpNum, 'xpNum', `${U.fmt(xp)} / ${U.fmt(need)}`);
+    this.setHudText(this.$explore, 'explore', `探索 ${Math.round(this.explorePct() * 100)}%`);
 
-    if (this.$explore) {
-      this.$explore.textContent = `探索 ${Math.round(this.explorePct() * 100)}%`;
-    }
-    this.updateCompass();
+    // 一次遍历同时供血条与指南针使用，避免每次刷新扫描两遍怪物列表
+    const boss = this.findBoss();
+    this.updateCompass(boss);
 
     // 沙漏由帧循环驱动旋转（10 秒一圈），不依赖 CSS 动画，避免与光晕动画抢占合成层
     if (this.$hourglass) {
@@ -16419,44 +16779,58 @@
       this.setCd(i, this.skillCd[i], cdMax);
     }
 
-    const boss = this.monsters.find(m => m.boss && !m.dead);
     // 首领血条出现时屏蔽关卡进度与小地图，避免顶部信息互相遮挡
-    this.hud.classList.toggle('boss-mode', !!boss);
+    const bossState = boss
+      ? 'on' + (boss.enraged ? 'e' : '') + (boss.hp / boss.maxHp <= 0.3 ? 'l' : '')
+      : 'off';
+    if (this._bossState !== bossState) {
+      this._bossState = bossState;
+      this.hud.classList.toggle('boss-mode', !!boss);
+      if (boss) {
+        this.$bossWrap.classList.remove('hidden');
+        this.$bossWrap.classList.toggle('enraged', !!boss.enraged);
+        this.$bossWrap.classList.toggle('low', boss.hp / boss.maxHp <= 0.3);
+      } else {
+        this.$bossWrap.classList.add('hidden');
+        this.$bossWrap.classList.remove('enraged');
+        this.$bossWrap.classList.remove('low');
+      }
+    }
     if (boss) {
-      this.$bossWrap.classList.remove('hidden');
-      this.$bossWrap.classList.toggle('enraged', !!boss.enraged);
-      this.$bossWrap.classList.toggle('low', boss.hp / boss.maxHp <= 0.3);
-      this.$bossFill.style.width = (U.clamp(boss.hp / boss.maxHp, 0, 1) * 100) + '%';
-      this.$bossName.textContent = boss.name + (boss.enraged ? ' · 狂暴' : '');
-      this.$bossHp.textContent = `${Math.max(0, Math.ceil(boss.hp))}/${Math.ceil(boss.maxHp)}`;
-    } else {
-      this.$bossWrap.classList.add('hidden');
-      this.$bossWrap.classList.remove('enraged');
-      this.$bossWrap.classList.remove('low');
+      this.setHudStyle(this.$bossFill, 'bossFill', 'width', (U.clamp(boss.hp / boss.maxHp, 0, 1) * 100) + '%');
+      this.setHudText(this.$bossName, 'bossName', boss.name + (boss.enraged ? ' · 狂暴' : ''));
+      this.setHudText(this.$bossHp, 'bossHp', `${Math.max(0, Math.ceil(boss.hp))}/${Math.ceil(boss.maxHp)}`);
     }
   },
-  updateCompass() {
+  updateCompass(boss) {
     if (!this.$compass) return;
-    const boss = this.monsters.find(m => m.boss && !m.dead);
-    if (!boss) {
-      this.$compass.classList.add('hidden');
-      return;
+    if (boss === undefined) boss = this.findBoss();
+    const hidden = !boss;
+    if (this._compassHidden !== hidden) {
+      this._compassHidden = hidden;
+      this.$compass.classList.toggle('hidden', hidden);
     }
-    this.$compass.classList.remove('hidden');
+    if (!boss) return;
     const d = U.dist(this.player, boss);
     const ang = U.angle(this.player, boss);
     // 箭头默认朝上，顺时针旋转到目标方位
-    this.$compassArrow.style.transform = `rotate(${ang + Math.PI / 2}rad)`;
-    this.$compassText.textContent = `首领 · ${DG.scenes.dungeon.dirName(ang)} ${Math.round(d)} 码`;
+    this.setHudStyle(this.$compassArrow, 'compassArrow', 'transform', `rotate(${ang + Math.PI / 2}rad)`);
+    this.setHudText(this.$compassText, 'compassText', `首领 · ${DG.scenes.dungeon.dirName(ang)} ${Math.round(d)} 码`);
   },
   setCd(index, remain, total) {
     const el = this.$cd[index];
     const txt = this.$cdt[index];
     if (!el) return;
     const ratio = total > 0 ? U.clamp(remain / total, 0, 1) : 0;
-    el.style.transform = `scaleY(${ratio})`;
-    txt.textContent = remain > 0.15 ? (remain >= 1 ? Math.ceil(remain) : remain.toFixed(1)) : '';
-    if (el.parentNode) el.parentNode.classList.toggle('ready', remain <= 0.01);
+    this.setHudStyle(el, 'cd' + index, 'transform', `scaleY(${ratio})`);
+    this.setHudText(txt, 'cdt' + index, remain > 0.15 ? (remain >= 1 ? Math.ceil(remain) : remain.toFixed(1)) : '');
+    const ready = remain <= 0.01;
+    const c = this._hudCache || (this._hudCache = {});
+    const key = 'cdr' + index;
+    if (c[key] !== ready) {
+      c[key] = ready;
+      if (el.parentNode) el.parentNode.classList.toggle('ready', ready);
+    }
   }
   });
 })();
@@ -16472,7 +16846,8 @@
   // 已完成拆件重做的首领：投放时优先于普通首领出场
   const REWORKED_BOSSES = [
     'goatbrute', 'reaper', 'croc',
-    'mushroomgun', 'golem', 'eyehorror', 'mawflowerking', 'cauldron'
+    'mushroomgun', 'golem', 'eyehorror', 'mawflowerking', 'cauldron',
+    'crystalcrab', 'pinkdemon', 'pumpkinlord', 'octoking', 'mummyking'
   ];
 
   Object.assign(DG.scenes.dungeon.prototype, {
@@ -17039,14 +17414,18 @@
     const CAP = 44;
     for (const p of this.chunkPacks) {
       if (p.spawned) continue;
-      if (walked < SAFE_LEFT) continue;
-      if (U.dist(p, this.player) > NEAR) continue;
+      if (walked < SAFE_LEFT && !this.autoMode) continue;
+      // 同一个怪群到玩家的距离一帧只算一次，下面激活 / 贴脸 / 密室判定共用
+      const pd = U.dist(p, this.player);
+      if (pd > NEAR) continue;
       // 不贴脸刷怪：玩家就站在怪群位置上时先不激活，等拉开距离再说
-      if (U.dist(p, this.player) < 260) continue;
+      if (pd < 260) continue;
       const pch = this.chunks[p.chunk];
-      if (!pch || Math.abs(pch.col - curCh.col) + Math.abs(pch.row - curCh.row) > 1) continue;
+      // 自动战斗需要自己找怪：距离已足够近时不再限制相邻区块，
+      // 否则 AI 会在“隔一个区块”的怪群前反复踱步、怪永远不激活
+      if (!this.autoMode && (!pch || Math.abs(pch.col - curCh.col) + Math.abs(pch.row - curCh.row) > 1)) continue;
       // 密室守卫：必须走到门口才惊醒，避免隔墙提前拉怪
-      if (p.secret && U.dist(this.player, p) > 380) continue;
+      if (p.secret && pd > 380) continue;
       if (alive >= CAP) break;
       p.spawned = true;
       let slots = CAP - alive;
@@ -17382,9 +17761,11 @@
     const pool = (this.def.bossPool && this.def.bossPool.length)
       ? this.def.bossPool
       : [this.def.bossId];
-    // 已拆件重做的首领优先投放：首领池中存在它们时大概率直接选中
-    const reworked = pool.filter((id) => REWORKED_BOSSES.indexOf(id) >= 0);
-    const bossId = (reworked.length && Math.random() < 0.85)
+    // 已拆件重做的首领优先投放：本关池内有它们就从池内挑，
+    // 池内没有则从全部重做首领中挑，确保每个关卡都能优先见到重做后的首领
+    let reworked = pool.filter((id) => REWORKED_BOSSES.indexOf(id) >= 0);
+    if (!reworked.length) reworked = REWORKED_BOSSES;
+    const bossId = Math.random() < 0.85
       ? U.pick(reworked)
       : (this.def.bossId && Math.random() < 0.8 ? this.def.bossId : U.pick(pool));
     const boss = this.spawnMonster(bossId, pos.x, pos.y, true);
@@ -17500,8 +17881,11 @@
     // 视觉粒子只影响表现：超过上限时丢弃最旧的一批，防止长时间战斗后线性变慢
     const MAX_EFFECTS = 420;
     if (this.effects.length > MAX_EFFECTS) this.effects.splice(0, this.effects.length - MAX_EFFECTS);
-    const list = [];
-    for (const e of this.effects) {
+    // 原地压缩：每帧新建数组会在长时间战斗里持续制造垃圾，交给 GC 反而更卡
+    const list = this.effects;
+    let n = 0;
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
       e.life -= dt;
       if (e.kind === 'spark') {
         e.x += e.vx * dt;
@@ -17524,21 +17908,23 @@
         e.vx *= 0.99;
         e.rot += e.vr * dt;
       }
-      if (e.life > 0) list.push(e);
+      if (e.life > 0) list[n++] = e;
     }
-    this.effects = list;
+    list.length = n;
   },
   updateFloaters(dt) {
     const MAX_FLOATERS = 80;
     if (this.floaters.length > MAX_FLOATERS) this.floaters.splice(0, this.floaters.length - MAX_FLOATERS);
-    const list = [];
-    for (const f of this.floaters) {
+    const list = this.floaters;
+    let n = 0;
+    for (let i = 0; i < list.length; i++) {
+      const f = list[i];
       f.life -= dt;
       f.y += f.vy * dt;
       f.vy *= 0.97;
-      if (f.life > 0) list.push(f);
+      if (f.life > 0) list[n++] = f;
     }
-    this.floaters = list;
+    list.length = n;
   }
   });
 })();
@@ -18919,18 +19305,28 @@
     return c;
   }
 
+  // 血迹精灵只取决于画风：跨副本共享，重复进图时不再重新烘焙 8 张画布
+  const SPRITE_CACHE = [];
+  function bloodSprites(style) {
+    let arr = SPRITE_CACHE[style];
+    if (arr) return arr;
+    arr = [];
+    const def = STYLES[style];
+    for (let st = 1; st <= 4; st++) {
+      for (let va = 0; va < 2; va++) {
+        arr[st * 2 + va] = makeSprite(def, st, va);
+      }
+    }
+    SPRITE_CACHE[style] = arr;
+    return arr;
+  }
+
   Object.assign(DG.scenes.dungeon.prototype, {
-    // 进入副本时确定本图的血迹序列，并预烘焙 8 张精灵（4 阶段 × 2 变体）
+    // 进入副本时确定本图的血迹序列，并取用预烘焙好的精灵
     initBlood() {
       this.bloodStyle = U.randInt(0, 2);
       this.blood = [];
-      this._bloodSprites = [];
-      const def = STYLES[this.bloodStyle];
-      for (let st = 1; st <= 4; st++) {
-        for (let va = 0; va < 2; va++) {
-          this._bloodSprites[st * 2 + va] = makeSprite(def, st, va);
-        }
-      }
+      this._bloodSprites = bloodSprites(this.bloodStyle);
     },
     // 受击飞溅：血珠从受击点沿攻击反方向抛出，带重力，落地前消散。
     // 数量、速度、粒径随伤害占比与暴击提升，与脚下血痕同一套配色
@@ -19253,6 +19649,36 @@
   const U = DG.util;
   const { W, H, ARENA_W, ARENA_H } = DG.scenes.dungeon.size;
 
+  // 怪物分离网格：常量与邻居偏移表放在模块级，主循环里不再每帧新建
+  const SEP_CELL = 112;
+  const SEP_BIAS = 1024;
+  const SEP_STRIDE = 4096;
+  const SEP_NEAR = [[0, 0], [1, 0], [0, 1], [1, 1], [-1, 1]];
+
+  // 分离两个重叠怪物：抽到模块级，避免每帧生成闭包
+  function separateMonsters(self, a, b, ai, bi) {
+    if (a.dead || b.dead) return;
+    let dx = b.x - a.x, dy = b.y - a.y;
+    const minD = a.r + b.r + 10;
+    if (Math.abs(dx) >= minD || Math.abs(dy) >= minD) return;
+    let dist = Math.hypot(dx, dy);
+    if (dist < 0.01) {
+      const angle = ((ai * 17 + bi * 31) % 16) * Math.PI / 8;
+      dx = Math.cos(angle);
+      dy = Math.sin(angle);
+      dist = 1;
+    }
+    if (dist >= minD) return;
+    const gap = minD - dist;
+    const ux = dx / dist, uy = dy / dist;
+    if (a.boss && !b.boss) self.nudgeMonster(b, ux * gap, uy * gap);
+    else if (b.boss && !a.boss) self.nudgeMonster(a, -ux * gap, -uy * gap);
+    else if (!a.boss && !b.boss) {
+      self.nudgeMonster(a, -ux * gap * 0.5, -uy * gap * 0.5);
+      self.nudgeMonster(b, ux * gap * 0.5, uy * gap * 0.5);
+    }
+  }
+
   // 换色变体的专属出手特效（其余怪继续用 peaArc）
   const STRIKE_FX = {
     frostwolf: 'frostSlash',
@@ -19498,6 +19924,19 @@
       this.player.invuln = Math.max(this.player.invuln, 0.8);
       this.addRing(this.player.x, this.player.y, 16, 80, '#ffd479', 0.5);
       this.addFloater(this.player.x, this.player.y - 44, '不屈', '#ffd479', 26);
+    }
+
+    // 自动战斗保险：濒死时触发「绝境反击」，回血并获得短暂无敌，
+    // 避免自动战斗因为一次走位失误直接判负（手动操作不生效）
+    if (this.player.hp <= 0 && this.autoMode && (this.autoRescueCd || 0) <= 0) {
+      this.player.hp = Math.round(this.player.maxHp * 0.35);
+      this.player.invuln = Math.max(this.player.invuln, 1.3);
+      this.autoRescueCd = 40;
+      this.talentTimers.postHurt = Math.max(this.talentTimers.postHurt || 0, 2);
+      this.addRing(this.player.x, this.player.y, 18, 104, '#ffd479', 0.6);
+      this.addBurst(this.player.x, this.player.y, '#ffd479', 16);
+      this.addFloater(this.player.x, this.player.y - 46, '绝境反击', '#ffd479', 26);
+      this.announce('自动战斗 · 绝境反击', 1400);
     }
 
     if (this.player.hp <= 0) {
@@ -19990,54 +20429,43 @@
       }
     }
 
-    const cell = 112;
+    // 分离网格：数字键 + 复用桶（只改标记不新建数组），避免每帧产生大量短命对象
     const grid = this._separationGrid || (this._separationGrid = new Map());
-    const near = [[0, 0], [1, 0], [0, 1], [1, 1], [-1, 1]];
-    const separate = (a, b, ai, bi) => {
-      if (a.dead || b.dead) return;
-      let dx = b.x - a.x, dy = b.y - a.y;
-      const minD = a.r + b.r + 10;
-      if (Math.abs(dx) >= minD || Math.abs(dy) >= minD) return;
-      let dist = Math.hypot(dx, dy);
-      if (dist < 0.01) {
-        const angle = ((ai * 17 + bi * 31) % 16) * Math.PI / 8;
-        dx = Math.cos(angle);
-        dy = Math.sin(angle);
-        dist = 1;
-      }
-      if (dist >= minD) return;
-      const gap = minD - dist;
-      const ux = dx / dist, uy = dy / dist;
-      if (a.boss && !b.boss) this.nudgeMonster(b, ux * gap, uy * gap);
-      else if (b.boss && !a.boss) this.nudgeMonster(a, -ux * gap, -uy * gap);
-      else if (!a.boss && !b.boss) {
-        this.nudgeMonster(a, -ux * gap * 0.5, -uy * gap * 0.5);
-        this.nudgeMonster(b, ux * gap * 0.5, uy * gap * 0.5);
-      }
-    };
+    const monsters = this.monsters;
     for (let pass = 0; pass < 2; pass++) {
-      grid.clear();
-      for (let i = 0; i < this.monsters.length; i++) {
-        const m = this.monsters[i];
+      const stamp = (this._sepStamp = (this._sepStamp || 0) + 1);
+      for (let i = 0; i < monsters.length; i++) {
+        const m = monsters[i];
         if (m.dead) continue;
-        const cx = Math.floor(m.x / cell), cy = Math.floor(m.y / cell);
-        const key = cx + ':' + cy;
+        const key = (Math.floor(m.x / SEP_CELL) + SEP_BIAS) * SEP_STRIDE +
+          (Math.floor(m.y / SEP_CELL) + SEP_BIAS);
         let bucket = grid.get(key);
-        if (!bucket) { bucket = []; grid.set(key, bucket); }
-        bucket.push(i);
+        if (!bucket) {
+          bucket = { stamp: stamp, items: [] };
+          grid.set(key, bucket);
+        } else if (bucket.stamp !== stamp) {
+          bucket.stamp = stamp;
+          bucket.items.length = 0;
+        }
+        bucket.items.push(i);
       }
-      for (const [key, bucket] of grid) {
-        const p = key.indexOf(':');
-        const cx = +key.slice(0, p), cy = +key.slice(p + 1);
-        for (let n = 0; n < near.length; n++) {
-          const dx = near[n][0], dy = near[n][1];
-          const other = grid.get((cx + dx) + ':' + (cy + dy));
-          if (!other) continue;
-          for (let i = 0; i < bucket.length; i++) {
+      for (const entry of grid) {
+        const bucket = entry[1];
+        // 上一帧遗留、本帧未再使用的格子直接跳过
+        if (bucket.stamp !== stamp) continue;
+        const key = entry[0];
+        const cx = Math.floor(key / SEP_STRIDE) - SEP_BIAS;
+        const cy = (key % SEP_STRIDE) - SEP_BIAS;
+        for (let n = 0; n < SEP_NEAR.length; n++) {
+          const dx = SEP_NEAR[n][0], dy = SEP_NEAR[n][1];
+          const other = grid.get((cx + dx + SEP_BIAS) * SEP_STRIDE + (cy + dy + SEP_BIAS));
+          if (!other || other.stamp !== stamp) continue;
+          const items = bucket.items, others = other.items;
+          for (let i = 0; i < items.length; i++) {
             const start = dx || dy ? 0 : i + 1;
-            for (let j = start; j < other.length; j++) {
-              const ai = bucket[i], bi = other[j];
-              if (ai !== bi) separate(this.monsters[ai], this.monsters[bi], ai, bi);
+            for (let j = start; j < others.length; j++) {
+              const ai = items[i], bi = others[j];
+              if (ai !== bi) separateMonsters(this, monsters[ai], monsters[bi], ai, bi);
             }
           }
         }
@@ -20689,10 +21117,36 @@
       const target = goal.monster;
       if (target) {
         const dist = U.dist(this.player, target);
+        // 远程职业保持风筝距离：贴太近就后撤，太远再压上，距离舒适时站定输出
+        if (this.autoIsRanged()) {
+          const keep = Math.max(210, Math.min(340, (this.basicSkill.range || 320) * 0.46));
+          const attackRange = Math.max(300, Math.min(540, (this.basicSkill.range || 320) * 0.86));
+          if (dist < keep - 40) this.autoKiteHeld = true;
+          else if (dist > keep + 120) this.autoKiteHeld = false;
+          const hpPct = this.player.hp / this.player.maxHp;
+          let closeCount = 0;
+          for (const m of this.monsters) {
+            if (!m.dead && U.dist(this.player, m) < 170) closeCount++;
+          }
+          // 满血面对普通小怪不必一直后撤：站桩输出更快；
+          // 掉血、被围、精英/首领近身或脚下有预警时才拉开距离
+          const needKite = this.autoKiteHeld && (hpPct < 0.6 || closeCount >= 3 || target.boss || target.elite ||
+            this.autoHardDangerAt(this.player.x, this.player.y) > 0);
+          if (needKite || (hpPct < 0.4 && dist < 200 + target.r)) {
+            const dir = this.autoKiteDirection(target);
+            if (dir) return this.autoCommitMove(this.autoSmoothDirection(dir, 0.4), goal);
+          }
+          // 已在射程内且视线畅通：站定输出；否则继续走下面的寻路绕过去
+          if (dist <= attackRange && this.autoLineClear(target)) {
+            return this.autoCommitMove(this.autoSmoothDirection({ x: 0, y: 0 }, 0.3), goal);
+          }
+        }
+        // 近战：进入攻击距离后停手，让普攻自动出手（被墙挡住时继续绕路）
         const range = Math.max(92, Math.min(220, (this.basicSkill.range || 120) * 0.72));
         const stop = range + target.r + this.player.r;
-        if (dist <= stop) this.autoHoldingRange = true;
-        if (dist > stop + 34) this.autoHoldingRange = false;
+        const los = this.autoLineClear(target);
+        if (dist <= stop && los) this.autoHoldingRange = true;
+        else if (dist > stop + 34 || !los) this.autoHoldingRange = false;
         if (this.autoHoldingRange) return this.autoCommitMove(this.autoSmoothDirection({ x: 0, y: 0 }, 0.28), goal);
       }
       let dir = this.autoDirectDirection(goal) || this.autoFlowDirection(this.player.x, this.player.y, goal) || { x: 0, y: 0 };
@@ -20709,7 +21163,43 @@
           }
         }
       }
+      // 完全走不动：说明当前目标隔着墙或无法寻路，临时放弃并去激活别的怪群
+      if (!dir.x && !dir.y) {
+        if (!this.autoStuckAt) this.autoStuckAt = now;
+        else if (now - this.autoStuckAt > 0.7) {
+          this.autoGiveUpGoal(now);
+          return { x: 0, y: 0 };
+        }
+      } else if (this.autoBlocked > 1.2) {
+        // 一直在走却始终被挡：同样视为不可达
+        this.autoGiveUpGoal(now);
+        return { x: 0, y: 0 };
+      } else {
+        this.autoStuckAt = 0;
+      }
       return this.autoCommitMove(this.autoSmoothDirection(dir, 0.2), goal);
+    },
+    // 放弃当前不可达目标：把怪/怪群拉黑一段时间，并改为优先探索
+    autoGiveUpGoal(now) {
+      const goal = this.autoGoal;
+      if (goal && goal.monster) {
+        this.autoIgnore = goal.monster;
+        this.autoIgnoreUntil = now + 10;
+      } else if (goal && goal.kind === 'pack' && this.autoPack) {
+        this.autoIgnorePack = this.autoPack;
+        this.autoIgnorePackUntil = now + 10;
+      }
+      this.autoExploreUntil = now + 6;
+      this.autoTarget = null;
+      this.autoPack = null;
+      this.autoGoal = null;
+      this.autoDecision = null;
+      this.autoEvade = null;
+      this.autoSteer = null;
+      this.autoHoldingRange = false;
+      this.autoKiteHeld = false;
+      this.autoStuckAt = 0;
+      this.autoBlocked = 0;
     },
     autoCommitMove(dir, goal) {
       this.autoDecision = { dir, goal, until: (this.time || 0) + 0.1 };
@@ -20740,40 +21230,131 @@
       this.autoSteer = len < 0.08 ? { x: 0, y: 0 } : { x, y };
       return len < 0.08 ? this.autoSteer : { x: x / len, y: y / len };
     },
+    // 远程职业：普攻为弹道/散射，需要保持距离而不是贴脸
+    autoIsRanged() {
+      const type = this.basicSkill && this.basicSkill.type;
+      return type === 'projectile' || type === 'spread';
+    },
+    // 残血时寻找最近的恢复球（拾取即回 20% 最大生命）
+    autoHealOrbTarget() {
+      const hpPct = this.player.hp / this.player.maxHp;
+      if (hpPct > 0.55) return null;
+      const reach = hpPct < 0.3 ? 950 : 620;
+      let best = null, bestD = reach;
+      for (const d of this.drops || []) {
+        if (d.kind !== 'orb') continue;
+        const dist = U.dist(this.player, d);
+        if (dist >= bestD) continue;
+        // 只追直线可达或很近的球，避免为了捡球绕远路被围死
+        if (dist > 220 && !this.autoDirectDirection(d)) continue;
+        bestD = dist;
+        best = d;
+      }
+      return best;
+    },
+    autoStepFree(x, y, dist) {
+      const steps = Math.ceil(dist / 24);
+      for (let i = 1; i <= steps; i++) {
+        const t = dist * i / steps;
+        const px = this.player.x + x * t, py = this.player.y + y * t;
+        if (this.circleWall(px, py, this.player.r) || this.circleProp(px, py, this.player.r)) return false;
+      }
+      return true;
+    },
+    // 视线检测：隔着墙时不要站桩输出/挥空，先绕过去
+    autoLineClear(target) {
+      if (!target) return false;
+      const dx = target.x - this.player.x, dy = target.y - this.player.y;
+      const d = Math.hypot(dx, dy);
+      if (d < 32) return true;
+      const steps = Math.ceil(d / 24);
+      for (let i = 1; i < steps; i++) {
+        const t = d * i / steps;
+        if (this.circleWall(this.player.x + dx / d * t, this.player.y + dy / d * t, 3)) return false;
+      }
+      return true;
+    },
+    // 风筝走位：远离目标为主，叠加侧向偏移，撞墙时换另一侧
+    autoKiteDirection(target) {
+      const dx = this.player.x - target.x, dy = this.player.y - target.y;
+      const len = Math.hypot(dx, dy) || 1;
+      const ax = dx / len, ay = dy / len;
+      if (!this.autoKiteSide) this.autoKiteSide = U.chance(0.5) ? 1 : -1;
+      const side = this.autoKiteSide;
+      const tries = [
+        [ax * 0.84 - ay * 0.46 * side, ay * 0.84 + ax * 0.46 * side],
+        [ax * 0.84 + ay * 0.46 * side, ay * 0.84 - ax * 0.46 * side],
+        [ax, ay]
+      ];
+      for (const v of tries) {
+        const l = Math.hypot(v[0], v[1]) || 1;
+        const x = v[0] / l, y = v[1] / l;
+        if (this.autoStepFree(x, y, 76)) return { x, y };
+      }
+      // 后撤方向被墙封死：换一侧绕行，下一帧再试
+      this.autoKiteSide = -side;
+      return null;
+    },
     autoGoalTarget() {
+      const now = this.time || 0;
+      // 目标临时不可达的黑名单，过期后重新尝试
+      if (this.autoIgnore && this.autoIgnoreUntil < now) this.autoIgnore = null;
+      if (this.autoIgnorePack && this.autoIgnorePackUntil < now) this.autoIgnorePack = null;
+      // 残血先捡恢复球：自动战斗优先保命，再继续输出
+      const orb = this.autoHealOrbTarget();
+      if (orb) {
+        this.autoTarget = null;
+        this.autoPack = null;
+        this.autoGoal = { x: orb.x, y: orb.y, kind: 'orb', orb };
+        return this.autoGoal;
+      }
       const cur = this.currentChunk();
       const curCh = this.chunks[cur];
-      let best = null, bestD = Infinity;
-      for (const m of this.monsters) {
-        if (m.dead) continue;
-        const d = U.dist(this.player, m);
-        if (m.boss) {
-          this.autoTarget = m;
-          this.autoPack = null;
-          return { x: m.x, y: m.y, monster: m, kind: 'boss' };
+      // 刚刚卡死过：先去激活新的怪群，避免一直死磕同一个不可达的怪
+      const exploring = now < (this.autoExploreUntil || 0);
+      // 还有没激活的怪群时，只打当前/相邻区块的怪；
+      // 怪群全部激活后，剩下的怪无论多远都要清掉，否则无法触发首领
+      const pendingPacks = (this.chunkPacks || []).some(p => !p.spawned && p !== this.autoIgnorePack);
+      let best = null, bestScore = Infinity, bestDist = Infinity;
+      if (!exploring) {
+        for (const m of this.monsters) {
+          if (m.dead || m === this.autoIgnore) continue;
+          const d = U.dist(this.player, m);
+          if (m.boss) {
+            this.autoTarget = m;
+            this.autoPack = null;
+            return { x: m.x, y: m.y, monster: m, kind: 'boss' };
+          }
+          const mch = m.chunkIndex != null ? this.chunks[m.chunkIndex] : null;
+          if (pendingPacks && mch && curCh && Math.abs(mch.col - curCh.col) + Math.abs(mch.row - curCh.row) > 1 && !m.aggro) continue;
+          // 优先级：距离为主，残血目标（配合处决）、远程与精英更值得先处理
+          let score = d - (1 - m.hp / m.maxHp) * 70;
+          if (m.ranged) score -= 30;
+          if (m.elite) score -= 24;
+          if (score < bestScore) { best = m; bestScore = score; bestDist = d; }
         }
-        const mch = m.chunkIndex != null ? this.chunks[m.chunkIndex] : null;
-        if (mch && curCh && Math.abs(mch.col - curCh.col) + Math.abs(mch.row - curCh.row) > 1 && !m.aggro) continue;
-        if (d < bestD) { best = m; bestD = d; }
       }
       const locked = this.autoTarget;
-      if (locked && !locked.dead && this.monsters.indexOf(locked) >= 0) {
+      if (!exploring && locked && locked !== this.autoIgnore && !locked.dead && this.monsters.indexOf(locked) >= 0) {
         const lockedD = U.dist(this.player, locked);
-        if (!best || lockedD <= bestD + 120) {
-          this.autoGoal = { x: locked.x, y: locked.y, kind: 'monster' };
-          return { x: locked.x, y: locked.y, monster: locked, kind: 'monster' };
+        if (!best || lockedD <= bestDist + 120) {
+          // 贴合到最近的可行走点，防止怪物被挤进墙里导致寻路目标无效
+          const gp = this.nearestFloorPoint(locked.x, locked.y, 2) || locked;
+          this.autoGoal = { x: gp.x, y: gp.y, kind: 'monster', monster: locked };
+          return { x: gp.x, y: gp.y, monster: locked, kind: 'monster' };
         }
       }
       if (best) {
         this.autoTarget = best;
         this.autoPack = null;
-        this.autoGoal = { x: best.x, y: best.y, kind: 'monster' };
-        return { x: best.x, y: best.y, monster: best, kind: 'monster' };
+        const gp = this.nearestFloorPoint(best.x, best.y, 2) || best;
+        this.autoGoal = { x: gp.x, y: gp.y, kind: 'monster', monster: best };
+        return { x: gp.x, y: gp.y, monster: best, kind: 'monster' };
       }
-      let pack = this.autoPack && !this.autoPack.spawned ? this.autoPack : null;
+      let pack = this.autoPack && !this.autoPack.spawned && this.autoPack !== this.autoIgnorePack ? this.autoPack : null;
       if (!pack) {
         for (const p of this.chunkPacks || []) {
-          if (p.spawned) continue;
+          if (p.spawned || p === this.autoIgnorePack) continue;
           if (!pack || U.dist(this.player, p) < U.dist(this.player, pack)) pack = p;
         }
       }
@@ -20822,32 +21403,107 @@
       }
       return false;
     },
-    autoEvadeDirection(goal) {
-      let threatened = this.autoProjectileDanger(this.player.x, this.player.y);
-      for (const z of this.dangerZones || []) {
-        if (this.autoZoneDanger(this.player.x, this.player.y, z)) { threatened = true; break; }
+    // 怪物起手预警：前摇结束时会被打中的位置。近战按突进落点与扇形判定，
+    // 远程读条按射线判定。普通小怪只在高威胁时才值得躲，避免近战为了闪避丢输出。
+    autoMonsterWindupDanger(x, y) {
+      const pad = this.player.r + 8;
+      const hpPct = this.player.hp / this.player.maxHp;
+      const rangedCls = this.autoIsRanged();
+      for (const m of this.monsters) {
+        if (m.dead) continue;
+        const a = m.action;
+        if (a && a.phase === 'windup') {
+          if (a.cast) {
+            const rx = x - m.x, ry = y - m.y;
+            const proj = rx * Math.cos(a.angle) + ry * Math.sin(a.angle);
+            if (proj < 0) continue;
+            const perp = Math.abs(rx * Math.sin(a.angle) - ry * Math.cos(a.angle));
+            if (perp < pad + 10) return true;
+            continue;
+          }
+          const mv = a.mv || {};
+          const dmgPct = m.dmg / Math.max(1, this.player.maxHp);
+          if (!rangedCls && !m.elite && !m.boss && dmgPct < 0.055 && hpPct > 0.42) continue;
+          let ox = m.x, oy = m.y;
+          if (mv.lunge) {
+            ox += Math.cos(a.angle) * mv.lunge * 0.9;
+            oy += Math.sin(a.angle) * mv.lunge * 0.9;
+          }
+          if (Math.hypot(x - ox, y - oy) > m.attackRange * (mv.reach || 1) + pad) continue;
+          let diff = Math.atan2(y - oy, x - ox) - a.angle;
+          diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+          if (Math.abs(diff) <= Math.max(0.62, (mv.arc || 1.5) / 2)) return true;
+        } else if (m.ranged && m.aggro && m.shootTimer != null && m.shootTimer < 0.24) {
+          // 远程怪即将开火：按当前朝向的射线预判
+          const rx = x - m.x, ry = y - m.y;
+          const proj = rx * Math.cos(U.angle(m, this.player)) + ry * Math.sin(U.angle(m, this.player));
+          if (proj < 0 || proj > 470) continue;
+          const perp = Math.abs(rx * Math.sin(U.angle(m, this.player)) - ry * Math.cos(U.angle(m, this.player)));
+          if (perp < pad + 8) return true;
+        }
       }
+      return false;
+    },
+    // 硬威胁：真正会掉血的预警（弹道 / 技能前摇 / 首领预警圈）
+    autoHardDangerAt(x, y) {
+      let danger = 0;
+      if (this.autoProjectileDanger(x, y)) danger += 12000;
+      if (this.autoMonsterWindupDanger(x, y)) danger += 15000;
+      for (const z of this.dangerZones || []) {
+        if (this.autoZoneDanger(x, y, z)) danger += z.high ? 26000 : 8000;
+      }
+      return danger;
+    },
+    autoEvadeDirection(goal) {
+      const here = this.autoHardDangerAt(this.player.x, this.player.y);
       const now = this.time || 0;
-      if (!threatened && this.autoEvade && this.autoEvade.until > now) return this.autoEvade.dir;
-      if (!threatened) {
+      if (!here) {
+        if (this.autoEvade && this.autoEvade.until > now) return this.autoEvade.dir;
         this.autoEvade = null;
         return null;
       }
       const base = goal ? Math.atan2(goal.y - this.player.y, goal.x - this.player.x) : this.player.facing;
+      const aw = this.arenaW || ARENA_W, ah = this.arenaH || ARENA_H;
       let best = null, bestScore = Infinity;
-      for (let i = 0; i < 16; i++) {
-        const a = base + Math.PI * 2 * i / 16;
-        const step = i % 2 ? 78 : 112;
+      for (let i = 0; i < 18; i++) {
+        const a = base + Math.PI * 2 * i / 18;
+        const step = i % 2 ? 92 : 128;
         const x = this.player.x + Math.cos(a) * step, y = this.player.y + Math.sin(a) * step;
+        const mx = this.player.x + Math.cos(a) * step * 0.55;
+        const my = this.player.y + Math.sin(a) * step * 0.55;
         if (this.circleWall(x, y, this.player.r) || this.circleProp(x, y, this.player.r)) continue;
-        let danger = this.autoProjectileDanger(x, y) ? 10000 : 0;
-        for (const z of this.dangerZones || []) if (this.autoZoneDanger(x, y, z)) danger += z.high ? 20000 : 5000;
-        if (danger >= bestScore) continue;
-        const progress = goal ? Math.hypot(goal.x - x, goal.y - y) * 0.08 : 0;
-        const score = danger + progress + (i % 2 ? 6 : 0);
+        // 终点与途中都要安全，避免直线穿过预警区
+        let score = this.autoHardDangerAt(x, y) * 1.2 + this.autoHardDangerAt(mx, my) * 0.8;
+        // 怪物拥挤度：别为了躲技能一头钻进怪堆
+        for (const m of this.monsters) {
+          if (m.dead) continue;
+          const md = Math.hypot(x - m.x, y - m.y);
+          const minD = m.r + this.player.r + 30;
+          if (md < minD) score += (minD - md) * (m.boss ? 14 : 6);
+        }
+        if (x < 70 || y < 70 || x > aw - 70 || y > ah - 70) score += 420;
+        if (goal) score += Math.hypot(goal.x - x, goal.y - y) * 0.05;
         if (score < bestScore) { bestScore = score; best = { x: Math.cos(a), y: Math.sin(a) }; }
       }
-      if (best) this.autoEvade = { dir: best, until: now + 0.26 };
+      if (best) this.autoEvade = { dir: best, until: now + 0.3 };
+      return best;
+    },
+    // 远离最近怪物与危险区的方向（保命位移技能用）
+    autoRetreatAngle() {
+      const aw = this.arenaW || ARENA_W, ah = this.arenaH || ARENA_H;
+      let best = null, bestScore = -Infinity;
+      for (let i = 0; i < 16; i++) {
+        const a = Math.PI * 2 * i / 16;
+        const x = this.player.x + Math.cos(a) * 150;
+        const y = this.player.y + Math.sin(a) * 150;
+        if (this.circleWall(x, y, this.player.r) || this.circleProp(x, y, this.player.r)) continue;
+        if (x < 70 || y < 70 || x > aw - 70 || y > ah - 70) continue;
+        let score = -this.autoHardDangerAt(x, y) * 0.02;
+        for (const m of this.monsters) {
+          if (!m.dead) score += Math.hypot(x - m.x, y - m.y) * 0.02;
+        }
+        if (score > bestScore) { bestScore = score; best = a; }
+      }
       return best;
     },
     doBasic(angle) {
@@ -20901,7 +21557,11 @@
 
       // 0 号位：普攻（移动中只打前方的目标，出手方向跟随移动方向）
       if (this.attackCd <= 0 && !this.whirl) {
-        const target = this.nearestMonsterInFront((this.basicSkill.range || 600) + 24);
+        let target = this.nearestMonsterInFront((this.basicSkill.range || 600) + 24);
+        // 远程职业后撤风筝时也允许回头输出，避免拉开距离的全程没有伤害
+        if (!target && this.autoMode && this.autoIsRanged()) {
+          target = this.nearestMonster((this.basicSkill.range || 600) + 24);
+        }
         if (target) {
           this.player.facing = U.angle(this.player, target);
           this.doBasic(this.player.facing);
@@ -20920,6 +21580,7 @@
       // 避免多个技能同时就绪时一起打出、动作互相打断（旋风刚起手就被冲锋盖掉等）
       if (this._skillCastAt != null && this.time - this._skillCastAt < 0.14) return;
       const overload = this.hasTalent('overload');
+      let pick = null;
       for (let i = 1; i < this.skillList.length; i++) {
         if (this.skillCd[i] > 0) continue;
         const sk = this.skillList[i];
@@ -20934,27 +21595,33 @@
         const angle = this.autoSkillAngle(sk);
         if (angle === null) continue;
 
-        // 奥能过载：每 3 次主动技能后的下一发翻倍
-        let buffed = false;
-        if (overload && this.overloadCount >= 3) {
-          buffed = true;
-          this.overloadCount = 0;
-        }
-
-        this.skillCd[i] = this.skillCooldown(sk);
-        // 冲锋连晕叠层：每次达标累计，最多把冲锋冷却缩短 5 秒
-        if (sk.id === 'charge' && this.chargeCdrBonus) {
-          this.skillCd[i] = Math.max(0.5, this.skillCd[i] - this.chargeCdrBonus);
-        }
-        if (cost > 0) this.player.stam = Math.max(0, this.player.stam - cost);
-        this._overloadCast = buffed;
-        this.performSkill(sk, this.char.skills[sk.id] || 1, 'auto', angle);
-        this._overloadCast = false;
-        if (overload && !buffed) this.overloadCount++;
-        // 本帧只出手一次，其余就绪技能等下一个衔接间隔再放
-        this._skillCastAt = this.time;
-        break;
+        // 智能择优：保命位移 > 命中更多的范围技能 > 单体输出
+        const score = this.autoSkillScore(sk, angle);
+        if (score <= 0) continue;
+        if (!pick || score > pick.score) pick = { i, sk, angle, score, cost };
       }
+      if (!pick) return;
+      const i = pick.i, sk = pick.sk, angle = pick.angle, cost = pick.cost;
+
+      // 奥能过载：每 3 次主动技能后的下一发翻倍
+      let buffed = false;
+      if (overload && this.overloadCount >= 3) {
+        buffed = true;
+        this.overloadCount = 0;
+      }
+
+      this.skillCd[i] = this.skillCooldown(sk);
+      // 冲锋连晕叠层：每次达标累计，最多把冲锋冷却缩短 5 秒
+      if (sk.id === 'charge' && this.chargeCdrBonus) {
+        this.skillCd[i] = Math.max(0.5, this.skillCd[i] - this.chargeCdrBonus);
+      }
+      if (cost > 0) this.player.stam = Math.max(0, this.player.stam - cost);
+      this._overloadCast = buffed;
+      this.performSkill(sk, this.char.skills[sk.id] || 1, 'auto', angle);
+      this._overloadCast = false;
+      if (overload && !buffed) this.overloadCount++;
+      // 本帧只出手一次，其余就绪技能等下一个衔接间隔再放
+      this._skillCastAt = this.time;
     },
 
     // 冲锋残影：把角色当前姿态画进离屏画布再整体染色，得到一张可复用的暖色剪影
@@ -21243,20 +21910,117 @@
           if (!near || U.dist(this.player, near) > sk.dist * 1.4 + near.r) return null;
           return U.angle(this.player, near);
         }
-        // 位移保命：血量偏低或近身敌人较多时闪避
+        // 位移保命：有弹道/预警威胁时优先脱离，其次才是血量低或近身敌人多
         const hpPct = this.player.hp / this.player.maxHp;
+        const threat = this.autoHardDangerAt(this.player.x, this.player.y);
         const close = this.monsters.filter(m => !m.dead && U.dist(this.player, m) < 150).length;
-        if (!near || (hpPct > 0.7 && close < 2)) return null;
-        if (U.dist(this.player, near) > 170) return null;
+        if (!threat && hpPct > 0.6 && close < 2) return null;
+        // 正在躲技能时沿着躲避方向翻滚/闪现，别往危险里冲
+        if (threat && this.autoEvade && this.autoEvade.until > (this.time || 0)) {
+          return Math.atan2(this.autoEvade.dir.y, this.autoEvade.dir.x);
+        }
         // 移动中沿移动方向翻滚，避免看起来是在往后退
         if (dir != null) return dir;
+        if (threat) {
+          const away = this.autoRetreatAngle();
+          if (away != null) return away;
+        }
+        if (!near) return null;
+        if (U.dist(this.player, near) > 170) return null;
         return U.angle(near, this.player);
       }
 
       if (!near) return null;
       const radius = sk.radius ? this.skillRadius(sk) : (sk.range || 0);
       if (U.dist(this.player, near) > radius + near.r) return null;
+      // 弹道 / 散射：朝能覆盖最多敌人的角度出手
+      if (sk.type === 'projectile' || sk.type === 'spread') {
+        const cluster = this.autoClusterAngle(sk);
+        if (cluster != null) return cluster;
+      }
       return U.angle(this.player, near);
+    },
+
+    // 在怪物方向里挑命中数最多的角度（多重箭 / 箭雨 / 贯穿弹道尤其受益）
+    autoClusterAngle(sk) {
+      let best = null, bestHits = 0;
+      const seen = [];
+      for (const m of this.monsters) {
+        if (m.dead) continue;
+        const a = U.angle(this.player, m);
+        let dup = false;
+        for (const s of seen) {
+          if (Math.abs(U.angleDiff(a, s)) < 0.08) { dup = true; break; }
+        }
+        if (dup) continue;
+        seen.push(a);
+        let hits = 0;
+        for (const o of this.monsters) {
+          if (!o.dead && this.autoSkillHitsMonster(o, sk, a)) hits++;
+        }
+        if (hits > bestHits) { bestHits = hits; best = a; }
+      }
+      return best;
+    },
+    autoSkillHitsMonster(m, sk, angle) {
+      const p = this.player;
+      const d = U.dist(p, m);
+      const rx = m.x - p.x, ry = m.y - p.y;
+      const cos = Math.cos(angle), sin = Math.sin(angle);
+      if (sk.type === 'melee') {
+        if (d > (sk.range || 84) + m.r) return false;
+        return Math.abs(U.angleDiff(U.angle(p, m), angle)) <= this.skillArc(sk) / 2 + Math.atan2(m.r, Math.max(1, d));
+      }
+      if (sk.type === 'nova' || sk.type === 'aoeSelf') {
+        return d <= this.skillRadius(sk) + m.r;
+      }
+      if (sk.type === 'dash') {
+        if (!sk.damageOnPath) return false;
+        const len = this.skillDist(sk) || sk.dist || 200;
+        const proj = rx * cos + ry * sin;
+        if (proj < -m.r || proj > len + m.r) return false;
+        return Math.abs(rx * sin - ry * cos) <= 30 + m.r;
+      }
+      if (sk.type === 'projectile') {
+        if (d > (sk.range || 500) + m.r) return false;
+        const proj = rx * cos + ry * sin;
+        if (proj < 0) return false;
+        return Math.abs(rx * sin - ry * cos) <= 26 + m.r;
+      }
+      if (sk.type === 'spread') {
+        if (d > (sk.range || 500) + m.r) return false;
+        const n = this.skillCount(sk);
+        const cone = n > 1 ? (sk.spread || 0.5) * (n - 1) / 2 : 0;
+        return Math.abs(U.angleDiff(U.angle(p, m), angle)) <= cone + 0.18 + Math.atan2(m.r, Math.max(1, d));
+      }
+      return false;
+    },
+    autoSkillScore(sk, angle) {
+      // 保命位移优先级最高：被预警锁定或残血时立刻脱离
+      if (sk.type === 'dash' && !sk.damageOnPath) {
+        const threat = this.autoHardDangerAt(this.player.x, this.player.y);
+        const hpPct = this.player.hp / this.player.maxHp;
+        if (threat) return 1200 + (1 - hpPct) * 600;
+        if (hpPct < 0.55) return 300;
+        return 0;
+      }
+      let hits = 0, bossHit = false;
+      for (const m of this.monsters) {
+        if (m.dead) continue;
+        if (!this.autoSkillHitsMonster(m, sk, angle)) continue;
+        hits++;
+        if (m.boss) bossHit = true;
+      }
+      if (!hits) return 0;
+      const lv = this.char.skills[sk.id] || 1;
+      const mult = sk.mult ? sk.mult(lv) : 1;
+      let score = hits * mult * 10;
+      // 多目标时范围技能更值钱；命中首领额外加分
+      if (hits > 1) score += (hits - 1) * 12;
+      if (bossHit) score += 40;
+      if (sk.type === 'dash') score *= 1.15;
+      score -= (sk.energy || 0) * 0.15;
+      return score;
     },
 
     performSkill(sk, lv, source, angle) {
@@ -21656,16 +22420,17 @@
 
   Object.assign(DG.scenes.dungeon.prototype, {
   updateDrops(dt) {
-    const list = [];
-    for (const d of this.drops) {
+    // 原地压缩：避免每帧重建掉落数组
+    const list = this.drops;
+    let n = 0;
+    for (let i = 0; i < list.length; i++) {
+      const d = list[i];
       d.t += dt;
       const dist = Math.hypot(this.player.x - d.x, this.player.y - d.y);
-      if (dist < 44 + this.player.r) {
-        if (this.pickup(d)) continue;
-      }
-      list.push(d);
+      if (dist < 44 + this.player.r && this.pickup(d)) continue;
+      list[n++] = d;
     }
-    this.drops = list;
+    list.length = n;
   },
   pickup(d) {
     if (d.kind === 'item') {
@@ -22231,7 +22996,9 @@
     const AD = DG.art && DG.art.terrainDecor;
     const art = !!(AD && AD.ready());
     const v = art ? this.viewRect(360) : null;
-    const list = [];
+    // 复用同一个数组：每帧两次调用不再各自分配
+    const list = this._bandList || (this._bandList = []);
+    list.length = 0;
     if (art) {
       for (const p of this.sceneProps || []) {
         if (p.destroyed || p.zone !== 'inside' || (p.layer || 'prop') !== 'prop') continue;
@@ -22246,16 +23013,17 @@
       if (t.y <= minY || t.y > maxY) continue;
       list.push({ tornado: t, y: t.y });
     }
-    if (!list.length) { this.drawMonsters(ctx, maxY, minY); return; }
+    if (!list.length) { this.drawMonsters(ctx, maxY, minY, v); return; }
     list.sort((a, b) => a.y - b.y);
     let from = minY;
-    for (const it of list) {
-      this.drawMonsters(ctx, it.y, from);
+    for (let i = 0; i < list.length; i++) {
+      const it = list[i];
+      this.drawMonsters(ctx, it.y, from, v);
       if (it.tornado) this.drawTornado(ctx, it.tornado);
       else AD.draw(ctx, it);
       from = it.y;
     }
-    this.drawMonsters(ctx, maxY, from);
+    this.drawMonsters(ctx, maxY, from, v);
   },
   drawSceneProps(ctx, layer, sub) {
     const AD = DG.art && DG.art.terrainDecor;
@@ -22412,13 +23180,21 @@
     list.sort((a, b) => a.y - b.y);
   },
   // maxY / minY 把列表拆成玩家身后（y<=maxY）与身前（y>minY）两层
-  drawMonsters(ctx, maxY, minY) {
-    const v = this.viewRect(220);
+  // v 由调用方传入复用，避免每次绘制都新建可视矩形对象
+  drawMonsters(ctx, maxY, minY, v) {
+    const view = v || this.viewRect(220);
+    const sorted = !!this._drawMonsters;
     const list = this._drawMonsters || this.monsters;
-    for (const m of list) {
+    for (let i = 0; i < list.length; i++) {
+      const m = list[i];
       if (m.dead) continue;
-      if (m.y > maxY || m.y <= minY) continue;
-      if (m.x < v.l || m.x > v.r || m.y < v.t || m.y > v.b) continue;
+      if (m.y > maxY) {
+        // 排序后的列表里后面只会更靠前，可直接结束本轮
+        if (sorted) break;
+        continue;
+      }
+      if (m.y <= minY) continue;
+      if (m.x < view.l || m.x > view.r || m.y < view.t || m.y > view.b) continue;
       const artBoss = !!(m.boss && m.art && DG.art.bosses);
       const artMob = !!(m.art && DG.art.monsters && DG.art.monsters.has(m.art));
       ctx.save();
@@ -23578,8 +24354,11 @@
       const dpr = window.devicePixelRatio || 1;
       // 手机端封顶 1.25 倍：810×1680 逻辑画布放大后约 1012×2100，
       // 已高于多数手机的实际显示分辨率，再往上只是白白多画像素、拖低帧率
-      const coarse = !!(window.matchMedia && window.matchMedia('(pointer:coarse)').matches);
-      const cap = coarse ? 1.25 : 2;
+      // 指针类型不会在运行中变化，缓存一次即可，避免反复创建 MediaQueryList
+      if (this._coarse == null) {
+        this._coarse = !!(window.matchMedia && window.matchMedia('(pointer:coarse)').matches);
+      }
+      const cap = this._coarse ? 1.25 : 2;
       return Math.max(1, Math.min(cap, fit * dpr));
     },
 
@@ -23877,29 +24656,13 @@
       }
     },
 
-    // 自适应降档：战斗中连续 1.5 秒平均帧时超过 24ms（约 42fps 以下），
-    // 就把渲染倍率下调 0.1，最低回到 1.0。只降不升，避免临界点反复切换导致画面忽清忽糊。
-    trackPerf(dt) {
-      this._pfN = (this._pfN || 0) + 1;
-      this._pfSum = (this._pfSum || 0) + dt;
-      if (this._pfN < 90) return;
-      const avg = this._pfSum / this._pfN;
-      this._pfN = 0;
-      this._pfSum = 0;
-      if (avg > 0.024 && this.renderScale > 1.01) {
-        this.setRenderScale(Math.max(1, this.renderScale - 0.1));
-      }
-    },
-
+    // 自适应画质统一由副本场景的 tickRenderQuality 负责：
+    // 两套降档逻辑并行会互相拉扯，导致画布反复重建、帧率更低。
     loop(ts) {
       const dt = Math.min(0.05, this.lastTs ? (ts - this.lastTs) / 1000 : 0);
       this.lastTs = ts;
       if (this.dungeon && !this.dungeon.finished) {
         this.dungeon.frame(dt);
-        this.trackPerf(dt);
-      } else {
-        this._pfN = 0;
-        this._pfSum = 0;
       }
       requestAnimationFrame((t) => this.loop(t));
     }

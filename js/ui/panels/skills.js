@@ -236,6 +236,7 @@
     const canvas = U.el('div', 'sk-canvas');
     screen.appendChild(canvas);
     DG.game.ui.appendChild(screen);
+    if (DG.audio) DG.audio.play('uiOpen', { vol: 0.5, gap: 0.12 });
     // 打开时清掉上一场景残留的提示；提示条移到标题与分组条之间的空白处，
     // 避免激活反馈压住技能树节点。内联样式可覆盖主城 / 战斗各自的提示位置
     const toastWrap = document.getElementById('toast-wrap');
@@ -271,6 +272,7 @@
     }
 
     function close() {
+      if (DG.audio) DG.audio.play('uiClose', { vol: 0.45, gap: 0.12 });
       document.removeEventListener('keydown', onKey);
       window.removeEventListener('resize', layout);
       if (screen.parentNode) screen.remove();

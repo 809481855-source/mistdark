@@ -4,6 +4,36 @@
   const U = DG.util;
   const { W, H, ARENA_W, ARENA_H } = DG.scenes.dungeon.size;
 
+  // 怪物分离网格：常量与邻居偏移表放在模块级，主循环里不再每帧新建
+  const SEP_CELL = 112;
+  const SEP_BIAS = 1024;
+  const SEP_STRIDE = 4096;
+  const SEP_NEAR = [[0, 0], [1, 0], [0, 1], [1, 1], [-1, 1]];
+
+  // 分离两个重叠怪物：抽到模块级，避免每帧生成闭包
+  function separateMonsters(self, a, b, ai, bi) {
+    if (a.dead || b.dead) return;
+    let dx = b.x - a.x, dy = b.y - a.y;
+    const minD = a.r + b.r + 10;
+    if (Math.abs(dx) >= minD || Math.abs(dy) >= minD) return;
+    let dist = Math.hypot(dx, dy);
+    if (dist < 0.01) {
+      const angle = ((ai * 17 + bi * 31) % 16) * Math.PI / 8;
+      dx = Math.cos(angle);
+      dy = Math.sin(angle);
+      dist = 1;
+    }
+    if (dist >= minD) return;
+    const gap = minD - dist;
+    const ux = dx / dist, uy = dy / dist;
+    if (a.boss && !b.boss) self.nudgeMonster(b, ux * gap, uy * gap);
+    else if (b.boss && !a.boss) self.nudgeMonster(a, -ux * gap, -uy * gap);
+    else if (!a.boss && !b.boss) {
+      self.nudgeMonster(a, -ux * gap * 0.5, -uy * gap * 0.5);
+      self.nudgeMonster(b, ux * gap * 0.5, uy * gap * 0.5);
+    }
+  }
+
   // 换色变体的专属出手特效（其余怪继续用 peaArc）
   const STRIKE_FX = {
     frostwolf: 'frostSlash',
@@ -249,6 +279,19 @@
       this.player.invuln = Math.max(this.player.invuln, 0.8);
       this.addRing(this.player.x, this.player.y, 16, 80, '#ffd479', 0.5);
       this.addFloater(this.player.x, this.player.y - 44, '不屈', '#ffd479', 26);
+    }
+
+    // 自动战斗保险：濒死时触发「绝境反击」，回血并获得短暂无敌，
+    // 避免自动战斗因为一次走位失误直接判负（手动操作不生效）
+    if (this.player.hp <= 0 && this.autoMode && (this.autoRescueCd || 0) <= 0) {
+      this.player.hp = Math.round(this.player.maxHp * 0.35);
+      this.player.invuln = Math.max(this.player.invuln, 1.3);
+      this.autoRescueCd = 40;
+      this.talentTimers.postHurt = Math.max(this.talentTimers.postHurt || 0, 2);
+      this.addRing(this.player.x, this.player.y, 18, 104, '#ffd479', 0.6);
+      this.addBurst(this.player.x, this.player.y, '#ffd479', 16);
+      this.addFloater(this.player.x, this.player.y - 46, '绝境反击', '#ffd479', 26);
+      this.announce('自动战斗 · 绝境反击', 1400);
     }
 
     if (this.player.hp <= 0) {
@@ -741,54 +784,43 @@
       }
     }
 
-    const cell = 112;
+    // 分离网格：数字键 + 复用桶（只改标记不新建数组），避免每帧产生大量短命对象
     const grid = this._separationGrid || (this._separationGrid = new Map());
-    const near = [[0, 0], [1, 0], [0, 1], [1, 1], [-1, 1]];
-    const separate = (a, b, ai, bi) => {
-      if (a.dead || b.dead) return;
-      let dx = b.x - a.x, dy = b.y - a.y;
-      const minD = a.r + b.r + 10;
-      if (Math.abs(dx) >= minD || Math.abs(dy) >= minD) return;
-      let dist = Math.hypot(dx, dy);
-      if (dist < 0.01) {
-        const angle = ((ai * 17 + bi * 31) % 16) * Math.PI / 8;
-        dx = Math.cos(angle);
-        dy = Math.sin(angle);
-        dist = 1;
-      }
-      if (dist >= minD) return;
-      const gap = minD - dist;
-      const ux = dx / dist, uy = dy / dist;
-      if (a.boss && !b.boss) this.nudgeMonster(b, ux * gap, uy * gap);
-      else if (b.boss && !a.boss) this.nudgeMonster(a, -ux * gap, -uy * gap);
-      else if (!a.boss && !b.boss) {
-        this.nudgeMonster(a, -ux * gap * 0.5, -uy * gap * 0.5);
-        this.nudgeMonster(b, ux * gap * 0.5, uy * gap * 0.5);
-      }
-    };
+    const monsters = this.monsters;
     for (let pass = 0; pass < 2; pass++) {
-      grid.clear();
-      for (let i = 0; i < this.monsters.length; i++) {
-        const m = this.monsters[i];
+      const stamp = (this._sepStamp = (this._sepStamp || 0) + 1);
+      for (let i = 0; i < monsters.length; i++) {
+        const m = monsters[i];
         if (m.dead) continue;
-        const cx = Math.floor(m.x / cell), cy = Math.floor(m.y / cell);
-        const key = cx + ':' + cy;
+        const key = (Math.floor(m.x / SEP_CELL) + SEP_BIAS) * SEP_STRIDE +
+          (Math.floor(m.y / SEP_CELL) + SEP_BIAS);
         let bucket = grid.get(key);
-        if (!bucket) { bucket = []; grid.set(key, bucket); }
-        bucket.push(i);
+        if (!bucket) {
+          bucket = { stamp: stamp, items: [] };
+          grid.set(key, bucket);
+        } else if (bucket.stamp !== stamp) {
+          bucket.stamp = stamp;
+          bucket.items.length = 0;
+        }
+        bucket.items.push(i);
       }
-      for (const [key, bucket] of grid) {
-        const p = key.indexOf(':');
-        const cx = +key.slice(0, p), cy = +key.slice(p + 1);
-        for (let n = 0; n < near.length; n++) {
-          const dx = near[n][0], dy = near[n][1];
-          const other = grid.get((cx + dx) + ':' + (cy + dy));
-          if (!other) continue;
-          for (let i = 0; i < bucket.length; i++) {
+      for (const entry of grid) {
+        const bucket = entry[1];
+        // 上一帧遗留、本帧未再使用的格子直接跳过
+        if (bucket.stamp !== stamp) continue;
+        const key = entry[0];
+        const cx = Math.floor(key / SEP_STRIDE) - SEP_BIAS;
+        const cy = (key % SEP_STRIDE) - SEP_BIAS;
+        for (let n = 0; n < SEP_NEAR.length; n++) {
+          const dx = SEP_NEAR[n][0], dy = SEP_NEAR[n][1];
+          const other = grid.get((cx + dx + SEP_BIAS) * SEP_STRIDE + (cy + dy + SEP_BIAS));
+          if (!other || other.stamp !== stamp) continue;
+          const items = bucket.items, others = other.items;
+          for (let i = 0; i < items.length; i++) {
             const start = dx || dy ? 0 : i + 1;
-            for (let j = start; j < other.length; j++) {
-              const ai = bucket[i], bi = other[j];
-              if (ai !== bi) separate(this.monsters[ai], this.monsters[bi], ai, bi);
+            for (let j = start; j < others.length; j++) {
+              const ai = items[i], bi = others[j];
+              if (ai !== bi) separateMonsters(this, monsters[ai], monsters[bi], ai, bi);
             }
           }
         }

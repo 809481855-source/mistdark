@@ -6,7 +6,8 @@
   // 已完成拆件重做的首领：投放时优先于普通首领出场
   const REWORKED_BOSSES = [
     'goatbrute', 'reaper', 'croc',
-    'mushroomgun', 'golem', 'eyehorror', 'mawflowerking', 'cauldron'
+    'mushroomgun', 'golem', 'eyehorror', 'mawflowerking', 'cauldron',
+    'crystalcrab', 'pinkdemon', 'pumpkinlord', 'octoking', 'mummyking'
   ];
 
   Object.assign(DG.scenes.dungeon.prototype, {
@@ -573,14 +574,18 @@
     const CAP = 44;
     for (const p of this.chunkPacks) {
       if (p.spawned) continue;
-      if (walked < SAFE_LEFT) continue;
-      if (U.dist(p, this.player) > NEAR) continue;
+      if (walked < SAFE_LEFT && !this.autoMode) continue;
+      // 同一个怪群到玩家的距离一帧只算一次，下面激活 / 贴脸 / 密室判定共用
+      const pd = U.dist(p, this.player);
+      if (pd > NEAR) continue;
       // 不贴脸刷怪：玩家就站在怪群位置上时先不激活，等拉开距离再说
-      if (U.dist(p, this.player) < 260) continue;
+      if (pd < 260) continue;
       const pch = this.chunks[p.chunk];
-      if (!pch || Math.abs(pch.col - curCh.col) + Math.abs(pch.row - curCh.row) > 1) continue;
+      // 自动战斗需要自己找怪：距离已足够近时不再限制相邻区块，
+      // 否则 AI 会在“隔一个区块”的怪群前反复踱步、怪永远不激活
+      if (!this.autoMode && (!pch || Math.abs(pch.col - curCh.col) + Math.abs(pch.row - curCh.row) > 1)) continue;
       // 密室守卫：必须走到门口才惊醒，避免隔墙提前拉怪
-      if (p.secret && U.dist(this.player, p) > 380) continue;
+      if (p.secret && pd > 380) continue;
       if (alive >= CAP) break;
       p.spawned = true;
       let slots = CAP - alive;
@@ -916,9 +921,11 @@
     const pool = (this.def.bossPool && this.def.bossPool.length)
       ? this.def.bossPool
       : [this.def.bossId];
-    // 已拆件重做的首领优先投放：首领池中存在它们时大概率直接选中
-    const reworked = pool.filter((id) => REWORKED_BOSSES.indexOf(id) >= 0);
-    const bossId = (reworked.length && Math.random() < 0.85)
+    // 已拆件重做的首领优先投放：本关池内有它们就从池内挑，
+    // 池内没有则从全部重做首领中挑，确保每个关卡都能优先见到重做后的首领
+    let reworked = pool.filter((id) => REWORKED_BOSSES.indexOf(id) >= 0);
+    if (!reworked.length) reworked = REWORKED_BOSSES;
+    const bossId = Math.random() < 0.85
       ? U.pick(reworked)
       : (this.def.bossId && Math.random() < 0.8 ? this.def.bossId : U.pick(pool));
     const boss = this.spawnMonster(bossId, pos.x, pos.y, true);

@@ -36,8 +36,11 @@
     // 视觉粒子只影响表现：超过上限时丢弃最旧的一批，防止长时间战斗后线性变慢
     const MAX_EFFECTS = 420;
     if (this.effects.length > MAX_EFFECTS) this.effects.splice(0, this.effects.length - MAX_EFFECTS);
-    const list = [];
-    for (const e of this.effects) {
+    // 原地压缩：每帧新建数组会在长时间战斗里持续制造垃圾，交给 GC 反而更卡
+    const list = this.effects;
+    let n = 0;
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
       e.life -= dt;
       if (e.kind === 'spark') {
         e.x += e.vx * dt;
@@ -60,21 +63,23 @@
         e.vx *= 0.99;
         e.rot += e.vr * dt;
       }
-      if (e.life > 0) list.push(e);
+      if (e.life > 0) list[n++] = e;
     }
-    this.effects = list;
+    list.length = n;
   },
   updateFloaters(dt) {
     const MAX_FLOATERS = 80;
     if (this.floaters.length > MAX_FLOATERS) this.floaters.splice(0, this.floaters.length - MAX_FLOATERS);
-    const list = [];
-    for (const f of this.floaters) {
+    const list = this.floaters;
+    let n = 0;
+    for (let i = 0; i < list.length; i++) {
+      const f = list[i];
       f.life -= dt;
       f.y += f.vy * dt;
       f.vy *= 0.97;
-      if (f.life > 0) list.push(f);
+      if (f.life > 0) list[n++] = f;
     }
-    this.floaters = list;
+    list.length = n;
   }
   });
 })();

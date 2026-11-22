@@ -4,9 +4,21 @@
   const U = DG.util;
   DG.scenes = DG.scenes || {};
 
+  // 选角阶段预热主城地图（570KB）：首次进镇时贴图已下载并解码，
+  // 不会在场景切换瞬间才开始取图，避免进镇第一秒掉帧
+  let townMapWarmed = false;
+  function warmTownMap() {
+    if (townMapWarmed) return;
+    townMapWarmed = true;
+    const img = new Image();
+    img.src = 'assets/town-map.jpg';
+    if (img.decode) img.decode().catch(() => {});
+  }
+
   DG.scenes.character = {
     render(root) {
       if (DG.audio) DG.audio.playBgm('login');
+      warmTownMap();
       const acc = DG.game.account();
       const chars = acc.characters;
       const occupied = chars.map((c, i) => (c ? i : -1)).filter(i => i >= 0);

@@ -16,10 +16,36 @@
       const target = goal.monster;
       if (target) {
         const dist = U.dist(this.player, target);
+        // 远程职业保持风筝距离：贴太近就后撤，太远再压上，距离舒适时站定输出
+        if (this.autoIsRanged()) {
+          const keep = Math.max(210, Math.min(340, (this.basicSkill.range || 320) * 0.46));
+          const attackRange = Math.max(300, Math.min(540, (this.basicSkill.range || 320) * 0.86));
+          if (dist < keep - 40) this.autoKiteHeld = true;
+          else if (dist > keep + 120) this.autoKiteHeld = false;
+          const hpPct = this.player.hp / this.player.maxHp;
+          let closeCount = 0;
+          for (const m of this.monsters) {
+            if (!m.dead && U.dist(this.player, m) < 170) closeCount++;
+          }
+          // 满血面对普通小怪不必一直后撤：站桩输出更快；
+          // 掉血、被围、精英/首领近身或脚下有预警时才拉开距离
+          const needKite = this.autoKiteHeld && (hpPct < 0.6 || closeCount >= 3 || target.boss || target.elite ||
+            this.autoHardDangerAt(this.player.x, this.player.y) > 0);
+          if (needKite || (hpPct < 0.4 && dist < 200 + target.r)) {
+            const dir = this.autoKiteDirection(target);
+            if (dir) return this.autoCommitMove(this.autoSmoothDirection(dir, 0.4), goal);
+          }
+          // 已在射程内且视线畅通：站定输出；否则继续走下面的寻路绕过去
+          if (dist <= attackRange && this.autoLineClear(target)) {
+            return this.autoCommitMove(this.autoSmoothDirection({ x: 0, y: 0 }, 0.3), goal);
+          }
+        }
+        // 近战：进入攻击距离后停手，让普攻自动出手（被墙挡住时继续绕路）
         const range = Math.max(92, Math.min(220, (this.basicSkill.range || 120) * 0.72));
         const stop = range + target.r + this.player.r;
-        if (dist <= stop) this.autoHoldingRange = true;
-        if (dist > stop + 34) this.autoHoldingRange = false;
+        const los = this.autoLineClear(target);
+        if (dist <= stop && los) this.autoHoldingRange = true;
+        else if (dist > stop + 34 || !los) this.autoHoldingRange = false;
         if (this.autoHoldingRange) return this.autoCommitMove(this.autoSmoothDirection({ x: 0, y: 0 }, 0.28), goal);
       }
       let dir = this.autoDirectDirection(goal) || this.autoFlowDirection(this.player.x, this.player.y, goal) || { x: 0, y: 0 };
@@ -36,7 +62,43 @@
           }
         }
       }
+      // 完全走不动：说明当前目标隔着墙或无法寻路，临时放弃并去激活别的怪群
+      if (!dir.x && !dir.y) {
+        if (!this.autoStuckAt) this.autoStuckAt = now;
+        else if (now - this.autoStuckAt > 0.7) {
+          this.autoGiveUpGoal(now);
+          return { x: 0, y: 0 };
+        }
+      } else if (this.autoBlocked > 1.2) {
+        // 一直在走却始终被挡：同样视为不可达
+        this.autoGiveUpGoal(now);
+        return { x: 0, y: 0 };
+      } else {
+        this.autoStuckAt = 0;
+      }
       return this.autoCommitMove(this.autoSmoothDirection(dir, 0.2), goal);
+    },
+    // 放弃当前不可达目标：把怪/怪群拉黑一段时间，并改为优先探索
+    autoGiveUpGoal(now) {
+      const goal = this.autoGoal;
+      if (goal && goal.monster) {
+        this.autoIgnore = goal.monster;
+        this.autoIgnoreUntil = now + 10;
+      } else if (goal && goal.kind === 'pack' && this.autoPack) {
+        this.autoIgnorePack = this.autoPack;
+        this.autoIgnorePackUntil = now + 10;
+      }
+      this.autoExploreUntil = now + 6;
+      this.autoTarget = null;
+      this.autoPack = null;
+      this.autoGoal = null;
+      this.autoDecision = null;
+      this.autoEvade = null;
+      this.autoSteer = null;
+      this.autoHoldingRange = false;
+      this.autoKiteHeld = false;
+      this.autoStuckAt = 0;
+      this.autoBlocked = 0;
     },
     autoCommitMove(dir, goal) {
       this.autoDecision = { dir, goal, until: (this.time || 0) + 0.1 };
@@ -67,40 +129,131 @@
       this.autoSteer = len < 0.08 ? { x: 0, y: 0 } : { x, y };
       return len < 0.08 ? this.autoSteer : { x: x / len, y: y / len };
     },
+    // 远程职业：普攻为弹道/散射，需要保持距离而不是贴脸
+    autoIsRanged() {
+      const type = this.basicSkill && this.basicSkill.type;
+      return type === 'projectile' || type === 'spread';
+    },
+    // 残血时寻找最近的恢复球（拾取即回 20% 最大生命）
+    autoHealOrbTarget() {
+      const hpPct = this.player.hp / this.player.maxHp;
+      if (hpPct > 0.55) return null;
+      const reach = hpPct < 0.3 ? 950 : 620;
+      let best = null, bestD = reach;
+      for (const d of this.drops || []) {
+        if (d.kind !== 'orb') continue;
+        const dist = U.dist(this.player, d);
+        if (dist >= bestD) continue;
+        // 只追直线可达或很近的球，避免为了捡球绕远路被围死
+        if (dist > 220 && !this.autoDirectDirection(d)) continue;
+        bestD = dist;
+        best = d;
+      }
+      return best;
+    },
+    autoStepFree(x, y, dist) {
+      const steps = Math.ceil(dist / 24);
+      for (let i = 1; i <= steps; i++) {
+        const t = dist * i / steps;
+        const px = this.player.x + x * t, py = this.player.y + y * t;
+        if (this.circleWall(px, py, this.player.r) || this.circleProp(px, py, this.player.r)) return false;
+      }
+      return true;
+    },
+    // 视线检测：隔着墙时不要站桩输出/挥空，先绕过去
+    autoLineClear(target) {
+      if (!target) return false;
+      const dx = target.x - this.player.x, dy = target.y - this.player.y;
+      const d = Math.hypot(dx, dy);
+      if (d < 32) return true;
+      const steps = Math.ceil(d / 24);
+      for (let i = 1; i < steps; i++) {
+        const t = d * i / steps;
+        if (this.circleWall(this.player.x + dx / d * t, this.player.y + dy / d * t, 3)) return false;
+      }
+      return true;
+    },
+    // 风筝走位：远离目标为主，叠加侧向偏移，撞墙时换另一侧
+    autoKiteDirection(target) {
+      const dx = this.player.x - target.x, dy = this.player.y - target.y;
+      const len = Math.hypot(dx, dy) || 1;
+      const ax = dx / len, ay = dy / len;
+      if (!this.autoKiteSide) this.autoKiteSide = U.chance(0.5) ? 1 : -1;
+      const side = this.autoKiteSide;
+      const tries = [
+        [ax * 0.84 - ay * 0.46 * side, ay * 0.84 + ax * 0.46 * side],
+        [ax * 0.84 + ay * 0.46 * side, ay * 0.84 - ax * 0.46 * side],
+        [ax, ay]
+      ];
+      for (const v of tries) {
+        const l = Math.hypot(v[0], v[1]) || 1;
+        const x = v[0] / l, y = v[1] / l;
+        if (this.autoStepFree(x, y, 76)) return { x, y };
+      }
+      // 后撤方向被墙封死：换一侧绕行，下一帧再试
+      this.autoKiteSide = -side;
+      return null;
+    },
     autoGoalTarget() {
+      const now = this.time || 0;
+      // 目标临时不可达的黑名单，过期后重新尝试
+      if (this.autoIgnore && this.autoIgnoreUntil < now) this.autoIgnore = null;
+      if (this.autoIgnorePack && this.autoIgnorePackUntil < now) this.autoIgnorePack = null;
+      // 残血先捡恢复球：自动战斗优先保命，再继续输出
+      const orb = this.autoHealOrbTarget();
+      if (orb) {
+        this.autoTarget = null;
+        this.autoPack = null;
+        this.autoGoal = { x: orb.x, y: orb.y, kind: 'orb', orb };
+        return this.autoGoal;
+      }
       const cur = this.currentChunk();
       const curCh = this.chunks[cur];
-      let best = null, bestD = Infinity;
-      for (const m of this.monsters) {
-        if (m.dead) continue;
-        const d = U.dist(this.player, m);
-        if (m.boss) {
-          this.autoTarget = m;
-          this.autoPack = null;
-          return { x: m.x, y: m.y, monster: m, kind: 'boss' };
+      // 刚刚卡死过：先去激活新的怪群，避免一直死磕同一个不可达的怪
+      const exploring = now < (this.autoExploreUntil || 0);
+      // 还有没激活的怪群时，只打当前/相邻区块的怪；
+      // 怪群全部激活后，剩下的怪无论多远都要清掉，否则无法触发首领
+      const pendingPacks = (this.chunkPacks || []).some(p => !p.spawned && p !== this.autoIgnorePack);
+      let best = null, bestScore = Infinity, bestDist = Infinity;
+      if (!exploring) {
+        for (const m of this.monsters) {
+          if (m.dead || m === this.autoIgnore) continue;
+          const d = U.dist(this.player, m);
+          if (m.boss) {
+            this.autoTarget = m;
+            this.autoPack = null;
+            return { x: m.x, y: m.y, monster: m, kind: 'boss' };
+          }
+          const mch = m.chunkIndex != null ? this.chunks[m.chunkIndex] : null;
+          if (pendingPacks && mch && curCh && Math.abs(mch.col - curCh.col) + Math.abs(mch.row - curCh.row) > 1 && !m.aggro) continue;
+          // 优先级：距离为主，残血目标（配合处决）、远程与精英更值得先处理
+          let score = d - (1 - m.hp / m.maxHp) * 70;
+          if (m.ranged) score -= 30;
+          if (m.elite) score -= 24;
+          if (score < bestScore) { best = m; bestScore = score; bestDist = d; }
         }
-        const mch = m.chunkIndex != null ? this.chunks[m.chunkIndex] : null;
-        if (mch && curCh && Math.abs(mch.col - curCh.col) + Math.abs(mch.row - curCh.row) > 1 && !m.aggro) continue;
-        if (d < bestD) { best = m; bestD = d; }
       }
       const locked = this.autoTarget;
-      if (locked && !locked.dead && this.monsters.indexOf(locked) >= 0) {
+      if (!exploring && locked && locked !== this.autoIgnore && !locked.dead && this.monsters.indexOf(locked) >= 0) {
         const lockedD = U.dist(this.player, locked);
-        if (!best || lockedD <= bestD + 120) {
-          this.autoGoal = { x: locked.x, y: locked.y, kind: 'monster' };
-          return { x: locked.x, y: locked.y, monster: locked, kind: 'monster' };
+        if (!best || lockedD <= bestDist + 120) {
+          // 贴合到最近的可行走点，防止怪物被挤进墙里导致寻路目标无效
+          const gp = this.nearestFloorPoint(locked.x, locked.y, 2) || locked;
+          this.autoGoal = { x: gp.x, y: gp.y, kind: 'monster', monster: locked };
+          return { x: gp.x, y: gp.y, monster: locked, kind: 'monster' };
         }
       }
       if (best) {
         this.autoTarget = best;
         this.autoPack = null;
-        this.autoGoal = { x: best.x, y: best.y, kind: 'monster' };
-        return { x: best.x, y: best.y, monster: best, kind: 'monster' };
+        const gp = this.nearestFloorPoint(best.x, best.y, 2) || best;
+        this.autoGoal = { x: gp.x, y: gp.y, kind: 'monster', monster: best };
+        return { x: gp.x, y: gp.y, monster: best, kind: 'monster' };
       }
-      let pack = this.autoPack && !this.autoPack.spawned ? this.autoPack : null;
+      let pack = this.autoPack && !this.autoPack.spawned && this.autoPack !== this.autoIgnorePack ? this.autoPack : null;
       if (!pack) {
         for (const p of this.chunkPacks || []) {
-          if (p.spawned) continue;
+          if (p.spawned || p === this.autoIgnorePack) continue;
           if (!pack || U.dist(this.player, p) < U.dist(this.player, pack)) pack = p;
         }
       }
@@ -149,32 +302,107 @@
       }
       return false;
     },
-    autoEvadeDirection(goal) {
-      let threatened = this.autoProjectileDanger(this.player.x, this.player.y);
-      for (const z of this.dangerZones || []) {
-        if (this.autoZoneDanger(this.player.x, this.player.y, z)) { threatened = true; break; }
+    // 怪物起手预警：前摇结束时会被打中的位置。近战按突进落点与扇形判定，
+    // 远程读条按射线判定。普通小怪只在高威胁时才值得躲，避免近战为了闪避丢输出。
+    autoMonsterWindupDanger(x, y) {
+      const pad = this.player.r + 8;
+      const hpPct = this.player.hp / this.player.maxHp;
+      const rangedCls = this.autoIsRanged();
+      for (const m of this.monsters) {
+        if (m.dead) continue;
+        const a = m.action;
+        if (a && a.phase === 'windup') {
+          if (a.cast) {
+            const rx = x - m.x, ry = y - m.y;
+            const proj = rx * Math.cos(a.angle) + ry * Math.sin(a.angle);
+            if (proj < 0) continue;
+            const perp = Math.abs(rx * Math.sin(a.angle) - ry * Math.cos(a.angle));
+            if (perp < pad + 10) return true;
+            continue;
+          }
+          const mv = a.mv || {};
+          const dmgPct = m.dmg / Math.max(1, this.player.maxHp);
+          if (!rangedCls && !m.elite && !m.boss && dmgPct < 0.055 && hpPct > 0.42) continue;
+          let ox = m.x, oy = m.y;
+          if (mv.lunge) {
+            ox += Math.cos(a.angle) * mv.lunge * 0.9;
+            oy += Math.sin(a.angle) * mv.lunge * 0.9;
+          }
+          if (Math.hypot(x - ox, y - oy) > m.attackRange * (mv.reach || 1) + pad) continue;
+          let diff = Math.atan2(y - oy, x - ox) - a.angle;
+          diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+          if (Math.abs(diff) <= Math.max(0.62, (mv.arc || 1.5) / 2)) return true;
+        } else if (m.ranged && m.aggro && m.shootTimer != null && m.shootTimer < 0.24) {
+          // 远程怪即将开火：按当前朝向的射线预判
+          const rx = x - m.x, ry = y - m.y;
+          const proj = rx * Math.cos(U.angle(m, this.player)) + ry * Math.sin(U.angle(m, this.player));
+          if (proj < 0 || proj > 470) continue;
+          const perp = Math.abs(rx * Math.sin(U.angle(m, this.player)) - ry * Math.cos(U.angle(m, this.player)));
+          if (perp < pad + 8) return true;
+        }
       }
+      return false;
+    },
+    // 硬威胁：真正会掉血的预警（弹道 / 技能前摇 / 首领预警圈）
+    autoHardDangerAt(x, y) {
+      let danger = 0;
+      if (this.autoProjectileDanger(x, y)) danger += 12000;
+      if (this.autoMonsterWindupDanger(x, y)) danger += 15000;
+      for (const z of this.dangerZones || []) {
+        if (this.autoZoneDanger(x, y, z)) danger += z.high ? 26000 : 8000;
+      }
+      return danger;
+    },
+    autoEvadeDirection(goal) {
+      const here = this.autoHardDangerAt(this.player.x, this.player.y);
       const now = this.time || 0;
-      if (!threatened && this.autoEvade && this.autoEvade.until > now) return this.autoEvade.dir;
-      if (!threatened) {
+      if (!here) {
+        if (this.autoEvade && this.autoEvade.until > now) return this.autoEvade.dir;
         this.autoEvade = null;
         return null;
       }
       const base = goal ? Math.atan2(goal.y - this.player.y, goal.x - this.player.x) : this.player.facing;
+      const aw = this.arenaW || ARENA_W, ah = this.arenaH || ARENA_H;
       let best = null, bestScore = Infinity;
-      for (let i = 0; i < 16; i++) {
-        const a = base + Math.PI * 2 * i / 16;
-        const step = i % 2 ? 78 : 112;
+      for (let i = 0; i < 18; i++) {
+        const a = base + Math.PI * 2 * i / 18;
+        const step = i % 2 ? 92 : 128;
         const x = this.player.x + Math.cos(a) * step, y = this.player.y + Math.sin(a) * step;
+        const mx = this.player.x + Math.cos(a) * step * 0.55;
+        const my = this.player.y + Math.sin(a) * step * 0.55;
         if (this.circleWall(x, y, this.player.r) || this.circleProp(x, y, this.player.r)) continue;
-        let danger = this.autoProjectileDanger(x, y) ? 10000 : 0;
-        for (const z of this.dangerZones || []) if (this.autoZoneDanger(x, y, z)) danger += z.high ? 20000 : 5000;
-        if (danger >= bestScore) continue;
-        const progress = goal ? Math.hypot(goal.x - x, goal.y - y) * 0.08 : 0;
-        const score = danger + progress + (i % 2 ? 6 : 0);
+        // 终点与途中都要安全，避免直线穿过预警区
+        let score = this.autoHardDangerAt(x, y) * 1.2 + this.autoHardDangerAt(mx, my) * 0.8;
+        // 怪物拥挤度：别为了躲技能一头钻进怪堆
+        for (const m of this.monsters) {
+          if (m.dead) continue;
+          const md = Math.hypot(x - m.x, y - m.y);
+          const minD = m.r + this.player.r + 30;
+          if (md < minD) score += (minD - md) * (m.boss ? 14 : 6);
+        }
+        if (x < 70 || y < 70 || x > aw - 70 || y > ah - 70) score += 420;
+        if (goal) score += Math.hypot(goal.x - x, goal.y - y) * 0.05;
         if (score < bestScore) { bestScore = score; best = { x: Math.cos(a), y: Math.sin(a) }; }
       }
-      if (best) this.autoEvade = { dir: best, until: now + 0.26 };
+      if (best) this.autoEvade = { dir: best, until: now + 0.3 };
+      return best;
+    },
+    // 远离最近怪物与危险区的方向（保命位移技能用）
+    autoRetreatAngle() {
+      const aw = this.arenaW || ARENA_W, ah = this.arenaH || ARENA_H;
+      let best = null, bestScore = -Infinity;
+      for (let i = 0; i < 16; i++) {
+        const a = Math.PI * 2 * i / 16;
+        const x = this.player.x + Math.cos(a) * 150;
+        const y = this.player.y + Math.sin(a) * 150;
+        if (this.circleWall(x, y, this.player.r) || this.circleProp(x, y, this.player.r)) continue;
+        if (x < 70 || y < 70 || x > aw - 70 || y > ah - 70) continue;
+        let score = -this.autoHardDangerAt(x, y) * 0.02;
+        for (const m of this.monsters) {
+          if (!m.dead) score += Math.hypot(x - m.x, y - m.y) * 0.02;
+        }
+        if (score > bestScore) { bestScore = score; best = a; }
+      }
       return best;
     },
     doBasic(angle) {
@@ -228,7 +456,11 @@
 
       // 0 号位：普攻（移动中只打前方的目标，出手方向跟随移动方向）
       if (this.attackCd <= 0 && !this.whirl) {
-        const target = this.nearestMonsterInFront((this.basicSkill.range || 600) + 24);
+        let target = this.nearestMonsterInFront((this.basicSkill.range || 600) + 24);
+        // 远程职业后撤风筝时也允许回头输出，避免拉开距离的全程没有伤害
+        if (!target && this.autoMode && this.autoIsRanged()) {
+          target = this.nearestMonster((this.basicSkill.range || 600) + 24);
+        }
         if (target) {
           this.player.facing = U.angle(this.player, target);
           this.doBasic(this.player.facing);
@@ -247,6 +479,7 @@
       // 避免多个技能同时就绪时一起打出、动作互相打断（旋风刚起手就被冲锋盖掉等）
       if (this._skillCastAt != null && this.time - this._skillCastAt < 0.14) return;
       const overload = this.hasTalent('overload');
+      let pick = null;
       for (let i = 1; i < this.skillList.length; i++) {
         if (this.skillCd[i] > 0) continue;
         const sk = this.skillList[i];
@@ -261,27 +494,33 @@
         const angle = this.autoSkillAngle(sk);
         if (angle === null) continue;
 
-        // 奥能过载：每 3 次主动技能后的下一发翻倍
-        let buffed = false;
-        if (overload && this.overloadCount >= 3) {
-          buffed = true;
-          this.overloadCount = 0;
-        }
-
-        this.skillCd[i] = this.skillCooldown(sk);
-        // 冲锋连晕叠层：每次达标累计，最多把冲锋冷却缩短 5 秒
-        if (sk.id === 'charge' && this.chargeCdrBonus) {
-          this.skillCd[i] = Math.max(0.5, this.skillCd[i] - this.chargeCdrBonus);
-        }
-        if (cost > 0) this.player.stam = Math.max(0, this.player.stam - cost);
-        this._overloadCast = buffed;
-        this.performSkill(sk, this.char.skills[sk.id] || 1, 'auto', angle);
-        this._overloadCast = false;
-        if (overload && !buffed) this.overloadCount++;
-        // 本帧只出手一次，其余就绪技能等下一个衔接间隔再放
-        this._skillCastAt = this.time;
-        break;
+        // 智能择优：保命位移 > 命中更多的范围技能 > 单体输出
+        const score = this.autoSkillScore(sk, angle);
+        if (score <= 0) continue;
+        if (!pick || score > pick.score) pick = { i, sk, angle, score, cost };
       }
+      if (!pick) return;
+      const i = pick.i, sk = pick.sk, angle = pick.angle, cost = pick.cost;
+
+      // 奥能过载：每 3 次主动技能后的下一发翻倍
+      let buffed = false;
+      if (overload && this.overloadCount >= 3) {
+        buffed = true;
+        this.overloadCount = 0;
+      }
+
+      this.skillCd[i] = this.skillCooldown(sk);
+      // 冲锋连晕叠层：每次达标累计，最多把冲锋冷却缩短 5 秒
+      if (sk.id === 'charge' && this.chargeCdrBonus) {
+        this.skillCd[i] = Math.max(0.5, this.skillCd[i] - this.chargeCdrBonus);
+      }
+      if (cost > 0) this.player.stam = Math.max(0, this.player.stam - cost);
+      this._overloadCast = buffed;
+      this.performSkill(sk, this.char.skills[sk.id] || 1, 'auto', angle);
+      this._overloadCast = false;
+      if (overload && !buffed) this.overloadCount++;
+      // 本帧只出手一次，其余就绪技能等下一个衔接间隔再放
+      this._skillCastAt = this.time;
     },
 
     // 冲锋残影：把角色当前姿态画进离屏画布再整体染色，得到一张可复用的暖色剪影
@@ -570,20 +809,117 @@
           if (!near || U.dist(this.player, near) > sk.dist * 1.4 + near.r) return null;
           return U.angle(this.player, near);
         }
-        // 位移保命：血量偏低或近身敌人较多时闪避
+        // 位移保命：有弹道/预警威胁时优先脱离，其次才是血量低或近身敌人多
         const hpPct = this.player.hp / this.player.maxHp;
+        const threat = this.autoHardDangerAt(this.player.x, this.player.y);
         const close = this.monsters.filter(m => !m.dead && U.dist(this.player, m) < 150).length;
-        if (!near || (hpPct > 0.7 && close < 2)) return null;
-        if (U.dist(this.player, near) > 170) return null;
+        if (!threat && hpPct > 0.6 && close < 2) return null;
+        // 正在躲技能时沿着躲避方向翻滚/闪现，别往危险里冲
+        if (threat && this.autoEvade && this.autoEvade.until > (this.time || 0)) {
+          return Math.atan2(this.autoEvade.dir.y, this.autoEvade.dir.x);
+        }
         // 移动中沿移动方向翻滚，避免看起来是在往后退
         if (dir != null) return dir;
+        if (threat) {
+          const away = this.autoRetreatAngle();
+          if (away != null) return away;
+        }
+        if (!near) return null;
+        if (U.dist(this.player, near) > 170) return null;
         return U.angle(near, this.player);
       }
 
       if (!near) return null;
       const radius = sk.radius ? this.skillRadius(sk) : (sk.range || 0);
       if (U.dist(this.player, near) > radius + near.r) return null;
+      // 弹道 / 散射：朝能覆盖最多敌人的角度出手
+      if (sk.type === 'projectile' || sk.type === 'spread') {
+        const cluster = this.autoClusterAngle(sk);
+        if (cluster != null) return cluster;
+      }
       return U.angle(this.player, near);
+    },
+
+    // 在怪物方向里挑命中数最多的角度（多重箭 / 箭雨 / 贯穿弹道尤其受益）
+    autoClusterAngle(sk) {
+      let best = null, bestHits = 0;
+      const seen = [];
+      for (const m of this.monsters) {
+        if (m.dead) continue;
+        const a = U.angle(this.player, m);
+        let dup = false;
+        for (const s of seen) {
+          if (Math.abs(U.angleDiff(a, s)) < 0.08) { dup = true; break; }
+        }
+        if (dup) continue;
+        seen.push(a);
+        let hits = 0;
+        for (const o of this.monsters) {
+          if (!o.dead && this.autoSkillHitsMonster(o, sk, a)) hits++;
+        }
+        if (hits > bestHits) { bestHits = hits; best = a; }
+      }
+      return best;
+    },
+    autoSkillHitsMonster(m, sk, angle) {
+      const p = this.player;
+      const d = U.dist(p, m);
+      const rx = m.x - p.x, ry = m.y - p.y;
+      const cos = Math.cos(angle), sin = Math.sin(angle);
+      if (sk.type === 'melee') {
+        if (d > (sk.range || 84) + m.r) return false;
+        return Math.abs(U.angleDiff(U.angle(p, m), angle)) <= this.skillArc(sk) / 2 + Math.atan2(m.r, Math.max(1, d));
+      }
+      if (sk.type === 'nova' || sk.type === 'aoeSelf') {
+        return d <= this.skillRadius(sk) + m.r;
+      }
+      if (sk.type === 'dash') {
+        if (!sk.damageOnPath) return false;
+        const len = this.skillDist(sk) || sk.dist || 200;
+        const proj = rx * cos + ry * sin;
+        if (proj < -m.r || proj > len + m.r) return false;
+        return Math.abs(rx * sin - ry * cos) <= 30 + m.r;
+      }
+      if (sk.type === 'projectile') {
+        if (d > (sk.range || 500) + m.r) return false;
+        const proj = rx * cos + ry * sin;
+        if (proj < 0) return false;
+        return Math.abs(rx * sin - ry * cos) <= 26 + m.r;
+      }
+      if (sk.type === 'spread') {
+        if (d > (sk.range || 500) + m.r) return false;
+        const n = this.skillCount(sk);
+        const cone = n > 1 ? (sk.spread || 0.5) * (n - 1) / 2 : 0;
+        return Math.abs(U.angleDiff(U.angle(p, m), angle)) <= cone + 0.18 + Math.atan2(m.r, Math.max(1, d));
+      }
+      return false;
+    },
+    autoSkillScore(sk, angle) {
+      // 保命位移优先级最高：被预警锁定或残血时立刻脱离
+      if (sk.type === 'dash' && !sk.damageOnPath) {
+        const threat = this.autoHardDangerAt(this.player.x, this.player.y);
+        const hpPct = this.player.hp / this.player.maxHp;
+        if (threat) return 1200 + (1 - hpPct) * 600;
+        if (hpPct < 0.55) return 300;
+        return 0;
+      }
+      let hits = 0, bossHit = false;
+      for (const m of this.monsters) {
+        if (m.dead) continue;
+        if (!this.autoSkillHitsMonster(m, sk, angle)) continue;
+        hits++;
+        if (m.boss) bossHit = true;
+      }
+      if (!hits) return 0;
+      const lv = this.char.skills[sk.id] || 1;
+      const mult = sk.mult ? sk.mult(lv) : 1;
+      let score = hits * mult * 10;
+      // 多目标时范围技能更值钱；命中首领额外加分
+      if (hits > 1) score += (hits - 1) * 12;
+      if (bossHit) score += 40;
+      if (sk.type === 'dash') score *= 1.15;
+      score -= (sk.energy || 0) * 0.15;
+      return score;
     },
 
     performSkill(sk, lv, source, angle) {

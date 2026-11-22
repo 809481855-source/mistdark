@@ -6,16 +6,17 @@
 
   Object.assign(DG.scenes.dungeon.prototype, {
   updateDrops(dt) {
-    const list = [];
-    for (const d of this.drops) {
+    // 原地压缩：避免每帧重建掉落数组
+    const list = this.drops;
+    let n = 0;
+    for (let i = 0; i < list.length; i++) {
+      const d = list[i];
       d.t += dt;
       const dist = Math.hypot(this.player.x - d.x, this.player.y - d.y);
-      if (dist < 44 + this.player.r) {
-        if (this.pickup(d)) continue;
-      }
-      list.push(d);
+      if (dist < 44 + this.player.r && this.pickup(d)) continue;
+      list[n++] = d;
     }
-    this.drops = list;
+    list.length = n;
   },
   pickup(d) {
     if (d.kind === 'item') {

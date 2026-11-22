@@ -140,18 +140,28 @@
     return c;
   }
 
+  // 血迹精灵只取决于画风：跨副本共享，重复进图时不再重新烘焙 8 张画布
+  const SPRITE_CACHE = [];
+  function bloodSprites(style) {
+    let arr = SPRITE_CACHE[style];
+    if (arr) return arr;
+    arr = [];
+    const def = STYLES[style];
+    for (let st = 1; st <= 4; st++) {
+      for (let va = 0; va < 2; va++) {
+        arr[st * 2 + va] = makeSprite(def, st, va);
+      }
+    }
+    SPRITE_CACHE[style] = arr;
+    return arr;
+  }
+
   Object.assign(DG.scenes.dungeon.prototype, {
-    // 进入副本时确定本图的血迹序列，并预烘焙 8 张精灵（4 阶段 × 2 变体）
+    // 进入副本时确定本图的血迹序列，并取用预烘焙好的精灵
     initBlood() {
       this.bloodStyle = U.randInt(0, 2);
       this.blood = [];
-      this._bloodSprites = [];
-      const def = STYLES[this.bloodStyle];
-      for (let st = 1; st <= 4; st++) {
-        for (let va = 0; va < 2; va++) {
-          this._bloodSprites[st * 2 + va] = makeSprite(def, st, va);
-        }
-      }
+      this._bloodSprites = bloodSprites(this.bloodStyle);
     },
     // 受击飞溅：血珠从受击点沿攻击反方向抛出，带重力，落地前消散。
     // 数量、速度、粒径随伤害占比与暴击提升，与脚下血痕同一套配色

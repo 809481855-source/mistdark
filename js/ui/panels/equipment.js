@@ -95,6 +95,7 @@
     const canvas = U.el('div', 'eq-canvas');
     screen.appendChild(canvas);
     DG.game.ui.appendChild(screen);
+    if (DG.audio) DG.audio.play('uiOpen', { vol: 0.5, gap: 0.12 });
     // #ui 固定 720×1440 居中，装备页需要覆盖整个舞台（可能是 810×1680）
     const layout = () => {
       const stage = document.getElementById('stage');
@@ -116,6 +117,7 @@
     let stashScroll = 0;
 
     function close() {
+      if (DG.audio) DG.audio.play('uiClose', { vol: 0.45, gap: 0.12 });
       document.removeEventListener('keydown', onKey);
       window.removeEventListener('resize', onResize);
       if (screen.parentNode) screen.remove();

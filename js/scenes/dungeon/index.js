@@ -134,6 +134,15 @@
       this.autoBlocked = 0;
       this.autoDetour = null;
       this.autoDecision = null;
+      this.autoKiteHeld = false;
+      this.autoKiteSide = 0;
+      this.autoRescueCd = 0;
+      this.autoStuckAt = 0;
+      this.autoExploreUntil = 0;
+      this.autoIgnore = null;
+      this.autoIgnoreUntil = 0;
+      this.autoIgnorePack = null;
+      this.autoIgnorePackUntil = 0;
 
       this.attackCd = 0;
       // 索引与 skillList 对齐；0 号位（普攻）沿用 attackCd，其余为主动技能冷却
@@ -301,6 +310,26 @@
       this._chunkCache = null;
       this._warmCanvas = null;
       this._warmCtx = null;
+      // 整屏渐变、小地图、描边路径等缓存体积较大：离场立即置空，尽快释放显存
+      this._glowCache = null;
+      this._edgeFade = null;
+      this._vignetteImg = null;
+      this._bossVignette = null;
+      this._minimapCanvas = null;
+      this._outline = null;
+      this._drawMonsters = null;
+      this._bandList = null;
+      this._separationGrid = null;
+      this._hudCache = null;
+      this.sceneProps = null;
+      this.tornadoes = null;
+      this.monsters = null;
+      this.projectiles = null;
+      this.effects = null;
+      this.floaters = null;
+      this.drops = null;
+      this.bones = null;
+      this.blood = null;
       const toastWrap = document.getElementById('toast-wrap');
       if (toastWrap) toastWrap.classList.remove('in-battle');
     }
@@ -329,6 +358,7 @@
       this.hurtFlash = Math.max(0, this.hurtFlash - dt * 2);
       this.bossFlash = Math.max(0, this.bossFlash - dt);
       this.bagWarnCd = Math.max(0, this.bagWarnCd - dt);
+      this.autoRescueCd = Math.max(0, (this.autoRescueCd || 0) - dt);
       this.tickTalentTimers(dt);
       this.hudTimer -= dt;
 
@@ -531,10 +561,12 @@
     }
 
     frame(dt) {
-      if (!this.finished) {
-        this.update(dt);
-        this.maybePrefetchChunk(dt);
-      }
+      // 结算 / 撤退在 update 内就会 finishNow 并释放资源：
+      // 此时不能再往下走预取和绘制，否则会访问已清空的缓存
+      if (this.finished) return;
+      this.update(dt);
+      if (this.finished) return;
+      this.maybePrefetchChunk(dt);
       this.draw();
     }
   }
