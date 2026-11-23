@@ -200,6 +200,8 @@
       this.sprayBlood(m, dmg, crit);
       // 劈砍专属：沿刀锋切向再甩出一道血幕，与上面的受击喷溅叠加
       if (opts && opts.chop) this.slashBlood(m, opts.angle, dmg, crit);
+      // 首领受击：额外的姿态回弹与冲击特效（火花 / 斩痕 / 冲击环）
+      if (m.boss) this.bossHitReact(m, dmg, crit, opts);
       if (DG.audio) {
         DG.audio.play('barbHit', { vol: crit ? 0.85 : 0.6, rate: 0.94 + Math.random() * 0.12, gap: 0.05 });
       }
@@ -722,6 +724,7 @@
       m._px = m.x;
       m._py = m.y;
       m.flash = Math.max(0, m.flash - dt);
+      if (m.hitReact > 0) m.hitReact = Math.max(0, m.hitReact - dt * 5.2);
       m.atkTimer = Math.max(0, m.atkTimer - dt);
       m.shootTimer = Math.max(0, m.shootTimer - dt);
       m.shotAnim = Math.max(0, (m.shotAnim || 0) - dt);

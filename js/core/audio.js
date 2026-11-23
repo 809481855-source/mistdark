@@ -464,6 +464,73 @@
     n.stop(t + 0.65);
   }
 
+  // 首领受击：闷响 + 冲击噪声 + 暴击金属泛音 + 劈砍划痕。
+  // 与 barbHit 采样叠加，专门强化「打在首领身上」的分量；bodySize 越小音高越低沉。
+  let lastBossHitAt = 0;
+  function bossHitBurst(crit, chop, pitch) {
+    if (!ctx || !master || !unlocked || !enabled) return;
+    const c = ctx;
+    const t = c.currentTime;
+    const gap = lastBossHitAt ? t - lastBossHitAt : 9;
+    if (gap < 0.045) return;                  // 连击同帧去重
+    lastBossHitAt = t;
+    const soft = gap < 0.12 ? 0.5 : 1;        // 高频连击时自动让位，避免糊成一片
+    const p = pitch || 1;
+    const s = (crit ? 1 : 0.72) * soft;
+    ensureSfxBus();
+    const bus = sfxBus || master;
+    // 胸腔闷响：正弦快速下坠，暴击频率更低、余音更长
+    const osc = c.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime((crit ? 150 : 118) * p, t);
+    osc.frequency.exponentialRampToValueAtTime((crit ? 40 : 52) * p, t + (crit ? 0.34 : 0.22));
+    const og = c.createGain();
+    og.gain.setValueAtTime(0.0001, t);
+    og.gain.exponentialRampToValueAtTime(0.6 * s, t + 0.008);
+    og.gain.exponentialRampToValueAtTime(0.0001, t + (crit ? 0.42 : 0.28));
+    osc.connect(og); og.connect(bus);
+    osc.start(t); osc.stop(t + 0.5);
+    // 冲击噪声：带通短爆，像沉闷的撞击
+    const n = noiseSource();
+    const bp = c.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.Q.value = crit ? 1.4 : 0.9;
+    bp.frequency.setValueAtTime((crit ? 1500 : 900) * p, t);
+    bp.frequency.exponentialRampToValueAtTime((crit ? 420 : 300) * p, t + 0.16);
+    const ng = c.createGain();
+    ng.gain.setValueAtTime(0.0001, t);
+    ng.gain.exponentialRampToValueAtTime(0.34 * s, t + 0.005);
+    ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+    n.connect(bp); bp.connect(ng); ng.connect(bus);
+    n.start(t); n.stop(t + 0.24);
+    // 暴击：高频金属泛音，交代「击穿了硬壳」
+    if (crit) {
+      const ring = c.createOscillator();
+      ring.type = 'triangle';
+      ring.frequency.setValueAtTime(1180 * p, t + 0.005);
+      ring.frequency.exponentialRampToValueAtTime(760 * p, t + 0.3);
+      const rg = c.createGain();
+      rg.gain.setValueAtTime(0.0001, t + 0.005);
+      rg.gain.exponentialRampToValueAtTime(0.15 * soft, t + 0.02);
+      rg.gain.exponentialRampToValueAtTime(0.0001, t + 0.34);
+      ring.connect(rg); rg.connect(bus);
+      ring.start(t + 0.005); ring.stop(t + 0.4);
+    }
+    // 劈砍：高频短划痕，和斩痕特效同步
+    if (chop) {
+      const sw = noiseSource();
+      const hp = c.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = 2600;
+      const sg = c.createGain();
+      sg.gain.setValueAtTime(0.0001, t);
+      sg.gain.exponentialRampToValueAtTime(0.17 * s, t + 0.01);
+      sg.gain.exponentialRampToValueAtTime(0.0001, t + 0.13);
+      sw.connect(hp); hp.connect(sg); sg.connect(bus);
+      sw.start(t); sw.stop(t + 0.16);
+    }
+  }
+
   /* ---------------- 解包音频资源（assets/audio） ---------------- */
   const AUDIO_DIR = 'assets/audio/';
 
@@ -976,6 +1043,7 @@
 
   A.thunder = thunder;
   A.warcryBurst = warcryBurst;
+  A.bossHit = bossHitBurst;
 
   A.play = play;
   A.playBgm = playBgm;

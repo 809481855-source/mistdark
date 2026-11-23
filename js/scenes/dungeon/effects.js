@@ -23,6 +23,48 @@
   addRing(x, y, r0, r1, color, dur) {
     this.effects.push({ kind: 'ring', x, y, r0, r1, color, life: dur || 0.45, max: dur || 0.45 });
   },
+  // 首领受击：沿来击方向后退回弹 + 白热火花 / 冲击环 / 斩痕，
+  // 普通怪物不走这里，避免杂兵互殴时特效刷屏
+  bossHitReact(m, dmg, crit, opts) {
+    const ang = (opts && opts.angle != null) ? opts.angle : U.angle(this.player, m);
+    m.hitDir = ang;                       // 击退方向：背离攻击者
+    m.hitReact = Math.max(m.hitReact || 0, crit ? 1 : 0.78);
+    if (crit) m.flash = Math.max(m.flash || 0, 0.18);
+    const art = DG.art && DG.art.bosses;
+    const def = art && art.defs ? art.defs[m.art] : null;
+    const tint = m.glow || (def && def.glow) || '#ffd27a';
+    const h = art ? art.displayHeight(m) : m.r * 4;
+    // 受击音效：体型越大音高越低沉；暴击更重，劈砍额外叠一道划痕声
+    if (DG.audio && DG.audio.bossHit) {
+      DG.audio.bossHit(crit, !!(opts && opts.chop), Math.max(0.8, Math.min(1.2, 250 / h)));
+    }
+    // 命中点落在身体中段，按首领体高换算而不是用碰撞半径
+    const hx = m.x - Math.cos(ang) * m.r * 0.4;
+    const hy = m.y - h * 0.46;
+    const n = crit ? 12 : 7;
+    for (let i = 0; i < n; i++) {
+      const a = ang + Math.PI + U.rand(-0.95, 0.95);
+      const sp = U.rand(90, 250) * (crit ? 1.3 : 1);
+      this.effects.push({
+        kind: 'spark', x: hx, y: hy,
+        vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 45,
+        life: U.rand(0.16, 0.38), max: 0.38,
+        r: U.rand(1.6, 3.4), color: crit ? '#ffe6a8' : '#fff2d6'
+      });
+    }
+    // 命中斩痕：沿来击角度切过身体，暴击时更宽；颜色跟随首领辉光，避免被闪白吃掉
+    this.effects.push({
+      kind: 'slash', x: hx, y: hy, angle: ang,
+      radius: Math.max(24, h * (crit ? 0.3 : 0.22)),
+      arc: crit ? 1.6 : 1.15, color: crit ? '#fff3cc' : tint,
+      life: 0.14, max: 0.14
+    });
+    this.addRing(hx, hy, 6, Math.max(26, h * (crit ? 0.4 : 0.28)), tint, crit ? 0.34 : 0.24);
+    if (crit) {
+      this.addRing(hx, hy, 4, Math.max(44, h * 0.62), '#fff4cf', 0.46);
+      this.shake = Math.max(this.shake || 0, 0.05);
+    }
+  },
   updateEffects(dt) {
     // 升级光环倒计时：与粒子分开维护，绘制时按剩余比例淡出
     if (this.levelFx > 0) this.levelFx = Math.max(0, this.levelFx - dt);

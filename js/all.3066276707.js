@@ -837,6 +837,73 @@
     n.stop(t + 0.65);
   }
 
+  // 首领受击：闷响 + 冲击噪声 + 暴击金属泛音 + 劈砍划痕。
+  // 与 barbHit 采样叠加，专门强化「打在首领身上」的分量；bodySize 越小音高越低沉。
+  let lastBossHitAt = 0;
+  function bossHitBurst(crit, chop, pitch) {
+    if (!ctx || !master || !unlocked || !enabled) return;
+    const c = ctx;
+    const t = c.currentTime;
+    const gap = lastBossHitAt ? t - lastBossHitAt : 9;
+    if (gap < 0.045) return;                  // 连击同帧去重
+    lastBossHitAt = t;
+    const soft = gap < 0.12 ? 0.5 : 1;        // 高频连击时自动让位，避免糊成一片
+    const p = pitch || 1;
+    const s = (crit ? 1 : 0.72) * soft;
+    ensureSfxBus();
+    const bus = sfxBus || master;
+    // 胸腔闷响：正弦快速下坠，暴击频率更低、余音更长
+    const osc = c.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime((crit ? 150 : 118) * p, t);
+    osc.frequency.exponentialRampToValueAtTime((crit ? 40 : 52) * p, t + (crit ? 0.34 : 0.22));
+    const og = c.createGain();
+    og.gain.setValueAtTime(0.0001, t);
+    og.gain.exponentialRampToValueAtTime(0.6 * s, t + 0.008);
+    og.gain.exponentialRampToValueAtTime(0.0001, t + (crit ? 0.42 : 0.28));
+    osc.connect(og); og.connect(bus);
+    osc.start(t); osc.stop(t + 0.5);
+    // 冲击噪声：带通短爆，像沉闷的撞击
+    const n = noiseSource();
+    const bp = c.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.Q.value = crit ? 1.4 : 0.9;
+    bp.frequency.setValueAtTime((crit ? 1500 : 900) * p, t);
+    bp.frequency.exponentialRampToValueAtTime((crit ? 420 : 300) * p, t + 0.16);
+    const ng = c.createGain();
+    ng.gain.setValueAtTime(0.0001, t);
+    ng.gain.exponentialRampToValueAtTime(0.34 * s, t + 0.005);
+    ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+    n.connect(bp); bp.connect(ng); ng.connect(bus);
+    n.start(t); n.stop(t + 0.24);
+    // 暴击：高频金属泛音，交代「击穿了硬壳」
+    if (crit) {
+      const ring = c.createOscillator();
+      ring.type = 'triangle';
+      ring.frequency.setValueAtTime(1180 * p, t + 0.005);
+      ring.frequency.exponentialRampToValueAtTime(760 * p, t + 0.3);
+      const rg = c.createGain();
+      rg.gain.setValueAtTime(0.0001, t + 0.005);
+      rg.gain.exponentialRampToValueAtTime(0.15 * soft, t + 0.02);
+      rg.gain.exponentialRampToValueAtTime(0.0001, t + 0.34);
+      ring.connect(rg); rg.connect(bus);
+      ring.start(t + 0.005); ring.stop(t + 0.4);
+    }
+    // 劈砍：高频短划痕，和斩痕特效同步
+    if (chop) {
+      const sw = noiseSource();
+      const hp = c.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = 2600;
+      const sg = c.createGain();
+      sg.gain.setValueAtTime(0.0001, t);
+      sg.gain.exponentialRampToValueAtTime(0.17 * s, t + 0.01);
+      sg.gain.exponentialRampToValueAtTime(0.0001, t + 0.13);
+      sw.connect(hp); hp.connect(sg); sg.connect(bus);
+      sw.start(t); sw.stop(t + 0.16);
+    }
+  }
+
   /* ---------------- 解包音频资源（assets/audio） ---------------- */
   const AUDIO_DIR = 'assets/audio/';
 
@@ -1349,6 +1416,7 @@
 
   A.thunder = thunder;
   A.warcryBurst = warcryBurst;
+  A.bossHit = bossHitBurst;
 
   A.play = play;
   A.playBgm = playBgm;
@@ -5806,244 +5874,305 @@
     ctx.restore();
   }
 
-  // 大剑恶魔：呼吸 / 走路摆臂 / 举剑过顶再下劈
+  // ---------- 动作工具：预备 / 爆发 / 过冲 / 回摆 / 次级跟随 ----------
+  // 攻击曲线：快速冲出 → 惯性过冲 → 回摆收敛，首尾归零。
+  // 相比单纯 sin，出手更利落，命中后有明显的“余势”，收招不僵硬。
+  function atkEnv(k) {
+    if (k <= 0 || k >= 1) return 0;
+    const rise = Math.sin(Math.pow(k, 0.55) * Math.PI);
+    return rise + Math.sin(k * Math.PI * 2.7) * 0.08 * Math.sin(k * Math.PI);
+  }
+  // 次级跟随：延迟起势，用于武器 / 头发 / 尾巴 / 触手等被动部件。
+  function lagEnv(k, lag) {
+    if (k <= lag) return 0;
+    return atkEnv((k - lag) / (1 - lag));
+  }
+  // 走路四相（接触 / 下沉 / 经过 / 抬升）：
+  // 重心每步两次起伏（接触最低、经过最高），摆动腿单侧抬起并前后换步。
+  function gait(ph, amp) {
+    const s = Math.sin(ph);
+    return {
+      s: s,
+      bob: (-Math.cos(ph * 2) * 0.55 + 0.18) * amp,
+      sway: s * amp * 0.5,
+      liftL: Math.max(0, -s) * amp,
+      liftR: Math.max(0, s) * amp,
+      stepL: Math.cos(ph) * amp * 0.8,
+      stepR: -Math.cos(ph) * amp * 0.8
+    };
+  }
+  // 蓄力姿态释放：1 → 0，出手瞬间快速卸掉后仰/抬手的蓄力量，
+  // 让 strike 的第一帧正好接住 windup 的最后一帧，不再出现姿态跳变。
+  function holdEnv(k) {
+    const x = k <= 0 ? 0 : (k >= 1 ? 1 : k);
+    return Math.pow(1 - x, 2.4);
+  }
+
+  // 大剑恶魔：双层呼吸 / 走路四相压步 / 举剑过顶再下劈（惯性过冲 + 刀身延迟）
   function drawGoat(ctx, m, bone, t, a) {
     const seed = m.seed || 0;
     const ph = t * 9.2 + seed;
     const br = Math.sin(t * 2.1 + seed);
-    const ws = a.moving ? Math.sin(ph) : 0;
+    const drift = Math.sin(t * 0.83 + seed * 1.7);
+    const g = gait(ph, 2.4);
     // 施法型招式只抬手不出刀，避免和吐息/弹幕特效打架
     const swing = (a.type === 'slash' || a.type === 'arc') ? 1 : 0.28;
 
-    let bodyY = br * 1.1 + (a.moving ? Math.abs(ws) * 1.8 : 0);
-    let bodyRot = br * 0.012 + (a.moving ? ws * 0.018 : 0);
-    let headRot = Math.sin(t * 1.55 + seed) * 0.032 - (a.moving ? ws * 0.028 : 0);
+    let bodyX = a.moving ? g.sway * 0.7 : drift * 0.9;
+    let bodyY = br * 1.1 + drift * 0.55 + (a.moving ? g.bob : 0);
+    let bodyRot = br * 0.012 + drift * 0.005 + (a.moving ? g.s * 0.026 : 0);
+    let headRot = Math.sin(t * 1.55 + seed * 1.3) * 0.032 + drift * 0.008 - (a.moving ? g.s * 0.03 : 0);
     let headY = br * 0.5;
-    let armR = Math.sin(t * 1.35 + seed) * 0.05 + (a.moving ? ws * 0.14 : 0);
-    let armL = 0;
-    let sword = Math.sin(t * 1.8 + seed) * 0.02 + (a.moving ? ws * 0.055 : 0);
+    let armR = Math.sin(t * 1.35 + seed) * 0.05 + (a.moving ? g.s * 0.14 : 0);
+    let armL = Math.sin(t * 1.2 + seed * 2) * 0.03 - (a.moving ? g.s * 0.08 : 0);
+    let sword = Math.sin(t * 1.8 + seed) * 0.02 + (a.moving ? g.s * 0.06 : 0);
     let lunge = 0;
-    const feetY = a.moving ? -Math.abs(ws) * 1.2 : 0;
-    const feetRot = a.moving ? ws * 0.04 : 0;
 
     if (a.windup) {
       const e = Math.sin(a.k * Math.PI * 0.5);
-      bodyRot -= e * 0.06;
-      bodyY -= e * 2.4;
-      headRot -= e * 0.1;
-      headY -= e * 1.2;
-      armR -= e * 0.22;
-      armL -= e * 0.22;
-      sword = sword * (1 - e) - 0.7 * e * swing;
-      lunge = -e * 3;
+      bodyRot -= e * 0.085;
+      bodyY -= e * 3.2;
+      headRot -= e * 0.12;
+      headY -= e * 1.4;
+      armR -= e * 0.28;
+      armL -= e * 0.24;
+      sword -= e * 0.82 * swing;              // 剑举过头
+      lunge = -e * 4;
     } else if (a.strike) {
-      const e = Math.sin(Math.pow(a.k, 0.55) * Math.PI);
-      bodyRot += e * 0.08;
-      bodyY += e * 1.5;
-      headRot += e * 0.12;
-      headY += e;
-      armR += e * 0.24;
-      armL += e * 0.5 * swing;
-      sword = -0.7 * swing + e * 1.45 * swing;
-      lunge = e * 6 * swing;
+      const e = atkEnv(a.k);
+      const hd = holdEnv(a.k);
+      const ew = lagEnv(a.k, 0.09);           // 刀身延迟甩出
+      const eh = lagEnv(a.k, 0.05);           // 头部跟随
+      bodyRot += e * 0.1 - hd * 0.085;
+      bodyY += e * 1.8 - hd * 3.2;
+      headRot += eh * 0.14 - hd * 0.12;
+      headY += eh * 1.2 - hd * 1.4;
+      armR += e * 0.22 - hd * 0.28;
+      armL += e * 0.5 * swing - hd * 0.24;
+      sword += ew * 1.75 * swing - hd * 0.82 * swing;
+      lunge = e * 6.5 * swing - hd * 4;
     }
 
-    part(ctx, m, bone, 'feet', { x: lunge, y: feetY, rot: feetRot });
-    part(ctx, m, bone, 'body', { x: lunge, y: bodyY, rot: bodyRot });
-    part(ctx, m, bone, 'armR', { x: lunge, y: bodyY * 0.7, rot: armR });
-    part(ctx, m, bone, 'armL', { x: lunge, y: bodyY * 0.7, rot: armL * 0.5 });
-    part(ctx, m, bone, 'weapon', { x: lunge, y: bodyY * 0.7, rot: sword });
-    part(ctx, m, bone, 'head', { x: lunge, y: bodyY + headY, rot: headRot });
+    const feetY = a.moving ? -Math.abs(g.s) * 1.3 : 0;
+    const feetRot = a.moving ? g.s * 0.05 : 0;
+    part(ctx, m, bone, 'feet', { x: bodyX + lunge * 0.35, y: feetY, rot: feetRot });
+    part(ctx, m, bone, 'body', { x: bodyX + lunge, y: bodyY, rot: bodyRot });
+    part(ctx, m, bone, 'armR', { x: bodyX + lunge, y: bodyY * 0.7, rot: armR });
+    part(ctx, m, bone, 'armL', { x: bodyX + lunge, y: bodyY * 0.7, rot: armL });
+    part(ctx, m, bone, 'weapon', { x: bodyX + lunge, y: bodyY * 0.7, rot: sword });
+    part(ctx, m, bone, 'head', { x: bodyX + lunge, y: bodyY + headY, rot: headRot });
   }
 
-  // 镰刀巫师：袍身浮动 / 小碎步 / 镰刀高举横斩
+  // 镰刀巫师：袍身浮动 / 小碎步 / 镰刀高举横斩（长杆延迟摆动）
   function drawReaper(ctx, m, bone, t, a) {
     const seed = m.seed || 0;
     const br = Math.sin(t * 1.7 + seed);
+    const drift = Math.sin(t * 0.7 + seed * 2.1);
     const ph = t * 8 + seed;
-    const ws = a.moving ? Math.sin(ph) : 0;
+    const g = gait(ph, 2.2);
     const swing = (a.type === 'slash' || a.type === 'arc') ? 1 : 0.3;
 
-    let bodyRot = br * 0.01 + (a.moving ? ws * 0.02 : 0);
-    let bodyY = 0;
-    let headRot = Math.sin(t * 1.3 + seed) * 0.025 - (a.moving ? ws * 0.03 : 0);
-    let armRot = Math.sin(t * 1.5 + seed) * 0.03;
-    let scythe = Math.sin(t * 1.4 + seed) * 0.02 + (a.moving ? ws * 0.05 : 0);
+    let bodyX = a.moving ? g.sway * 0.8 : drift * 1.2;
+    let bodyY = br * 1.3 + drift * 0.7 - 1.4 + (a.moving ? g.bob : 0);
+    let bodyRot = br * 0.012 + drift * 0.008 + (a.moving ? g.s * 0.022 : 0);
+    let headRot = Math.sin(t * 1.3 + seed) * 0.025 - (a.moving ? g.s * 0.032 : 0);
+    let armRot = Math.sin(t * 1.5 + seed) * 0.035;
+    let scythe = Math.sin(t * 1.4 + seed) * 0.02 + (a.moving ? g.s * 0.05 : 0);
     let lunge = 0;
-    const liftL = a.moving ? Math.max(0, ws) * 2 : 0;
-    const liftR = a.moving ? Math.max(0, -ws) * 2 : 0;
+    const liftL = a.moving ? g.liftL : 0;
+    const liftR = a.moving ? g.liftR : 0;
 
     if (a.windup) {
       const e = Math.sin(a.k * Math.PI * 0.5);
-      bodyRot -= e * 0.04;
-      bodyY -= e * 1.6;
-      headRot -= e * 0.08;
-      armRot -= e * 0.35;
-      scythe = scythe * (1 - e) - 0.65 * e * swing;
-      lunge = -e * 4;
+      bodyRot -= e * 0.055;
+      bodyY -= e * 2;
+      headRot -= e * 0.09;
+      armRot -= e * 0.4;
+      scythe -= e * 0.72 * swing;
+      lunge = -e * 4.5;
     } else if (a.strike) {
-      const e = Math.sin(Math.pow(a.k, 0.5) * Math.PI);
-      bodyRot += e * 0.06;
-      bodyY += e * 0.6;
-      headRot += e * 0.1;
-      armRot += e * 0.55 * swing;
-      scythe = -0.65 * swing + e * 1.55 * swing;
-      lunge = e * 7 * swing;
+      const e = atkEnv(a.k);
+      const hd = holdEnv(a.k);
+      const ew = lagEnv(a.k, 0.1);            // 长杆更迟、甩得更远
+      const eh = lagEnv(a.k, 0.06);
+      bodyRot += e * 0.07 - hd * 0.055;
+      bodyY += e * 0.8 - hd * 2;
+      headRot += eh * 0.12 - hd * 0.09;
+      armRot += e * 0.5 * swing - hd * 0.4;
+      scythe += ew * 1.85 * swing - hd * 0.72 * swing;
+      lunge = e * 7 * swing - hd * 4.5;
     }
 
-    part(ctx, m, bone, 'footL', { x: lunge * 0.4, y: -liftL });
-    part(ctx, m, bone, 'footR', { x: lunge * 0.4, y: -liftR });
-    part(ctx, m, bone, 'hand', { x: lunge, y: bodyY, rot: armRot * 0.4 + scythe * 0.45 });
-    part(ctx, m, bone, 'body', { x: lunge, y: bodyY, rot: bodyRot });
-    part(ctx, m, bone, 'head', { x: lunge, y: bodyY, rot: headRot });
-    part(ctx, m, bone, 'weapon', { x: lunge, y: bodyY, rot: scythe });
+    part(ctx, m, bone, 'footL', { x: bodyX * 0.3 + lunge * 0.4, y: -liftL });
+    part(ctx, m, bone, 'footR', { x: bodyX * 0.3 + lunge * 0.4, y: -liftR });
+    part(ctx, m, bone, 'hand', { x: bodyX + lunge, y: bodyY, rot: armRot * 0.4 + scythe * 0.45 });
+    part(ctx, m, bone, 'body', { x: bodyX + lunge, y: bodyY, rot: bodyRot });
+    part(ctx, m, bone, 'head', { x: bodyX + lunge, y: bodyY, rot: headRot });
+    part(ctx, m, bone, 'weapon', { x: bodyX + lunge, y: bodyY, rot: scythe });
   }
 
-  // 四足獠牙兽：身体起伏 / 对角步态 / 后退蓄力再前冲顶撞
+  // 四足獠牙兽：对角步态 / 尾巴甩动跟随 / 后退蓄力再前冲顶撞
   function drawCroc(ctx, m, bone, t, a) {
     const seed = m.seed || 0;
     const ph = t * 10 + seed;
     const br = Math.sin(t * 2.4 + seed);
-    const ws = a.moving ? Math.sin(ph) : 0;
+    const drift = Math.sin(t * 0.75 + seed * 1.6);
+    const g = gait(ph, 2.6);
     // 吐息/弹幕/召唤类不做过猛的顶撞，只有挥砍才全力前冲
     const melee = (a.type === 'slash' || a.type === 'arc');
     const hit = melee ? 1 : 0.5;
-    let bodyY = br * 0.9 + (a.moving ? Math.abs(ws) * 1.5 : 0);
-    let bodyRot = br * 0.008 + (a.moving ? ws * 0.012 : 0);
-    let tail = Math.sin(t * 2.2 + seed) * 0.18 + (a.moving ? ws * 0.2 : 0);
+
+    let bodyX = a.moving ? g.sway * 0.5 : drift * 0.7;
+    let bodyY = br * 0.9 + drift * 0.4 + (a.moving ? g.bob : 0);
+    let bodyRot = br * 0.008 + (a.moving ? g.s * 0.014 : 0);
+    let tail = Math.sin(t * 2.2 + seed) * 0.18 + (a.moving ? g.s * 0.18 : 0);
     let tooth = 0;
     let lunge = 0;
+    // 对角步态：0/3 与 1/2 交替抬起
     const lift = [0, 0, 0, 0];
     if (a.moving) {
-      const s1 = Math.sin(ph), s2 = Math.sin(ph + Math.PI);
-      lift[0] = Math.max(0, s1) * 3;
-      lift[3] = Math.max(0, s1) * 3;
-      lift[1] = Math.max(0, s2) * 3;
-      lift[2] = Math.max(0, s2) * 3;
+      lift[0] = g.liftL * 1.5;
+      lift[3] = g.liftL * 1.5;
+      lift[1] = g.liftR * 1.5;
+      lift[2] = g.liftR * 1.5;
     }
+
     if (a.windup) {
       const e = Math.sin(a.k * Math.PI * 0.5);
-      bodyRot -= e * 0.1 * hit;
-      bodyY += e * 1.2 * hit;
-      tail -= e * 0.2;
+      bodyRot -= e * 0.12 * hit;             // 后腿蹬地、前身抬起
+      bodyY += e * 1.4 * hit;
+      tail -= e * 0.22;
       tooth -= e * 0.16;
-      lunge = -e * 5 * hit;
+      lunge = -e * 5.5 * hit;
     } else if (a.strike) {
-      const e = Math.sin(Math.pow(a.k, 0.5) * Math.PI);
-      bodyRot += e * 0.16 * hit;
-      bodyY -= e * 1.2 * hit;
-      tail += e * 0.28;
-      tooth += e * 0.2;
-      lunge = e * 10 * hit;
+      const e = atkEnv(a.k);
+      const hd = holdEnv(a.k);
+      const et = lagEnv(a.k, 0.12);          // 尾巴延迟甩动
+      bodyRot += e * 0.18 * hit - hd * 0.12 * hit;
+      bodyY += (hd - e) * 1.4 * hit;
+      tail += et * 0.36 - hd * 0.22;
+      tooth += lagEnv(a.k, 0.05) * 0.24 - hd * 0.16;
+      lunge = e * 10 * hit - hd * 5.5 * hit;
     }
 
-    for (let i = 0; i < 4; i++) part(ctx, m, bone, 'leg' + i, { x: lunge * 0.6, y: -lift[i] });
-    part(ctx, m, bone, 'body', { x: lunge, y: bodyY, rot: bodyRot });
-    part(ctx, m, bone, 'tail', { x: lunge * 0.4, y: bodyY * 0.5, rot: tail });
+    for (let i = 0; i < 4; i++) part(ctx, m, bone, 'leg' + i, { x: bodyX * 0.25 + lunge * 0.6, y: -lift[i] });
+    part(ctx, m, bone, 'body', { x: bodyX + lunge, y: bodyY, rot: bodyRot });
+    part(ctx, m, bone, 'tail', { x: bodyX + lunge * 0.4, y: bodyY * 0.5, rot: tail });
     // 獠牙跟随身体整体旋转，再叠加咬合位移
-    part(ctx, m, bone, 'toothA', { x: lunge, y: bodyY - tooth * 2, rot: bodyRot, px: 46, py: 118 });
-    part(ctx, m, bone, 'toothB', { x: lunge, y: bodyY - tooth * 2, rot: bodyRot, px: 46, py: 118 });
+    part(ctx, m, bone, 'toothA', { x: bodyX + lunge, y: bodyY - tooth * 2, rot: bodyRot, px: 46, py: 118 });
+    part(ctx, m, bone, 'toothB', { x: bodyX + lunge, y: bodyY - tooth * 2, rot: bodyRot, px: 46, py: 118 });
   }
 
-  // 仙人掌枪手：呼吸 / 交替迈步 / 举枪瞄准再开火后坐
+  // 仙人掌枪手：呼吸 / 交替迈步 / 举枪瞄准再开火后坐（枪身延迟反冲）
   function drawCactus(ctx, m, bone, t, a) {
     const seed = m.seed || 0;
     const br = Math.sin(t * 2.2 + seed);
+    const drift = Math.sin(t * 0.78 + seed * 1.5);
     const ph = t * 8.6 + seed;
-    const ws = a.moving ? Math.sin(ph) : 0;
+    const g = gait(ph, 2.3);
     const melee = (a.type === 'arc' || a.type === 'slash');
 
-    let bodyY = br * 1.0 + (a.moving ? Math.abs(ws) * 1.6 : 0);
-    let bodyRot = br * 0.01 + (a.moving ? ws * 0.02 : 0);
-    let headRot = Math.sin(t * 1.6 + seed) * 0.03 - (a.moving ? ws * 0.03 : 0);
+    let bodyX = a.moving ? g.sway * 0.6 : drift * 0.7;
+    let bodyY = br * 1.0 + drift * 0.5 + (a.moving ? g.bob : 0);
+    let bodyRot = br * 0.01 + (a.moving ? g.s * 0.02 : 0);
+    let headRot = Math.sin(t * 1.6 + seed) * 0.03 - (a.moving ? g.s * 0.03 : 0);
     let headY = br * 0.45;
-    let armR = Math.sin(t * 1.5 + seed) * 0.04;
-    let armL = Math.sin(t * 1.2 + seed) * 0.04;
-    let gunRot = Math.sin(t * 1.7 + seed) * 0.02;
+    let armR = Math.sin(t * 1.5 + seed) * 0.04 + (a.moving ? g.s * 0.1 : 0);
+    let armL = Math.sin(t * 1.2 + seed) * 0.04 - (a.moving ? g.s * 0.1 : 0);
+    let gunRot = Math.sin(t * 1.7 + seed) * 0.02 + (a.moving ? g.s * 0.04 : 0);
     let lunge = 0;
-    const liftL = a.moving ? Math.max(0, ws) * 2 : 0;
-    const liftR = a.moving ? Math.max(0, -ws) * 2 : 0;
+    const liftL = a.moving ? g.liftL : 0;
+    const liftR = a.moving ? g.liftR : 0;
 
     if (a.windup) {
       const e = Math.sin(a.k * Math.PI * 0.5);
-      bodyRot -= e * 0.05;
-      bodyY -= e * 1.4;
+      bodyRot -= e * 0.06;
+      bodyY -= e * 1.8;
       headRot -= e * 0.07;
-      armR -= e * 0.5;                 // 抬枪
-      gunRot -= e * 0.35;
+      armR -= e * 0.55;                       // 抬枪
+      gunRot -= e * 0.4;
       armL -= e * 0.18;
-      lunge = -e * 2.5;
+      lunge = -e * 3;
     } else if (a.strike) {
-      const e = Math.sin(Math.pow(a.k, 0.55) * Math.PI);
-      bodyRot += melee ? e * 0.07 : e * 0.03;
-      bodyY += e * 0.8;
-      headRot += e * 0.05;
+      const e = atkEnv(a.k);
+      const hd = holdEnv(a.k);
+      const eg = lagEnv(a.k, 0.06);           // 枪口延迟上跳
+      bodyRot += (melee ? e * 0.08 : e * 0.03) - hd * 0.06;
+      bodyY += e * 0.9 - hd * 1.8;
+      headRot += lagEnv(a.k, 0.08) * 0.06 - hd * 0.07;
       // 开火后坐：枪口上跳；近战枪托则是向前抡
-      gunRot += e * (melee ? 0.5 : -0.3);
-      armR += e * (melee ? 0.4 : 0.15);
-      lunge = e * (melee ? 5 : 2);
+      gunRot += eg * (melee ? 0.55 : -0.42) - hd * 0.4;
+      armR += eg * (melee ? 0.45 : 0.2) - hd * 0.55;
+      lunge = e * (melee ? 5.5 : 2) - hd * 3;
     }
 
-    part(ctx, m, bone, 'footL', { y: -liftL });
-    part(ctx, m, bone, 'footR', { y: -liftR });
-    part(ctx, m, bone, 'body', { x: lunge, y: bodyY, rot: bodyRot });
-    part(ctx, m, bone, 'armL', { x: lunge, y: bodyY, rot: armL });
-    part(ctx, m, bone, 'head', { x: lunge, y: bodyY + headY, rot: headRot });
-    part(ctx, m, bone, 'armR', { x: lunge, y: bodyY, rot: armR + gunRot * 0.25 });
-    part(ctx, m, bone, 'gun', { x: lunge, y: bodyY, rot: gunRot });
+    part(ctx, m, bone, 'footL', { x: bodyX * 0.3, y: -liftL });
+    part(ctx, m, bone, 'footR', { x: bodyX * 0.3, y: -liftR });
+    part(ctx, m, bone, 'body', { x: bodyX + lunge, y: bodyY, rot: bodyRot });
+    part(ctx, m, bone, 'armL', { x: bodyX + lunge, y: bodyY, rot: armL });
+    part(ctx, m, bone, 'head', { x: bodyX + lunge, y: bodyY + headY, rot: headRot });
+    part(ctx, m, bone, 'armR', { x: bodyX + lunge, y: bodyY, rot: armR + gunRot * 0.25 });
+    part(ctx, m, bone, 'gun', { x: bodyX + lunge, y: bodyY, rot: gunRot });
   }
 
-  // 冰晶巨像：沉重呼吸 / 交替跺步 / 双臂高举后砸地
+  // 冰晶巨像：沉重呼吸 / 交替跺步 / 双臂高举后砸地（落地下沉 + 头部延迟）
   function drawIceGolem(ctx, m, bone, t, a) {
     const seed = m.seed || 0;
     const br = Math.sin(t * 1.8 + seed);
+    const drift = Math.sin(t * 0.62 + seed * 1.9);
     const ph = t * 6.8 + seed;
-    const ws = a.moving ? Math.sin(ph) : 0;
+    const g = gait(ph, 2.8);
     const big = (a.type === 'arc' || a.type === 'slash');
 
-    let bodyY = br * 1.4 + (a.moving ? Math.abs(ws) * 2.2 : 0);
-    let bodyRot = br * 0.01 + (a.moving ? ws * 0.02 : 0);
+    let bodyX = a.moving ? g.sway * 0.8 : drift * 1.4;
+    let bodyY = br * 1.4 + drift * 0.6 + (a.moving ? g.bob : 0);
+    let bodyRot = br * 0.01 + drift * 0.006 + (a.moving ? g.s * 0.024 : 0);
     let headRot = Math.sin(t * 1.3 + seed) * 0.025;
-    let armL = Math.sin(t * 1.4 + seed) * 0.05 + (a.moving ? ws * 0.1 : 0);
-    let armR = -Math.sin(t * 1.4 + seed) * 0.05 - (a.moving ? ws * 0.1 : 0);
+    let armL = Math.sin(t * 1.4 + seed) * 0.05 - (a.moving ? g.s * 0.12 : 0);
+    let armR = -Math.sin(t * 1.4 + seed) * 0.05 + (a.moving ? g.s * 0.12 : 0);
     let lunge = 0;
-    const liftL = a.moving ? Math.max(0, ws) * 2.5 : 0;
-    const liftR = a.moving ? Math.max(0, -ws) * 2.5 : 0;
+    const liftL = a.moving ? g.liftL : 0;
+    const liftR = a.moving ? g.liftR : 0;
 
     if (a.windup) {
       const e = Math.sin(a.k * Math.PI * 0.5);
-      bodyRot -= e * 0.035;
-      bodyY -= e * 1.8;
+      bodyRot -= e * 0.04;
+      bodyY -= e * 2.4;
       headRot -= e * 0.05;
-      armL += e * (big ? 0.75 : 0.3);
-      armR -= e * (big ? 0.75 : 0.3);
-      lunge = -e * 2.5;
+      armL += e * (big ? 0.85 : 0.34);
+      armR -= e * (big ? 0.85 : 0.34);
+      lunge = -e * 3;
     } else if (a.strike) {
-      const e = Math.sin(Math.pow(a.k, 0.5) * Math.PI);
-      bodyRot += e * (big ? 0.08 : 0.03);
-      bodyY += e * (big ? 2.2 : 0.9);
-      headRot += e * 0.04;
-      armL -= e * (big ? 0.55 : 0.2);
-      armR += e * (big ? 0.55 : 0.2);
-      lunge = e * (big ? 5 : 2);
+      const e = atkEnv(a.k);
+      const hd = holdEnv(a.k);
+      const slam = lagEnv(a.k, 0.07);          // 双臂延迟砸下
+      const eh = lagEnv(a.k, 0.1);             // 头部最后到位
+      bodyRot += e * (big ? 0.09 : 0.03) - hd * 0.04;
+      bodyY += e * (big ? 2.6 : 1.1) - hd * 2.4;
+      headRot += eh * 0.06 - hd * 0.05;
+      armL += -slam * (big ? 0.7 : 0.26) + hd * (big ? 0.85 : 0.34);
+      armR += slam * (big ? 0.7 : 0.26) - hd * (big ? 0.85 : 0.34);
+      lunge = e * (big ? 5.5 : 2) - hd * 3;
     }
 
-    part(ctx, m, bone, 'footL', { y: -liftL });
-    part(ctx, m, bone, 'footR', { y: -liftR });
-    part(ctx, m, bone, 'body', { x: lunge, y: bodyY, rot: bodyRot });
-    part(ctx, m, bone, 'armL', { x: lunge, y: bodyY, rot: armL });
-    part(ctx, m, bone, 'armR', { x: lunge, y: bodyY, rot: armR });
-    part(ctx, m, bone, 'head', { x: lunge, y: bodyY, rot: headRot });
+    part(ctx, m, bone, 'footL', { x: bodyX * 0.3, y: -liftL });
+    part(ctx, m, bone, 'footR', { x: bodyX * 0.3, y: -liftR });
+    part(ctx, m, bone, 'body', { x: bodyX + lunge, y: bodyY, rot: bodyRot });
+    part(ctx, m, bone, 'armL', { x: bodyX + lunge, y: bodyY, rot: armL });
+    part(ctx, m, bone, 'armR', { x: bodyX + lunge, y: bodyY, rot: armR });
+    part(ctx, m, bone, 'head', { x: bodyX + lunge, y: bodyY, rot: headRot });
   }
 
-  // 魔法书：悬浮起伏 / 振翅 / 前倾吐舌
+  // 魔法书：悬浮起伏 / 振翅 / 后仰蓄力再前倾甩舌（舌头延迟跟随）
   function drawGrimoire(ctx, m, bone, t, a) {
     const seed = m.seed || 0;
     const hover = Math.sin(t * 2.0 + seed);
+    const drift = Math.sin(t * 0.66 + seed * 1.4);
     const flapSpeed = a.moving ? 7.5 : 4.6;
     const flap = Math.sin(t * flapSpeed + seed);
 
-    let bodyY = hover * 2.2 - (a.moving ? 1.5 : 0);
+    let bodyX = a.moving ? Math.cos(t * flapSpeed + seed) * 1.4 : drift * 1.6;
+    let bodyY = hover * 2.2 + drift * 0.8 - (a.moving ? 1.5 : 0);
     let bodyRot = Math.sin(t * 0.9 + seed) * 0.02;
     let wingL = 0.1 + flap * 0.22;
     let wingR = -0.1 - flap * 0.22;
@@ -6053,208 +6182,239 @@
 
     if (a.windup) {
       const e = Math.sin(a.k * Math.PI * 0.5);
-      bodyRot -= e * 0.1;
-      bodyY -= e * 3;
+      bodyRot -= e * 0.12;
+      bodyY -= e * 3.4;
       wingL += e * 0.5;
       wingR -= e * 0.5;
       tongue -= e * 0.35;
-      lunge = -e * 4;
+      lunge = -e * 4.5;
     } else if (a.strike) {
-      const e = Math.sin(Math.pow(a.k, 0.5) * Math.PI);
-      bodyRot += e * 0.12;
-      bodyY += e * 2;
-      wingL += e * 0.75;
-      wingR -= e * 0.75;
-      tongue += e * 0.8;              // 长舌前甩
-      lunge = e * 7;
+      const e = atkEnv(a.k);
+      const hd = holdEnv(a.k);
+      const et = lagEnv(a.k, 0.11);           // 长舌最后甩出
+      const ew = lagEnv(a.k, 0.06);
+      bodyRot += e * 0.14 - hd * 0.12;
+      bodyY += e * 2.4 - hd * 3.4;
+      wingL += ew * 0.9 - hd * 0.5;
+      wingR -= ew * 0.9 - hd * 0.5;
+      tongue += et * 1.05 - hd * 0.35;        // 长舌前甩
+      headRot += lagEnv(a.k, 0.04) * 0.08;
+      lunge = e * 7.5 - hd * 4.5;
     }
 
-    part(ctx, m, bone, 'wingL', { x: lunge, y: bodyY, rot: wingL });
-    part(ctx, m, bone, 'wingR', { x: lunge, y: bodyY, rot: wingR });
-    part(ctx, m, bone, 'body', { x: lunge, y: bodyY, rot: bodyRot });
-    part(ctx, m, bone, 'head', { x: lunge, y: bodyY, rot: headRot });
-    part(ctx, m, bone, 'tongue', { x: lunge, y: bodyY + tongue * 3, rot: bodyRot + tongue });
+    part(ctx, m, bone, 'wingL', { x: bodyX + lunge, y: bodyY, rot: wingL });
+    part(ctx, m, bone, 'wingR', { x: bodyX + lunge, y: bodyY, rot: wingR });
+    part(ctx, m, bone, 'body', { x: bodyX + lunge, y: bodyY, rot: bodyRot });
+    part(ctx, m, bone, 'head', { x: bodyX + lunge, y: bodyY, rot: headRot });
+    part(ctx, m, bone, 'tongue', { x: bodyX + lunge, y: bodyY + tongue * 3, rot: bodyRot + tongue });
   }
 
-  // 噬人花王：花头摇晃 / 底座蹦跳 / 后仰再前咬
+  // 噬人花王：花头摇晃 / 底座蹦跳 / 后仰蓄力再前咬（花头与叶片延迟跟随）
   function drawFlowerKing(ctx, m, bone, t, a) {
     const seed = m.seed || 0;
     const br = Math.sin(t * 1.9 + seed);
+    const drift = Math.sin(t * 0.72 + seed * 1.8);
     const ph = t * 7.5 + seed;
-    const ws = a.moving ? Math.sin(ph) : 0;
+    const g = gait(ph, 2.2);
     const melee = (a.type === 'arc' || a.type === 'slash');
 
-    let bodyY = br * 0.9 + (a.moving ? Math.abs(ws) * 2 : 0);
-    let bodyRot = br * 0.012 + (a.moving ? ws * 0.03 : 0);
-    let headRot = Math.sin(t * 1.5 + seed) * 0.04 - (a.moving ? ws * 0.05 : 0);
+    let bodyX = a.moving ? g.sway * 0.6 : drift * 1.1;
+    let bodyY = br * 0.9 + drift * 0.5 + (a.moving ? g.bob : 0);
+    let bodyRot = br * 0.012 + (a.moving ? g.s * 0.03 : 0);
+    let headRot = Math.sin(t * 1.5 + seed) * 0.04 - (a.moving ? g.s * 0.05 : 0);
     let headY = br * 0.6;
     let leafL = Math.sin(t * 1.7 + seed) * 0.1;
     let leafR = -Math.sin(t * 1.7 + seed) * 0.1;
     let lunge = 0;
-    const hop = a.moving ? Math.abs(ws) * 1.4 : 0;
-
-    if (a.windup) {
-      const e = Math.sin(a.k * Math.PI * 0.5);
-      bodyRot -= e * 0.05;
-      bodyY -= e * 1.5;
-      headRot -= e * (melee ? 0.28 : 0.12);   // 花头后仰蓄力
-      headY -= e * 1.5;
-      leafL -= e * 0.3;
-      leafR += e * 0.3;
-      lunge = -e * 3;
-    } else if (a.strike) {
-      const e = Math.sin(Math.pow(a.k, 0.5) * Math.PI);
-      bodyRot += e * 0.07;
-      bodyY += e * 1.2;
-      headRot += e * (melee ? 0.42 : 0.16);   // 巨口前咬
-      headY += e * 2;
-      leafL += e * 0.45;
-      leafR -= e * 0.45;
-      lunge = e * (melee ? 7 : 3);
-    }
-
-    part(ctx, m, bone, 'stem', { x: lunge, y: bodyY, rot: bodyRot });
-    part(ctx, m, bone, 'foot', { x: lunge * 0.6, y: -hop });
-    part(ctx, m, bone, 'leafL', { x: lunge, y: bodyY, rot: leafL });
-    part(ctx, m, bone, 'leafR', { x: lunge, y: bodyY, rot: leafR });
-    part(ctx, m, bone, 'head', { x: lunge, y: bodyY + headY, rot: headRot });
-  }
-
-  // 魔锅骑士：锅身摇摆 / 交替迈步 / 举盾长矛前刺
-  function drawPotKnight(ctx, m, bone, t, a) {
-    const seed = m.seed || 0;
-    const br = Math.sin(t * 2.1 + seed);
-    const ph = t * 8.2 + seed;
-    const ws = a.moving ? Math.sin(ph) : 0;
-    const thrust = (a.type === 'arc' || a.type === 'slash');
-
-    let bodyY = br * 1.1 + (a.moving ? Math.abs(ws) * 1.8 : 0);
-    let bodyRot = br * 0.012 + (a.moving ? ws * 0.035 : 0);
-    let headRot = Math.sin(t * 1.4 + seed) * 0.03 - (a.moving ? ws * 0.04 : 0);
-    let shield = Math.sin(t * 1.5 + seed) * 0.05;
-    let spear = Math.sin(t * 1.3 + seed) * 0.03;
-    let lunge = 0;
-    const liftL = a.moving ? Math.max(0, ws) * 2 : 0;
-    const liftR = a.moving ? Math.max(0, -ws) * 2 : 0;
+    const hop = a.moving ? Math.abs(g.s) * 1.6 : 0;
 
     if (a.windup) {
       const e = Math.sin(a.k * Math.PI * 0.5);
       bodyRot -= e * 0.06;
-      bodyY -= e * 1.4;
-      headRot -= e * 0.06;
-      shield -= e * 0.28;              // 举盾护身
-      spear -= e * 0.55;               // 长矛后引
-      lunge = -e * 3;
+      bodyY -= e * 1.8;
+      headRot -= e * (melee ? 0.3 : 0.13);   // 花头后仰蓄力
+      headY -= e * 1.6;
+      leafL -= e * 0.32;
+      leafR += e * 0.32;
+      lunge = -e * 3.5;
     } else if (a.strike) {
-      const e = Math.sin(Math.pow(a.k, 0.55) * Math.PI);
-      bodyRot += e * 0.08;
-      bodyY += e * 1.2;
-      headRot += e * 0.06;
-      shield += e * 0.18;
-      spear += e * (thrust ? 0.9 : 0.25);   // 长矛前刺
-      lunge = e * (thrust ? 8 : 3);
+      const e = atkEnv(a.k);
+      const hd = holdEnv(a.k);
+      const eh = lagEnv(a.k, 0.07);           // 花头延迟前扑
+      const el = lagEnv(a.k, 0.12);           // 叶片最后跟上
+      bodyRot += e * 0.08 - hd * 0.06;
+      bodyY += e * 1.4 - hd * 1.8;
+      headRot += eh * (melee ? 0.5 : 0.2) - hd * (melee ? 0.3 : 0.13);
+      headY += eh * 2.4 - hd * 1.6;
+      leafL += el * 0.52 - hd * 0.32;
+      leafR -= el * 0.52 - hd * 0.32;
+      lunge = e * (melee ? 7.5 : 3) - hd * 3.5;
     }
 
-    part(ctx, m, bone, 'footL', { x: lunge * 0.5, y: -liftL });
-    part(ctx, m, bone, 'footR', { x: lunge * 0.5, y: -liftR });
-    part(ctx, m, bone, 'body', { x: lunge, y: bodyY, rot: bodyRot });
-    part(ctx, m, bone, 'shield', { x: lunge, y: bodyY, rot: shield });
-    part(ctx, m, bone, 'head', { x: lunge, y: bodyY, rot: headRot });
-    part(ctx, m, bone, 'spear', { x: lunge, y: bodyY, rot: spear });
+    part(ctx, m, bone, 'stem', { x: bodyX + lunge, y: bodyY, rot: bodyRot });
+    part(ctx, m, bone, 'foot', { x: bodyX * 0.4 + lunge * 0.6, y: -hop });
+    part(ctx, m, bone, 'leafL', { x: bodyX + lunge, y: bodyY, rot: leafL });
+    part(ctx, m, bone, 'leafR', { x: bodyX + lunge, y: bodyY, rot: leafR });
+    part(ctx, m, bone, 'head', { x: bodyX + lunge, y: bodyY + headY, rot: headRot });
   }
 
-  // 紫晶蟹王：晶簇呼吸 / 四足交替爬行 / 晶钳开合夹击
+  // 魔锅骑士：锅身摇摆 / 交替迈步 / 举盾护身再长矛前刺（矛身延迟突进）
+  function drawPotKnight(ctx, m, bone, t, a) {
+    const seed = m.seed || 0;
+    const br = Math.sin(t * 2.1 + seed);
+    const drift = Math.sin(t * 0.8 + seed * 1.6);
+    const ph = t * 8.2 + seed;
+    const g = gait(ph, 2.4);
+    const thrust = (a.type === 'arc' || a.type === 'slash');
+
+    let bodyX = a.moving ? g.sway * 0.7 : drift * 0.9;
+    let bodyY = br * 1.1 + drift * 0.5 + (a.moving ? g.bob : 0);
+    let bodyRot = br * 0.012 + (a.moving ? g.s * 0.032 : 0);
+    let headRot = Math.sin(t * 1.4 + seed) * 0.03 - (a.moving ? g.s * 0.04 : 0);
+    let shield = Math.sin(t * 1.5 + seed) * 0.05;
+    let spear = Math.sin(t * 1.3 + seed) * 0.03 + (a.moving ? g.s * 0.05 : 0);
+    let lunge = 0;
+    const liftL = a.moving ? g.liftL : 0;
+    const liftR = a.moving ? g.liftR : 0;
+
+    if (a.windup) {
+      const e = Math.sin(a.k * Math.PI * 0.5);
+      bodyRot -= e * 0.07;
+      bodyY -= e * 1.8;
+      headRot -= e * 0.06;
+      shield -= e * 0.3;                       // 举盾护身
+      spear -= e * 0.62;                       // 长矛后引
+      lunge = -e * 3.5;
+    } else if (a.strike) {
+      const e = atkEnv(a.k);
+      const hd = holdEnv(a.k);
+      const es = lagEnv(a.k, 0.1);             // 矛尖延迟刺出
+      const eh = lagEnv(a.k, 0.07);
+      bodyRot += e * 0.09 - hd * 0.07;
+      bodyY += e * 1.3 - hd * 1.8;
+      headRot += eh * 0.07 - hd * 0.06;
+      shield += e * 0.2 - hd * 0.3;
+      spear += es * (thrust ? 1.15 : 0.3) - hd * 0.62;   // 长矛前刺
+      lunge = e * (thrust ? 8.5 : 3) - hd * 3.5;
+    }
+
+    part(ctx, m, bone, 'footL', { x: bodyX * 0.3 + lunge * 0.5, y: -liftL });
+    part(ctx, m, bone, 'footR', { x: bodyX * 0.3 + lunge * 0.5, y: -liftR });
+    part(ctx, m, bone, 'body', { x: bodyX + lunge, y: bodyY, rot: bodyRot });
+    part(ctx, m, bone, 'shield', { x: bodyX + lunge, y: bodyY, rot: shield });
+    part(ctx, m, bone, 'head', { x: bodyX + lunge, y: bodyY, rot: headRot });
+    part(ctx, m, bone, 'spear', { x: bodyX + lunge, y: bodyY, rot: spear });
+  }
+
+  // 紫晶蟹王：晶簇呼吸 / 四足交替爬行 / 晶钳张开再夹击（钳口延迟闭合）
   function drawCrystalCrab(ctx, m, bone, t, a) {
     const seed = m.seed || 0;
     const br = Math.sin(t * 1.9 + seed);
+    const drift = Math.sin(t * 0.85 + seed * 1.5);
     const ph = t * 10.5 + seed;
-    const ws = a.moving ? Math.sin(ph) : 0;
     const pinch = (a.type === 'arc' || a.type === 'slash');
 
-    let bodyY = br * 1.2 + (a.moving ? Math.abs(ws) * 1.2 : 0);
-    let bodyRot = br * 0.012 + (a.moving ? ws * 0.016 : 0);
+    let bodyX = a.moving ? Math.sin(ph) * 1.2 : drift * 1.6;
+    let bodyY = br * 1.2 + drift * 0.5 + (a.moving ? -Math.cos(ph * 2) * 1.1 + 0.2 : 0);
+    let bodyRot = br * 0.012 + (a.moving ? Math.sin(ph) * 0.018 : 0);
     let claw = Math.sin(t * 1.6 + seed) * 0.05;
     let lunge = 0;
-    const legs = [0, 1, 2, 3].map((i) => (a.moving ? Math.sin(ph + i * Math.PI * 0.5) * 2.2 : 0));
+    // 四足交错：相邻腿反相，形成横向爬行的连续支撑
+    const lift = [0, 0, 0, 0];
+    if (a.moving) {
+      for (let i = 0; i < 4; i++) lift[i] = Math.max(0, Math.sin(ph + i * Math.PI * 0.5)) * 2.2;
+    }
 
     if (a.windup) {
       const e = Math.sin(a.k * Math.PI * 0.5);
-      bodyRot -= e * 0.05;
-      bodyY -= e * 1.3;
-      claw -= e * 0.55;
-      lunge = -e * 3;
+      bodyRot -= e * 0.06;
+      bodyY -= e * 1.6;
+      claw -= e * 0.62;                        // 晶钳张开
+      lunge = -e * 3.5;
     } else if (a.strike) {
-      const e = Math.sin(Math.pow(a.k, 0.5) * Math.PI);
-      bodyRot += e * 0.06;
-      bodyY += e * 0.9;
-      claw += e * (pinch ? 0.85 : 0.3);   // 晶钳开合
-      lunge = e * (pinch ? 7 : 3);
+      const e = atkEnv(a.k);
+      const hd = holdEnv(a.k);
+      const ec = lagEnv(a.k, 0.1);             // 钳口延迟夹合
+      bodyRot += e * 0.07 - hd * 0.06;
+      bodyY += e * 1.0 - hd * 1.6;
+      claw += ec * (pinch ? 0.92 : 0.35) - hd * 0.62;
+      lunge = e * (pinch ? 8 : 3) - hd * 3.5;
     }
 
-    part(ctx, m, bone, 'legL1', { y: -Math.max(0, legs[0]) });
-    part(ctx, m, bone, 'legL2', { y: -Math.max(0, legs[1]) });
-    part(ctx, m, bone, 'legR1', { y: -Math.max(0, legs[2]) });
-    part(ctx, m, bone, 'legR2', { y: -Math.max(0, legs[3]) });
-    part(ctx, m, bone, 'body', { x: lunge, y: bodyY, rot: bodyRot });
-    part(ctx, m, bone, 'claw', { x: lunge, y: bodyY, rot: claw });
+    part(ctx, m, bone, 'legL1', { x: bodyX * 0.5, y: -lift[0] });
+    part(ctx, m, bone, 'legL2', { x: bodyX * 0.5, y: -lift[1] });
+    part(ctx, m, bone, 'legR1', { x: bodyX * 0.5, y: -lift[2] });
+    part(ctx, m, bone, 'legR2', { x: bodyX * 0.5, y: -lift[3] });
+    part(ctx, m, bone, 'body', { x: bodyX + lunge, y: bodyY, rot: bodyRot });
+    part(ctx, m, bone, 'claw', { x: bodyX + lunge, y: bodyY, rot: claw });
   }
 
-  // 粉角屠夫：厚重呼吸 / 左右摇摆 / 肩斧高举抡劈
+  // 粉角屠夫：厚重呼吸 / 左右摇摆 / 肩斧高举抡劈（落斧过冲再回摆）
   function drawPinkDemon(ctx, m, bone, t, a) {
     const seed = m.seed || 0;
     const br = Math.sin(t * 1.8 + seed);
+    const drift = Math.sin(t * 0.7 + seed * 1.7);
     const ph = t * 7.6 + seed;
-    const ws = a.moving ? Math.sin(ph) : 0;
+    const g = gait(ph, 2.7);
     const heavy = (a.type === 'slash' || a.type === 'arc');
 
-    let bodyY = br * 1.3 + (a.moving ? Math.abs(ws) * 1.6 : 0);
-    let bodyRot = br * 0.012 + (a.moving ? ws * 0.03 : 0);
-    let headRot = Math.sin(t * 1.35 + seed) * 0.03 - (a.moving ? ws * 0.03 : 0);
-    let armL = Math.sin(t * 1.4 + seed) * 0.05;    // 画面右侧手臂
-    let armR = -Math.sin(t * 1.4 + seed) * 0.05;   // 画面左侧手臂
+    let bodyX = a.moving ? g.sway * 0.8 : drift * 1.2;
+    let bodyY = br * 1.3 + drift * 0.6 + (a.moving ? g.bob : 0);
+    let bodyRot = br * 0.012 + (a.moving ? g.s * 0.032 : 0);
+    let headRot = Math.sin(t * 1.35 + seed) * 0.03 - (a.moving ? g.s * 0.03 : 0);
+    let armL = Math.sin(t * 1.4 + seed) * 0.05 - (a.moving ? g.s * 0.1 : 0);    // 画面右侧手臂
+    let armR = -Math.sin(t * 1.4 + seed) * 0.05 + (a.moving ? g.s * 0.1 : 0);   // 画面左侧手臂
     let axe = Math.sin(t * 1.2 + seed) * 0.03;
     let lunge = 0;
-    const feetRot = a.moving ? ws * 0.03 : 0;
+    const feetRot = a.moving ? g.s * 0.035 : 0;
+    const feetY = a.moving ? -Math.abs(g.s) * 1.2 : 0;
 
     if (a.windup) {
       const e = Math.sin(a.k * Math.PI * 0.5);
-      bodyRot -= e * 0.05;
-      bodyY -= e * 1.5;
+      bodyRot -= e * 0.06;
+      bodyY -= e * 2.2;
       headRot -= e * 0.07;
-      axe -= e * 0.8;                 // 肩斧高举
-      armL -= e * 0.25;
-      armR += e * 0.2;
-      lunge = -e * 3;
+      axe -= e * 0.9;                          // 肩斧高举
+      armL -= e * 0.28;
+      armR += e * 0.22;
+      lunge = -e * 4;
     } else if (a.strike) {
-      const e = Math.sin(Math.pow(a.k, 0.55) * Math.PI);
-      bodyRot += e * 0.09;
-      bodyY += e * 1.7;
-      headRot += e * 0.09;
-      axe += e * (heavy ? 1.3 : 0.35);   // 抡斧下劈
-      armL += e * 0.35;
-      armR -= e * 0.25;
-      lunge = e * (heavy ? 6 : 2.5);
+      const e = atkEnv(a.k);
+      const hd = holdEnv(a.k);
+      const ea = lagEnv(a.k, 0.1);             // 斧刃延迟抡下
+      const eh = lagEnv(a.k, 0.06);
+      bodyRot += e * 0.1 - hd * 0.06;
+      bodyY += e * 2 - hd * 2.2;               // 落斧下压
+      headRot += eh * 0.1 - hd * 0.07;
+      axe += ea * (heavy ? 1.55 : 0.4) - hd * 0.9;   // 抡斧下劈
+      armL += e * 0.38 - hd * 0.28;
+      armR -= e * 0.28 - hd * 0.22;
+      lunge = e * (heavy ? 6.5 : 2.5) - hd * 4;
     }
 
-    part(ctx, m, bone, 'axe', { x: lunge, y: bodyY, rot: axe });
-    part(ctx, m, bone, 'feet', { x: lunge * 0.6, rot: feetRot });
-    part(ctx, m, bone, 'body', { x: lunge, y: bodyY, rot: bodyRot });
-    part(ctx, m, bone, 'armR', { x: lunge, y: bodyY, rot: armR });
-    part(ctx, m, bone, 'armL', { x: lunge, y: bodyY, rot: armL });
-    part(ctx, m, bone, 'head', { x: lunge, y: bodyY, rot: headRot });
+    part(ctx, m, bone, 'axe', { x: bodyX + lunge, y: bodyY, rot: axe });
+    part(ctx, m, bone, 'feet', { x: bodyX * 0.4 + lunge * 0.5, y: feetY, rot: feetRot });
+    part(ctx, m, bone, 'body', { x: bodyX + lunge, y: bodyY, rot: bodyRot });
+    part(ctx, m, bone, 'armR', { x: bodyX + lunge, y: bodyY, rot: armR });
+    part(ctx, m, bone, 'armL', { x: bodyX + lunge, y: bodyY, rot: armL });
+    part(ctx, m, bone, 'head', { x: bodyX + lunge, y: bodyY, rot: headRot });
+    // 出手时斧头会转到头部后方，补画一次，保证下劈的剪影始终可读
+    if (a.strike) part(ctx, m, bone, 'axe', { x: bodyX + lunge, y: bodyY, rot: axe });
   }
 
-  // 南瓜领主：鬼火浮动 / 小步挪动 / 触手后引再前扑缠绕
+  // 南瓜领主：鬼火浮动 / 小步挪动 / 触手后引再前扑缠绕（触手延迟甩出）
   function drawPumpkinLord(ctx, m, bone, t, a) {
     const seed = m.seed || 0;
     const hover = Math.sin(t * 1.7 + seed);
+    const drift = Math.sin(t * 0.76 + seed * 1.9);
     const ph = t * 7.2 + seed;
-    const ws = a.moving ? Math.sin(ph) : 0;
+    const g = gait(ph, 2.2);
     const melee = (a.type === 'arc' || a.type === 'slash');
 
-    let bodyY = hover * 1.3 + (a.moving ? Math.abs(ws) * 1.5 : 0);
-    let bodyRot = hover * 0.01 + (a.moving ? ws * 0.025 : 0);
-    let headRot = Math.sin(t * 1.4 + seed) * 0.035 - (a.moving ? ws * 0.035 : 0);
+    let bodyX = a.moving ? g.sway * 0.7 : drift * 1.3;
+    let bodyY = hover * 1.3 + drift * 0.6 + (a.moving ? g.bob : 0);
+    let bodyRot = hover * 0.01 + (a.moving ? g.s * 0.026 : 0);
+    let headRot = Math.sin(t * 1.4 + seed) * 0.035 - (a.moving ? g.s * 0.035 : 0);
     let headY = hover * 0.5;
     let tenL = Math.sin(t * 1.8 + seed) * 0.12;
     let tenR = -Math.sin(t * 1.8 + seed) * 0.12;
@@ -6263,120 +6423,133 @@
 
     if (a.windup) {
       const e = Math.sin(a.k * Math.PI * 0.5);
-      bodyRot -= e * 0.05;
-      bodyY -= e * 1.6;
-      headRot -= e * (melee ? 0.22 : 0.1);
-      tenL -= e * 0.45;
-      tenR += e * 0.45;
-      top -= e * 0.3;
-      lunge = -e * 3;
+      bodyRot -= e * 0.06;
+      bodyY -= e * 1.9;
+      headRot -= e * (melee ? 0.24 : 0.11);
+      tenL -= e * 0.5;
+      tenR += e * 0.5;
+      top -= e * 0.32;
+      lunge = -e * 3.5;
     } else if (a.strike) {
-      const e = Math.sin(Math.pow(a.k, 0.5) * Math.PI);
-      bodyRot += e * 0.07;
-      bodyY += e * 1.2;
-      headRot += e * (melee ? 0.3 : 0.12);
-      tenL += e * 0.6;                // 触手前缠
-      tenR -= e * 0.6;
-      top += e * 0.4;
-      lunge = e * (melee ? 6 : 2.5);
+      const e = atkEnv(a.k);
+      const hd = holdEnv(a.k);
+      const et = lagEnv(a.k, 0.1);             // 触手延迟前伸
+      const eh = lagEnv(a.k, 0.06);
+      bodyRot += e * 0.08 - hd * 0.06;
+      bodyY += e * 1.3 - hd * 1.9;
+      headRot += eh * (melee ? 0.34 : 0.14) - hd * (melee ? 0.24 : 0.11);
+      tenL += et * 0.75 - hd * 0.5;            // 触手前缠
+      tenR -= et * 0.75 - hd * 0.5;
+      top += lagEnv(a.k, 0.13) * 0.5 - hd * 0.32;
+      lunge = e * (melee ? 6.5 : 2.5) - hd * 3.5;
     }
 
-    part(ctx, m, bone, 'footL', { x: lunge * 0.5 });
-    part(ctx, m, bone, 'footR', { x: lunge * 0.5 });
-    part(ctx, m, bone, 'body', { x: lunge, y: bodyY, rot: bodyRot });
-    part(ctx, m, bone, 'tenL', { x: lunge, y: bodyY, rot: tenL });
-    part(ctx, m, bone, 'tenR', { x: lunge, y: bodyY, rot: tenR });
-    part(ctx, m, bone, 'head', { x: lunge, y: bodyY + headY, rot: headRot });
-    part(ctx, m, bone, 'top', { x: lunge, y: bodyY + headY, rot: bodyRot + top });
+    part(ctx, m, bone, 'footL', { x: bodyX * 0.4 + lunge * 0.5 });
+    part(ctx, m, bone, 'footR', { x: bodyX * 0.4 + lunge * 0.5 });
+    part(ctx, m, bone, 'body', { x: bodyX + lunge, y: bodyY, rot: bodyRot });
+    part(ctx, m, bone, 'tenL', { x: bodyX + lunge, y: bodyY, rot: tenL });
+    part(ctx, m, bone, 'tenR', { x: bodyX + lunge, y: bodyY, rot: tenR });
+    part(ctx, m, bone, 'head', { x: bodyX + lunge, y: bodyY + headY, rot: headRot });
+    part(ctx, m, bone, 'top', { x: bodyX + lunge, y: bodyY + headY, rot: bodyRot + top });
   }
 
-  // 触手蠕虫王：身体波浪起伏 / 尾段摆动爬行 / 羽状触手后引再前抽
+  // 触手蠕虫王：身体波浪起伏 / 尾段摆动爬行 / 羽状触手后引再前抽（节段逐级延迟）
   function drawOctoWorm(ctx, m, bone, t, a) {
     const seed = m.seed || 0;
     const br = Math.sin(t * 1.8 + seed);
+    const drift = Math.sin(t * 0.64 + seed * 1.7);
     const ph = t * 7.0 + seed;
-    const ws = a.moving ? Math.sin(ph) : 0;
+    const wave = a.moving ? Math.sin(ph) : 0;
     const big = (a.type === 'arc' || a.type === 'slash');
 
-    let bodyY = br * 1.3 + (a.moving ? Math.abs(ws) * 2.2 : 0);
-    let bodyRot = br * 0.015 + (a.moving ? ws * 0.03 : 0);
-    let torsoRot = Math.sin(t * 1.5 + seed) * 0.03 - (a.moving ? ws * 0.04 : 0);
-    let plumeRot = Math.sin(t * 1.6 + seed) * 0.06 + (a.moving ? ws * 0.08 : 0);
-    let tailA = Math.sin(t * 1.9 + seed) * 0.12;
-    let tailB = -Math.sin(t * 1.9 + seed) * 0.1;
+    let bodyX = a.moving ? wave * 1.4 : drift * 1.5;
+    let bodyY = br * 1.3 + drift * 0.6 + (a.moving ? (-Math.cos(ph * 2) * 1.4 + 0.3) : 0);
+    let bodyRot = br * 0.015 + (a.moving ? wave * 0.03 : 0);
+    let torsoRot = Math.sin(t * 1.5 + seed) * 0.03 - (a.moving ? wave * 0.04 : 0);
+    let plumeRot = Math.sin(t * 1.6 + seed) * 0.06 + (a.moving ? wave * 0.08 : 0);
+    let tailA = Math.sin(t * 1.9 + seed) * 0.12 + (a.moving ? wave * 0.14 : 0);
+    let tailB = -Math.sin(t * 1.9 + seed) * 0.1 - (a.moving ? wave * 0.12 : 0);
     let lunge = 0;
+
+    if (a.windup) {
+      const e = Math.sin(a.k * Math.PI * 0.5);
+      bodyRot -= e * 0.07;
+      bodyY -= e * 2.2;
+      torsoRot -= e * 0.14;
+      plumeRot -= e * 0.62;                    // 羽状触手后引
+      tailA += e * 0.22;
+      tailB -= e * 0.22;
+      lunge = -e * 4.5;
+    } else if (a.strike) {
+      const e = atkEnv(a.k);
+      const hd = holdEnv(a.k);
+      const ep = lagEnv(a.k, 0.12);            // 触手末端最迟
+      const et = lagEnv(a.k, 0.07);
+      bodyRot += e * 0.09 - hd * 0.07;
+      bodyY += e * 1.7 - hd * 2.2;
+      torsoRot += et * 0.22 - hd * 0.14;
+      plumeRot += ep * (big ? 0.95 : 0.45) - hd * 0.62;   // 触手前抽
+      tailA += et * 0.3 - hd * 0.22;
+      tailB -= et * 0.3 - hd * 0.22;
+      lunge = e * (big ? 8.5 : 4) - hd * 4.5;
+    }
+
+    part(ctx, m, bone, 'tailA', { x: bodyX * 0.3 + lunge * 0.3, rot: tailA });
+    part(ctx, m, bone, 'tailB', { x: bodyX * 0.4 + lunge * 0.5, rot: tailB });
+    part(ctx, m, bone, 'body', { x: bodyX + lunge, y: bodyY, rot: bodyRot });
+    part(ctx, m, bone, 'torso', { x: bodyX + lunge, y: bodyY, rot: bodyRot + torsoRot });
+    part(ctx, m, bone, 'plume', { x: bodyX + lunge, y: bodyY, rot: bodyRot + plumeRot });
+  }
+
+  // 灰发女妖：灰发飘动 / 小碎步挪动 / 双臂后引再前扑爪击（灰发延迟前甩）
+  function drawHairBanshee(ctx, m, bone, t, a) {
+    const seed = m.seed || 0;
+    const br = Math.sin(t * 1.9 + seed);
+    const drift = Math.sin(t * 0.74 + seed * 1.8);
+    const ph = t * 8.4 + seed;
+    const g = gait(ph, 2.1);
+    const melee = (a.type === 'arc' || a.type === 'slash');
+
+    let bodyX = a.moving ? g.sway * 0.6 : drift * 1.4;
+    let bodyY = br * 1.1 + drift * 0.7 + (a.moving ? g.bob : 0);
+    let bodyRot = br * 0.012 + (a.moving ? g.s * 0.022 : 0);
+    let headRot = Math.sin(t * 1.5 + seed) * 0.045 - (a.moving ? g.s * 0.04 : 0);
+    let headY = br * 0.5;
+    let armL = Math.sin(t * 1.6 + seed) * 0.06 - (a.moving ? g.s * 0.12 : 0);   // 画面右侧手臂
+    let armR = -Math.sin(t * 1.6 + seed) * 0.06 + (a.moving ? g.s * 0.12 : 0);  // 画面左侧手臂
+    let lunge = 0;
+    const liftL = a.moving ? g.liftL : 0;
+    const liftR = a.moving ? g.liftR : 0;
 
     if (a.windup) {
       const e = Math.sin(a.k * Math.PI * 0.5);
       bodyRot -= e * 0.06;
-      bodyY -= e * 2;
-      torsoRot -= e * 0.12;
-      plumeRot -= e * 0.55;          // 羽状触手后引
-      tailA += e * 0.2;
-      tailB -= e * 0.2;
-      lunge = -e * 4;
+      bodyY -= e * 1.9;
+      headRot -= e * 0.14;
+      headY -= e * 0.9;
+      armL -= e * 0.5;
+      armR += e * 0.5;
+      lunge = -e * 3.5;
     } else if (a.strike) {
-      const e = Math.sin(Math.pow(a.k, 0.5) * Math.PI);
-      bodyRot += e * 0.08;
-      bodyY += e * 1.5;
-      torsoRot += e * 0.18;
-      plumeRot += e * (big ? 1.0 : 0.45);   // 触手前抽
-      tailA -= e * 0.3;
-      tailB += e * 0.3;
-      lunge = e * (big ? 8 : 4);
+      const e = atkEnv(a.k);
+      const hd = holdEnv(a.k);
+      const eh = lagEnv(a.k, 0.1);             // 灰发延迟前甩
+      const ea = lagEnv(a.k, 0.045);
+      bodyRot += e * 0.09 - hd * 0.06;
+      bodyY += e * 1.3 - hd * 1.9;
+      headRot += eh * (melee ? 0.28 : 0.12) - hd * 0.14;
+      headY += eh * 1.2 - hd * 0.9;
+      armL += ea * (melee ? 0.8 : 0.3) - hd * 0.5;   // 双爪前扑
+      armR -= ea * (melee ? 0.8 : 0.3) - hd * 0.5;
+      lunge = e * (melee ? 7.5 : 3) - hd * 3.5;
     }
 
-    part(ctx, m, bone, 'tailA', { x: lunge * 0.3, rot: tailA });
-    part(ctx, m, bone, 'tailB', { x: lunge * 0.5, rot: tailB });
-    part(ctx, m, bone, 'body', { x: lunge, y: bodyY, rot: bodyRot });
-    part(ctx, m, bone, 'torso', { x: lunge, y: bodyY, rot: bodyRot + torsoRot });
-    part(ctx, m, bone, 'plume', { x: lunge, y: bodyY, rot: bodyRot + plumeRot });
-  }
-
-  // 灰发女妖：灰发飘动 / 小碎步挪动 / 双臂后引再前扑爪击
-  function drawHairBanshee(ctx, m, bone, t, a) {
-    const seed = m.seed || 0;
-    const br = Math.sin(t * 1.9 + seed);
-    const ph = t * 8.4 + seed;
-    const ws = a.moving ? Math.sin(ph) : 0;
-    const melee = (a.type === 'arc' || a.type === 'slash');
-
-    let bodyY = br * 1.1 + (a.moving ? Math.abs(ws) * 1.6 : 0);
-    let bodyRot = br * 0.012 + (a.moving ? ws * 0.022 : 0);
-    let headRot = Math.sin(t * 1.5 + seed) * 0.045 - (a.moving ? ws * 0.04 : 0);
-    let headY = br * 0.5;
-    let armL = Math.sin(t * 1.6 + seed) * 0.06;    // 画面右侧手臂
-    let armR = -Math.sin(t * 1.6 + seed) * 0.06;   // 画面左侧手臂
-    let lunge = 0;
-    const liftL = a.moving ? Math.max(0, ws) * 2 : 0;
-    const liftR = a.moving ? Math.max(0, -ws) * 2 : 0;
-
-    if (a.windup) {
-      const e = Math.sin(a.k * Math.PI * 0.5);
-      bodyRot -= e * 0.05;
-      bodyY -= e * 1.6;
-      headRot -= e * 0.12;
-      headY -= e * 0.8;
-      armL -= e * 0.45;
-      armR += e * 0.45;
-      lunge = -e * 3;
-    } else if (a.strike) {
-      const e = Math.sin(Math.pow(a.k, 0.5) * Math.PI);
-      bodyRot += e * 0.08;
-      bodyY += e * 1.2;
-      headRot += e * (melee ? 0.22 : 0.1);   // 灰发前甩
-      headY += e * 0.8;
-      armL += e * (melee ? 0.7 : 0.25);      // 双爪前扑
-      armR -= e * (melee ? 0.7 : 0.25);
-      lunge = e * (melee ? 7 : 3);
-    }
-
-    part(ctx, m, bone, 'footL', { x: lunge * 0.5, y: -liftL });
-    part(ctx, m, bone, 'footR', { x: lunge * 0.5, y: -liftR });
-    part(ctx, m, bone, 'body', { x: lunge, y: bodyY, rot: bodyRot });
-    part(ctx, m, bone, 'armR', { x: lunge, y: bodyY, rot: armR });
-    part(ctx, m, bone, 'armL', { x: lunge, y: bodyY, rot: armL });
-    part(ctx, m, bone, 'head', { x: lunge, y: bodyY + headY, rot: headRot });
+    part(ctx, m, bone, 'footL', { x: bodyX * 0.3 + lunge * 0.5, y: -liftL });
+    part(ctx, m, bone, 'footR', { x: bodyX * 0.3 + lunge * 0.5, y: -liftR });
+    part(ctx, m, bone, 'body', { x: bodyX + lunge, y: bodyY, rot: bodyRot });
+    part(ctx, m, bone, 'armR', { x: bodyX + lunge, y: bodyY, rot: armR });
+    part(ctx, m, bone, 'armL', { x: bodyX + lunge, y: bodyY, rot: armL });
+    part(ctx, m, bone, 'head', { x: bodyX + lunge, y: bodyY + headY, rot: headRot });
   }
 
   const cache = {};
@@ -6533,7 +6706,8 @@
       bob = Math.sin(t * 1.7 + seed) * 4.2 - 2;
       rot += Math.sin(t * 1.1 + seed) * 0.012;
     }
-    if (moving) {
+    if (moving && !bone) {
+      // 分件首领的走路起伏由各自的 gait 提供，这里只服务整图首领
       bob += Math.sin(t * 8.5) * 1.6;
       rot += Math.cos(m.facing || 0) * 0.018;
     }
@@ -6544,11 +6718,26 @@
       rot -= Math.cos(m.facing || 0) * (meleeAct ? 0.048 : 0.02) * e;
       bob -= e * (meleeAct ? 4 : 2);
     } else if (strike) {
-      const e = Math.sin(k * Math.PI);
-      sx += e * (meleeAct ? 0.08 : 0.05);
-      sy -= e * (meleeAct ? 0.035 : 0.02);
-      dx = Math.cos(m.facing || 0) * e * (meleeAct ? 26 : 14);
-      bob -= e * (meleeAct ? 5 : 3);
+      const e = atkEnv(k);
+      const hd = holdEnv(k);
+      const mc = Math.cos(m.facing || 0);
+      // 先接住蓄力姿态，再释放出手冲量；收招时全部归零，不会出现姿态跳变
+      sy += (meleeAct ? 0.085 : 0.055) * hd - e * (meleeAct ? 0.035 : 0.02);
+      sx -= (meleeAct ? 0.05 : 0.03) * hd - e * (meleeAct ? 0.08 : 0.05);
+      rot -= mc * (meleeAct ? 0.048 : 0.02) * hd;
+      bob += (meleeAct ? 4 : 2) * hd - e * (meleeAct ? 5 : 3);
+      dx = mc * e * (meleeAct ? 26 : 14);
+    }
+    // ---- 受击回弹：沿来击方向后退、下压并轻微侧倾，平方衰减让冲击更干脆 ----
+    const hr = m.hitReact || 0;
+    if (hr > 0) {
+      const r2 = hr * hr;
+      const hd = Math.cos(m.hitDir || 0);
+      dx += hd * r2 * 11;
+      bob += r2 * 2;
+      rot += hd * r2 * 0.05;
+      sx += r2 * 0.04;
+      sy -= r2 * 0.05;
     }
     // 瞬移类招式：读条时淡出，落点后再淡入
     let alpha = 1;
@@ -18216,6 +18405,48 @@
   addRing(x, y, r0, r1, color, dur) {
     this.effects.push({ kind: 'ring', x, y, r0, r1, color, life: dur || 0.45, max: dur || 0.45 });
   },
+  // 首领受击：沿来击方向后退回弹 + 白热火花 / 冲击环 / 斩痕，
+  // 普通怪物不走这里，避免杂兵互殴时特效刷屏
+  bossHitReact(m, dmg, crit, opts) {
+    const ang = (opts && opts.angle != null) ? opts.angle : U.angle(this.player, m);
+    m.hitDir = ang;                       // 击退方向：背离攻击者
+    m.hitReact = Math.max(m.hitReact || 0, crit ? 1 : 0.78);
+    if (crit) m.flash = Math.max(m.flash || 0, 0.18);
+    const art = DG.art && DG.art.bosses;
+    const def = art && art.defs ? art.defs[m.art] : null;
+    const tint = m.glow || (def && def.glow) || '#ffd27a';
+    const h = art ? art.displayHeight(m) : m.r * 4;
+    // 受击音效：体型越大音高越低沉；暴击更重，劈砍额外叠一道划痕声
+    if (DG.audio && DG.audio.bossHit) {
+      DG.audio.bossHit(crit, !!(opts && opts.chop), Math.max(0.8, Math.min(1.2, 250 / h)));
+    }
+    // 命中点落在身体中段，按首领体高换算而不是用碰撞半径
+    const hx = m.x - Math.cos(ang) * m.r * 0.4;
+    const hy = m.y - h * 0.46;
+    const n = crit ? 12 : 7;
+    for (let i = 0; i < n; i++) {
+      const a = ang + Math.PI + U.rand(-0.95, 0.95);
+      const sp = U.rand(90, 250) * (crit ? 1.3 : 1);
+      this.effects.push({
+        kind: 'spark', x: hx, y: hy,
+        vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 45,
+        life: U.rand(0.16, 0.38), max: 0.38,
+        r: U.rand(1.6, 3.4), color: crit ? '#ffe6a8' : '#fff2d6'
+      });
+    }
+    // 命中斩痕：沿来击角度切过身体，暴击时更宽；颜色跟随首领辉光，避免被闪白吃掉
+    this.effects.push({
+      kind: 'slash', x: hx, y: hy, angle: ang,
+      radius: Math.max(24, h * (crit ? 0.3 : 0.22)),
+      arc: crit ? 1.6 : 1.15, color: crit ? '#fff3cc' : tint,
+      life: 0.14, max: 0.14
+    });
+    this.addRing(hx, hy, 6, Math.max(26, h * (crit ? 0.4 : 0.28)), tint, crit ? 0.34 : 0.24);
+    if (crit) {
+      this.addRing(hx, hy, 4, Math.max(44, h * 0.62), '#fff4cf', 0.46);
+      this.shake = Math.max(this.shake || 0, 0.05);
+    }
+  },
   updateEffects(dt) {
     // 升级光环倒计时：与粒子分开维护，绘制时按剩余比例淡出
     if (this.levelFx > 0) this.levelFx = Math.max(0, this.levelFx - dt);
@@ -20195,6 +20426,8 @@
       this.sprayBlood(m, dmg, crit);
       // 劈砍专属：沿刀锋切向再甩出一道血幕，与上面的受击喷溅叠加
       if (opts && opts.chop) this.slashBlood(m, opts.angle, dmg, crit);
+      // 首领受击：额外的姿态回弹与冲击特效（火花 / 斩痕 / 冲击环）
+      if (m.boss) this.bossHitReact(m, dmg, crit, opts);
       if (DG.audio) {
         DG.audio.play('barbHit', { vol: crit ? 0.85 : 0.6, rate: 0.94 + Math.random() * 0.12, gap: 0.05 });
       }
@@ -20717,6 +20950,7 @@
       m._px = m.x;
       m._py = m.y;
       m.flash = Math.max(0, m.flash - dt);
+      if (m.hitReact > 0) m.hitReact = Math.max(0, m.hitReact - dt * 5.2);
       m.atkTimer = Math.max(0, m.atkTimer - dt);
       m.shootTimer = Math.max(0, m.shootTimer - dt);
       m.shotAnim = Math.max(0, (m.shotAnim || 0) - dt);
