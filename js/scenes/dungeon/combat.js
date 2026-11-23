@@ -60,17 +60,32 @@
     // 撞：前摇最长，直线冲撞并击退玩家
     charge: { windup: 1.35, strike: 0.26, recover: 0.46, lunge: 124, hop: 0,  arc: 1.0,  reach: 1.10, fx: 'chargeArc', fxScale: 2.9, fxLife: 0.36, knock: 34, shake: 0.24 },
     // 刀光：原地挥砍，弧线最宽
-    slash:  { windup: 1.00, strike: 0.18, recover: 0.30, lunge: 26,  hop: 0,  arc: 1.9,  reach: 1.15, fx: 'bladeArc',  fxScale: 2.9, fxLife: 0.38 }
+    slash:  { windup: 1.00, strike: 0.18, recover: 0.30, lunge: 26,  hop: 0,  arc: 1.9,  reach: 1.15, fx: 'bladeArc',  fxScale: 2.9, fxLife: 0.38 },
+    // 横扫：大幅侧身抡扫，覆盖身体两侧
+    sweep:  { windup: 0.94, strike: 0.20, recover: 0.34, lunge: 30,  hop: 0,  arc: 2.6,  reach: 1.14, fx: 'sweepArc',  fxScale: 3.2, fxLife: 0.36, knock: 12 },
+    // 连击：两段爪击，第一段轻、第二段补刀
+    rend:   { windup: 0.62, strike: 0.34, recover: 0.30, lunge: 44,  hop: 0,  arc: 1.5,  reach: 1.08, fx: 'rendArc',   fxScale: 2.7, fxLife: 0.24, double: 0.45, dmg2: 0.55 },
+    // 突刺：极窄角度长距离穿刺，专治正面站桩
+    impale: { windup: 0.86, strike: 0.16, recover: 0.32, lunge: 76,  hop: 0,  arc: 0.34, reach: 1.45, fx: 'thrustArc', fxScale: 3.4, fxLife: 0.30 },
+    // 旋斩：原地转体一周，命中四周
+    spin:   { windup: 1.06, strike: 0.28, recover: 0.40, lunge: 22,  hop: 0,  arc: Math.PI * 2, reach: 1.02, fx: 'spinArc', fxScale: 3.1, fxLife: 0.42, uniqueFx: true },
+    // 震地：砸地冲击波，贴身范围伤害并震屏
+    slam:   { windup: 1.14, strike: 0.22, recover: 0.44, lunge: 14,  hop: 0,  arc: Math.PI * 2, reach: 0.92, fx: 'slamShock', fxScale: 3.3, fxLife: 0.5, uniqueFx: true, shock: true, knock: 18, shake: 0.16 }
   };
 
-  // 各小怪按自身特色选招：狼/史莱姆扑，骷髅/镰手/劫掠者挥刀，蝠/狐/鳍/蜥抓挠，
-  // 甲虫/刺球/仙人掌/野猪/豌豆撞，木乃伊与噬人蠕虫抓拽
+  // 各小怪按自身特色选招：支持单招或双招轮换，避免同一种小怪永远只做同一个动作
+  // 狼/史莱姆扑咬，骷髅/镰手/医师挥砍与横扫，蝠/狐/鳍/蜥抓挠与突刺，
+  // 甲虫/刺球/野猪/豌豆冲撞与震地，木乃伊与噬人蠕虫抓拽
   const MELEE_STYLE = {
-    wolf: 'pounce', frostwolf: 'pounce', slime: 'pounce', frostslime: 'pounce',
-    skeleton: 'slash', boneknight: 'slash', pumpkin: 'slash', cowlbandit: 'slash', plaguedoc: 'slash', mummy: 'slash',
-    bat: 'claw', foxraider: 'claw', deepfin: 'claw', venomlisk: 'claw', angler: 'claw',
-    pea: 'charge', beetle: 'charge', urchin: 'charge', fleece: 'charge', bulwark: 'charge',
-    mawflower: 'grab'
+    wolf: ['pounce', 'rend'], frostwolf: ['pounce', 'rend'],
+    slime: ['pounce', 'slam'], frostslime: ['pounce', 'slam'],
+    skeleton: ['slash', 'sweep'], boneknight: ['slash', 'sweep'], pumpkin: ['sweep', 'slash'],
+    mummy: ['grab', 'sweep'], cowlbandit: ['slash', 'impale'], plaguedoc: ['slash', 'impale'],
+    bat: ['claw', 'rend'], foxraider: ['claw', 'impale'], deepfin: ['claw', 'impale'],
+    venomlisk: ['claw', 'impale'], angler: 'claw',
+    pea: ['charge', 'slam'], beetle: ['charge', 'slam'], urchin: ['spin', 'slam'],
+    fleece: ['charge', 'claw'], bulwark: ['charge', 'slam'],
+    mawflower: ['grab', 'sweep']
   };
 
   // 专属特效皮肤：每种小怪在共用招式之上再叠一层自身主题碎屑/元素，
@@ -504,7 +519,18 @@
   },
   startMonsterAction(m, ang) {
     const tpl = DG.data.monsters[m.typeId] || {};
-    const mid = MELEE_STYLE[m.art] || 'claw';
+    const style = MELEE_STYLE[m.art] || 'claw';
+    let mid;
+    if (Array.isArray(style)) {
+      // 双招小怪轮换出招，避免同一只怪从头到尾只重复一个动作
+      mid = style[(Math.random() * style.length) | 0];
+      if (style.length > 1 && mid === m._lastMelee) {
+        mid = style[(style.indexOf(mid) + 1) % style.length];
+      }
+      m._lastMelee = mid;
+    } else {
+      mid = style;
+    }
     const mv = MELEE_MOVES[mid];
     m.action = {
       phase: 'windup', t: 0, angle: ang, move: mid, mv,
@@ -571,6 +597,11 @@
       if (a.mv && a.mv.hop) {
         m.hop = Math.sin(Math.min(1, a.t / Math.max(0.05, a.strike)) * Math.PI) * a.mv.hop;
       }
+      // 连击类：第一段命中后，在出手相位的后段再补一次衰减伤害
+      if (a.mv && a.mv.double && !a.hit2 && a.t >= a.strike * a.mv.double) {
+        a.hit2 = true;
+        this.resolveMonsterStrike(m, true);
+      }
       if (a.t >= a.strike) {
         a.phase = 'recover';
         a.t = 0;
@@ -584,7 +615,7 @@
       m.hop = 0;
     }
   },
-  resolveMonsterStrike(m) {
+  resolveMonsterStrike(m, second) {
     const a = m.action;
     const p = this.player;
     // 精英法系：读条结束才放出弹道
@@ -613,8 +644,8 @@
     const mv = a.mv || {};
     const color = m.fxColor || '#cbe8a4';
 
-    // 突进：抓/扑/撞在出手瞬间位移，命中判定按落点算
-    if (mv.lunge) {
+    // 突进：抓/扑/撞在出手瞬间位移，命中判定按落点算（连击第二段不再位移）
+    if (!second && mv.lunge) {
       const ox = m.x, oy = m.y;
       const moved = this.dashMonster(m, a.angle, mv.lunge);
       if (moved > 3) {
@@ -626,48 +657,52 @@
       }
     }
 
-    const fx = m.x + Math.cos(a.angle) * m.r * 1.4;
-    const fy = m.y + Math.sin(a.angle) * m.r * 1.4 - m.r * 1.2;
+    // 连击第二段：角度轻微偏转、特效略小，形成交叉连斩
+    const ang = second ? a.angle + 0.45 : a.angle;
+    const fx = m.x + Math.cos(ang) * m.r * 1.4;
+    const fy = m.y + Math.sin(ang) * m.r * 1.4 - m.r * 1.2;
 
-    const fxKind = STRIKE_FX[m.art] || mv.fx || 'peaArc';
-    const radius = m.r * (mv.fxScale || 3.0);
+    // 旋斩/震地这类形状完全不同的招式优先用自身特效，其余保留各怪专属刀光
+    const fxKind = mv.uniqueFx ? mv.fx : (STRIKE_FX[m.art] || mv.fx || 'peaArc');
+    const radius = m.r * (mv.fxScale || 3.0) * (second ? 0.9 : 1);
     const arc = mv.arc || 1.5;
-    const fxLife = mv.fxLife || 0.32;
+    const fxLife = (mv.fxLife || 0.32) * (second ? 0.85 : 1);
     const skin = FX_SKINS[m.art];
-    if (fxKind === 'frostBurst') {
+    if (fxKind === 'frostBurst' || fxKind === 'slamShock') {
       this.effects.push({
         kind: fxKind, x: m.x, y: m.y + m.r * 0.55,
-        radius, color, skin, life: fxLife, max: fxLife
+        angle: ang, radius, arc, color, skin, life: fxLife, max: fxLife
       });
     } else {
       const cy = DG.art.monsters.displayHeight
         ? m.y - DG.art.monsters.displayHeight(m) * 0.52
         : m.y - m.r * 1.35;
       this.effects.push({
-        kind: fxKind, x: m.x, y: cy, angle: a.angle,
+        kind: fxKind, x: m.x, y: cy, angle: ang,
         radius, arc, color, skin,
         life: fxLife, max: fxLife
       });
     }
-    this.addBurst(fx, fy, color, 7);
-    this.addRing(m.x, m.y, 8, m.r * 2.2, color, 0.3);
-    if (mv.shake) this.shake = Math.max(this.shake, mv.shake);
+    this.addBurst(fx, fy, color, second ? 5 : 7);
+    this.addRing(m.x, m.y, 8, m.r * 2.2, color, second ? 0.24 : 0.3);
+    if (mv.shake && !second) this.shake = Math.max(this.shake, mv.shake);
 
     if (p.hp <= 0) return;
     const d = U.dist(m, p);
-    let diff = U.angle(m, p) - a.angle;
+    let diff = U.angle(m, p) - ang;
     diff = Math.atan2(Math.sin(diff), Math.cos(diff));
     const reach = m.attackRange * (mv.reach || 1) + p.r + 6;
     const halfArc = Math.max(0.6, arc / 2);
+    const dmg = second ? Math.max(1, Math.round(m.dmg * (mv.dmg2 || 0.6))) : m.dmg;
     if (d <= reach && Math.abs(diff) <= halfArc) {
-      if (this.hurtPlayer(m.dmg)) this.affixOnHit(m);
-      this.addBurst(p.x, p.y, color, 6);
+      if (this.hurtPlayer(dmg)) this.affixOnHit(m);
+      this.addBurst(p.x, p.y, color, second ? 4 : 6);
       // 撞：击退玩家；抓：把玩家拖向怪物；连续受击期间取消这类受击位移
-      if (!p.hurtWeak) {
+      if (!second && !p.hurtWeak) {
         if (mv.knock) {
-          this.movePlayer(p, Math.cos(a.angle) * mv.knock, Math.sin(a.angle) * mv.knock, p.r);
+          this.movePlayer(p, Math.cos(ang) * mv.knock, Math.sin(ang) * mv.knock, p.r);
         } else if (mv.pull) {
-          this.movePlayer(p, -Math.cos(a.angle) * mv.pull, -Math.sin(a.angle) * mv.pull, p.r);
+          this.movePlayer(p, -Math.cos(ang) * mv.pull, -Math.sin(ang) * mv.pull, p.r);
         }
       }
     }

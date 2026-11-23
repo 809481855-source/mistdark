@@ -2503,6 +2503,22 @@
   }
 
   // 贴图小怪：脚底锚定，呼吸/行走起伏 + 蓄力下蹲 + 出手前冲，受击白闪
+  // 不同招式使用不同的蓄力/出手形变：突刺拉长、扑击下蹲、震地先起后砸、
+  // 横扫大幅侧倾、旋斩带转体，避免所有小怪共用同一套“前后一顶”的动作
+  const MELEE_POSE = {
+    default: { wx: 0.05,  wy: 0.06,  lean: 0.03,  dx: 9,  sx: 0.06, sy: 0.03, dip: 2,   sdip: 2 },
+    claw:    { wx: 0.055, wy: 0.07,  lean: 0.03,  dx: 14, sx: 0.09, sy: 0.03, dip: 1.6, sdip: 1.8 },
+    grab:    { wx: 0.06,  wy: 0.08,  lean: 0.045, dx: 12, sx: 0.08, sy: 0.04, dip: 2,   sdip: 2.2 },
+    pounce:  { wx: 0.07,  wy: 0.11,  lean: 0.02,  dx: 17, sx: 0.07, sy: 0.02, dip: 3.2, sdip: 2.6 },
+    charge:  { wx: 0.06,  wy: 0.1,   lean: 0.055, dx: 22, sx: 0.09, sy: 0.02, dip: 2.4, sdip: 2.8 },
+    slash:   { wx: 0.06,  wy: 0.09,  lean: 0.05,  dx: 10, sx: 0.11, sy: 0.02, dip: 2,   sdip: 2.4 },
+    sweep:   { wx: 0.09,  wy: 0.06,  lean: 0.075, dx: 8,  sx: 0.12, sy: 0.05, dip: 1.6, sdip: 3.2 },
+    rend:    { wx: 0.04,  wy: 0.05,  lean: 0.02,  dx: 10, sx: 0.1,  sy: 0.02, dip: 1.2, sdip: 1.6 },
+    impale:  { wx: 0.03,  wy: 0.07,  lean: 0.008, dx: 26, sx: 0.02, sy: 0.06, dip: 1.2, sdip: 1.2 },
+    spin:    { wx: 0.1,   wy: 0.05,  lean: 0.02,  dx: 0,  sx: 0.1,  sy: 0.08, dip: 2,   sdip: 2.6, twist: 0.34 },
+    slam:    { wx: 0.08,  wy: 0.16,  lean: 0.012, dx: 0,  sx: 0.12, sy: 0.12, dip: -3,  sdip: 5.5 }
+  };
+
   function drawTex(ctx, m, d, t) {
     const s = texSource(d.src);
     const h = displayHeight(m);
@@ -2510,6 +2526,8 @@
     const a = m.action;
     const windup = !!(a && a.phase === 'windup');
     const strike = !!(a && a.phase === 'strike');
+    const P = MELEE_POSE[a && a.move] || MELEE_POSE.default;
+    const mc = Math.cos(m.facing || 0);
 
     let bob = Math.sin(t * 2.2 + seed) * 1.6;
     let rot = Math.sin(t * 0.9 + seed) * 0.012;
@@ -2518,21 +2536,24 @@
     let dx = 0;
     if (m.moving) {
       bob += Math.sin(t * 9 + seed) * 1.8;
-      rot += Math.cos(m.facing || 0) * 0.018;
+      rot += mc * 0.018;
     }
     if (windup) {
       const k = Math.min(1, a.t / Math.max(0.001, a.windup));
       const e = Math.sin(k * Math.PI * 0.5);
-      sx -= e * 0.05;
-      sy += e * 0.06;
-      rot -= Math.cos(m.facing || 0) * 0.03 * e;
-      bob -= e * 1.5;
+      sx -= e * P.wx;
+      sy += e * P.wy;
+      rot -= mc * P.lean * e;
+      bob -= e * P.dip;
+      if (P.twist) rot -= mc * P.twist * e;
     } else if (strike) {
       const e = Math.sin(Math.min(1, a.t / Math.max(0.001, a.strike)) * Math.PI);
-      sx += e * 0.06;
-      sy -= e * 0.03;
-      dx = Math.cos(m.facing || 0) * e * 9;
-      bob -= e * 2;
+      sx += e * P.sx;
+      sy -= e * P.sy;
+      dx = mc * e * P.dx;
+      bob -= e * P.sdip;
+      rot += mc * P.lean * e;
+      if (P.twist) rot += mc * P.twist * 1.6 * e;
     }
 
     const w = s.ready ? h * (s.w / s.h) : h * 0.9;
