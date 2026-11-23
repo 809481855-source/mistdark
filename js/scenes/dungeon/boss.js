@@ -37,6 +37,9 @@
     knight: 1, snake: 1, demon: 1, ogre: 1, golem: 1
   };
 
+  // 首领出手节奏：招式冷却统一按此倍率缩短，让首领更主动、压迫更强
+  const BOSS_CD_PACE = 0.62;
+
   // 章内唯一：每个首领只归属一个章节；跨章再出场会被视为“复现”并强化
   const BOSS_ACT = {
     eyehorror: 1, croc: 1, mawfish: 1, mummyking: 1, slimeking: 1,
@@ -193,7 +196,7 @@
     },
 
     startBossCast(m, atk, ang) {
-      atk.timer = atk.cd || 3;
+      atk.timer = (atk.cd || 3) * BOSS_CD_PACE;
       const cast = { atk, t: 0, phase: 'windup', angle: ang, dest: null };
       if (atk.type === 'blink') cast.dest = this.bossBlinkDest(m);
       m.cast = cast;
@@ -240,7 +243,7 @@
       }
       if (cast.t >= (atk.recover || 0.45)) {
         m.cast = null;
-        m.aiCd = Math.max(0.55, (atk.cd || 3) * (m.enraged ? 0.72 : 1));
+        m.aiCd = Math.max(0.45, (atk.cd || 3) * BOSS_CD_PACE * (m.enraged ? 0.7 : 1));
       }
     },
 
@@ -479,7 +482,7 @@
       m.enraged = true;
       m.dmg = Math.round(m.dmg * 1.15);
       m.speed *= 1.12;
-      for (const a of m.patterns) a.cd = Math.max(2.2, (a.cd || 3) * 0.85);
+      for (const a of m.patterns) a.cd = Math.max(1.6, (a.cd || 3) * 0.7);
       // 复现首领的二阶段：额外增伤并召唤小怪，逼玩家换位
       if (m.repeatTier) {
         m.dmg = Math.round(m.dmg * 1.05);

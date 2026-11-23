@@ -2,7 +2,7 @@
 (function () {
   const DG = window.DG;
   const U = DG.util;
-  const { ARENA_W, ARENA_H } = DG.scenes.dungeon.size;
+  const { W, ARENA_W, ARENA_H } = DG.scenes.dungeon.size;
 
   const TILE = 40;
   const COLS = Math.floor(ARENA_W / TILE);
@@ -1212,25 +1212,48 @@
       });
     },
 
-    /* ---------- 首领降临点：固定在终点场地内，与玩家保持一段距离 ---------- */
-    pickBossSpawn() {
+    /* ---------- 首领降临点：在玩家 1.5 屏以内现身，不贴脸也不远处挂机 ---------- */
+    pickBossSpawn(r) {
       const p = this.player;
-      const last = this.rooms[this.rooms.length - 1];
-      if (last) {
-        for (let i = 0; i < 40; i++) {
-          const x = U.rand((last.x + 2) * TILE, (last.x + last.w - 2) * TILE);
-          const y = U.rand((last.y + 2) * TILE, (last.y + last.h - 2) * TILE);
-          if (U.dist2(x, y, p.x, p.y) < 260) continue;
-          if (!this.circleWall(x, y, 48)) return { x, y };
-        }
-        return this.nearestFloorPoint(last.cx, last.cy, 4) || { x: last.cx, y: last.cy };
+      const R = r || 48;
+      const MIN_D = 300;                                  // 不贴脸
+      const MAX_D = Math.round(W * 1.5);                  // 一屏半硬上限
+      const PREF_D = Math.min(MAX_D, 900);                // 优先落在更近的位置
+      const inMap = (x, y) => x > 60 && y > 60 && x < ARENA_W - 60 && y < ARENA_H - 60;
+      const ok = (x, y) => inMap(x, y) && !this.circleWall(x, y, R);
+      // 优先：近处环带随机采样
+      for (let i = 0; i < 90; i++) {
+        const a = U.rand(0, Math.PI * 2);
+        const d = U.rand(MIN_D, PREF_D);
+        const x = p.x + Math.cos(a) * d;
+        const y = p.y + Math.sin(a) * d;
+        if (ok(x, y)) return { x, y };
       }
-      // 兜底：以玩家为中心向外找一圈可站立的地面
-      for (let i = 0; i < 36; i++) {
-        const a = (Math.PI * 2 / 36) * i;
-        const x = p.x + Math.cos(a) * 520;
-        const y = p.y + Math.sin(a) * 520;
-        if (!this.circleWall(x, y, 48)) return { x, y };
+      // 其次：放宽到一屏半
+      for (let i = 0; i < 90; i++) {
+        const a = U.rand(0, Math.PI * 2);
+        const d = U.rand(PREF_D, MAX_D);
+        const x = p.x + Math.cos(a) * d;
+        const y = p.y + Math.sin(a) * d;
+        if (ok(x, y)) return { x, y };
+      }
+      // 再次：由远到近逐圈扫，扩大命中率
+      for (let d = MAX_D; d >= MIN_D; d -= 120) {
+        for (let i = 0; i < 36; i++) {
+          const a = (Math.PI * 2 / 36) * i;
+          const x = p.x + Math.cos(a) * d;
+          const y = p.y + Math.sin(a) * d;
+          if (ok(x, y)) return { x, y };
+        }
+      }
+      // 兜底：玩家附近找一块能站的地方
+      for (let d = MIN_D; d >= 80; d -= 40) {
+        for (let i = 0; i < 24; i++) {
+          const a = (Math.PI * 2 / 24) * i;
+          const x = p.x + Math.cos(a) * d;
+          const y = p.y + Math.sin(a) * d;
+          if (ok(x, y)) return { x, y };
+        }
       }
       return this.nearestFloorPoint(p.x, p.y, 6) || { x: p.x, y: p.y };
     }

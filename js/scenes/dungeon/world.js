@@ -748,13 +748,15 @@
     this.applyEliteAffixes(m);
     return m;
   },
-  findMonsterSpawnPoint(x, y, r, ignore) {
+  findMonsterSpawnPoint(x, y, r, ignore, ignoreMonsters) {
     const clear = (px, py) => {
       if (this.circleWall(px, py, r)) return false;
-      for (const other of this.monsters) {
-        if (other.dead || other === ignore) continue;
-        const min = r + other.r + 10;
-        if (U.dist2(px, py, other.x, other.y) < min) return false;
+      if (!ignoreMonsters) {
+        for (const other of this.monsters) {
+          if (other.dead || other === ignore) continue;
+          const min = r + other.r + 10;
+          if (U.dist2(px, py, other.x, other.y) < min) return false;
+        }
       }
       return true;
     };
@@ -836,7 +838,7 @@
     }
     return pool[pool.length - 1];
   },
-  spawnMonster(typeId, x, y, isBoss, chunkIndex) {
+  spawnMonster(typeId, x, y, isBoss, chunkIndex, ignoreMonsters) {
     const t = DG.data.monsters[typeId];
     // 配置写错时不再抛异常卡死战斗：跳过该次生成并留下可定位的告警
     if (!t) {
@@ -859,7 +861,7 @@
       dmg *= tune.eliteDmg;
     }
     const radius = t.r * (elite ? 1.25 : 1);
-    const spawn = this.findMonsterSpawnPoint(x, y, radius);
+    const spawn = this.findMonsterSpawnPoint(x, y, radius, null, ignoreMonsters);
     if (!spawn) return null;
 
     const m = {
@@ -922,7 +924,7 @@
       m.patterns = (t.patterns || []).map(a => Object.assign({ timer: 0 }, a));
       m.preferRange = t.preferRange || 130;
       m.facing = U.angle(m, this.player);
-      m.aiCd = 1.2;
+      m.aiCd = 0.6;
       m.cast = null;
       m.enraged = false;
       m.ambTimer = U.rand(0.1, 0.5);
@@ -935,11 +937,18 @@
   },
   spawnBoss() {
     // 条件满足后首领在玩家附近（但不贴脸）的房间现身
-    const pos = this.pickBossSpawn();
     // 首领由关卡配置按章轮换投放（见 DG.data.dungeons 的 bossId），
     // 相邻关卡不会重复，所有关卡都优先使用已拆件重做的首领
     const bossId = this.def.bossId;
-    const boss = this.spawnMonster(bossId, pos.x, pos.y, true);
+    const bt = DG.data.monsters[bossId];
+    const br = (bt && bt.r) || 48;
+    // 首领降临瞬间会震死全部小怪，允许与残余小怪重叠；
+    // 落点按首领真实体型多次重试，避免因贴墙判定失败而中断关卡
+    let boss = null;
+    for (let i = 0; i < 6 && !boss; i++) {
+      const pos = this.pickBossSpawn(br);
+      boss = this.spawnMonster(bossId, pos.x, pos.y, true, null, true);
+    }
     if (!boss) {
       // 首领配置缺失时直接结算撤离，避免流程卡在 bossIntro
       this.announce('首领未能降临，正在撤离……', 1600);
@@ -955,8 +964,8 @@
     this.$bossName.textContent = boss.name;
     this.$bossWrap.classList.remove('hidden');
     this.announce(`${boss.name} 在${dir}方现身`, 2600);
-    this.addRing(pos.x, pos.y, 24, 170, '#d98b9d', 0.9);
-    this.addRing(pos.x, pos.y, 10, 90, '#f0c0b0', 0.7);
+    this.addRing(boss.x, boss.y, 24, 170, '#d98b9d', 0.9);
+    this.addRing(boss.x, boss.y, 10, 90, '#f0c0b0', 0.7);
     this.shake = 0.5;
     this.bossShockwave(boss);
     this.updateWaveText();
