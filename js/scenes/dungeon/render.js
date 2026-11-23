@@ -1026,6 +1026,148 @@
       ctx.globalCompositeOperation = 'lighter';
       ctx.drawImage(this.glowSprite(p.color || '#ffffff'), p.x - gr, p.y - gr, gr * 2, gr * 2);
       ctx.restore();
+      // 敌方弹道按施法者区分造型，避免所有远程怪都是同一种光球
+      const art = p.art;
+      const ang = Math.atan2(p.vy, p.vx);
+      if (art === 'musketeer') {
+        // 火枪：细长曳光弹
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(ang);
+        ctx.globalCompositeOperation = 'lighter';
+        const g = ctx.createLinearGradient(-p.r * 6, 0, p.r * 1.4, 0);
+        g.addColorStop(0, withAlpha(p.color, 0));
+        g.addColorStop(0.75, withAlpha(p.color, 0.45));
+        g.addColorStop(1, withAlpha('#fff2cf', 0.95));
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.moveTo(-p.r * 6, -1.1);
+        ctx.lineTo(p.r * 1.4, 0);
+        ctx.lineTo(-p.r * 6, 1.1);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#fff8e2';
+        ctx.beginPath();
+        ctx.arc(p.r * 0.8, 0, p.r * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        continue;
+      }
+      if (art === 'hornet') {
+        // 毒蜂：尖锐毒针 + 细尾迹
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(ang);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.strokeStyle = withAlpha(p.color, 0.5);
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(-p.r * 4.5, 0);
+        ctx.lineTo(-p.r * 0.6, 0);
+        ctx.stroke();
+        ctx.fillStyle = withAlpha(p.color, 0.9);
+        ctx.beginPath();
+        ctx.moveTo(p.r * 2.1, 0);
+        ctx.lineTo(-p.r * 0.6, -p.r * 0.62);
+        ctx.lineTo(-p.r * 0.6, p.r * 0.62);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#f4e2ff';
+        ctx.beginPath();
+        ctx.moveTo(p.r * 1.9, 0);
+        ctx.lineTo(p.r * 0.2, -p.r * 0.22);
+        ctx.lineTo(p.r * 0.2, p.r * 0.22);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+        continue;
+      }
+      if (art === 'cinderraven' || art === 'candle' || art === 'emberdrake') {
+        // 火焰：抖动的火舌 + 火星尾
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(ang);
+        ctx.globalCompositeOperation = 'lighter';
+        const flick = 0.85 + Math.sin((p.x + p.y) * 0.35 + (this.time || 0) * 22) * 0.15;
+        ctx.fillStyle = withAlpha(p.color, 0.55);
+        ctx.beginPath();
+        ctx.moveTo(-p.r * 2.6 * flick, 0);
+        ctx.quadraticCurveTo(0, -p.r * 1.5, p.r * 1.5, 0);
+        ctx.quadraticCurveTo(0, p.r * 1.5, -p.r * 2.6 * flick, 0);
+        ctx.fill();
+        ctx.fillStyle = withAlpha('#ffe9a8', 0.9);
+        ctx.beginPath();
+        ctx.arc(p.r * 0.3, 0, p.r * 0.62, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        continue;
+      }
+      if (art === 'mistwalker') {
+        // 迷雾：外围柔雾 + 双层虚影
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.strokeStyle = withAlpha(p.color, 0.45);
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r * 1.5, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = withAlpha(p.color, 0.32);
+        ctx.beginPath();
+        ctx.arc(p.x - Math.cos(ang) * p.r * 1.6, p.y - Math.sin(ang) * p.r * 1.6, p.r * 0.7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = withAlpha('#e8fbff', 0.75);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r * 0.55, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        continue;
+      }
+      if (art === 'angler') {
+        // 渊灯：水泡实心球 + 高光
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.strokeStyle = withAlpha(p.color, 0.6);
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r * 1.25, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = withAlpha(p.color, 0.5);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r * 0.9, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = withAlpha('#ffffff', 0.85);
+        ctx.beginPath();
+        ctx.arc(p.x - p.r * 0.35, p.y - p.r * 0.35, p.r * 0.28, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        continue;
+      }
+      if (art === 'warlock') {
+        // 深渊：旋转虚空菱环
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate((this.time || 0) * 4 + ang);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.strokeStyle = withAlpha(p.color, 0.4);
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.arc(0, 0, p.r * 1.7, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = withAlpha(p.color, 0.85);
+        ctx.beginPath();
+        ctx.moveTo(0, -p.r * 1.35);
+        ctx.lineTo(p.r * 0.9, 0);
+        ctx.lineTo(0, p.r * 1.35);
+        ctx.lineTo(-p.r * 0.9, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = withAlpha('#ffffff', 0.7);
+        ctx.beginPath();
+        ctx.arc(0, 0, p.r * 0.32, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        continue;
+      }
       ctx.fillStyle = p.color;
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
@@ -1331,7 +1473,7 @@
 
   drawEffects(ctx, groundOnly) {
     for (const e of this.effects) {
-      const ground = e.kind === 'teleArc' || e.kind === 'teleBeam' || e.kind === 'teleCircle' || e.kind === 'rollMark' || e.kind === 'arrowRainMarker';
+      const ground = e.kind === 'teleArc' || e.kind === 'teleBeam' || e.kind === 'teleCircle' || e.kind === 'rollMark' || e.kind === 'arrowRainMarker' || e.kind === 'slamShock';
       if (ground !== !!groundOnly) continue;
       const t = 1 - e.life / e.max;
       if (e.kind === 'roarCore') {

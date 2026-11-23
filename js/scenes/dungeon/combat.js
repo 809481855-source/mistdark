@@ -385,7 +385,10 @@
     // 飘字：直接显示升到的等级，一次连升多级也显示最终等级
     this.addFloater(p.x, p.y - p.r - 48, `LV.${now}`, '#ffe08a', 30);
     this.addFloater(p.x, p.y - p.r - 20, now > from + 1 ? `等级提升 +${now - from}` : '等级提升', '#ffd166', 20);
-    this.announce(`等级提升 · Lv.${now}`, 1900);
+    // 升级立刻重算属性并解锁新技能：新技能当帧进入技能栏并参与自动战斗
+    const unlocked = this.refreshBuild();
+    const unlockText = unlocked.length ? ` · 解锁 ${unlocked.map(sk => sk.name).join(' / ')}` : '';
+    this.announce(`等级提升 · Lv.${now}${unlockText}`, unlocked.length ? 2600 : 1900);
     this.syncLevelBadge(now, true);
     if (DG.audio) {
       // 升级号角立刻起，清脆的 UI 升级音稍后叠上，两声错开避免糊在一起
@@ -629,6 +632,7 @@
         vx: Math.cos(a.angle) * m.projSpeed,
         vy: Math.sin(a.angle) * m.projSpeed,
         r: 8, dmg: m.dmg, color: c,
+        art: m.art,
         life: 3.2, maxLife: 3.2, pierce: 0
       });
       this.effects.push({
@@ -718,6 +722,7 @@
       r: m.castTime ? 8 : 6,
       dmg: m.dmg,
       color: projColor,
+      art: m.art,
       life: 3.2, maxLife: 3.2,
       pierce: 0
     });

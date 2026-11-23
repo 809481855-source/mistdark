@@ -10588,6 +10588,217 @@
       ctx.restore();
       return true;
     }
+    // 横扫：宽幅月牙，弧线更长更厚，前端甩出风压残影
+    if (e.kind === 'sweepArc') {
+      const sweep = Math.min(1, k * 1.32);
+      const a0 = -e.arc / 2;
+      const a1 = a0 + e.arc * sweep;
+      ctx.save();
+      ctx.translate(e.x, e.y);
+      ctx.rotate(e.angle);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = rgba(e.color, 0.16 * fade);
+      ctx.lineWidth = 30;
+      ctx.beginPath();
+      ctx.arc(0, 0, e.radius * 0.92, a0, a1);
+      ctx.stroke();
+      for (let i = 0; i < 4; i++) {
+        ctx.strokeStyle = rgba(i === 0 ? '#fff6e2' : e.color, (0.88 - i * 0.18) * fade);
+        ctx.lineWidth = 13 - i * 2.6;
+        ctx.beginPath();
+        ctx.arc(0, 0, e.radius - i * 2.5, a0, a1);
+        ctx.stroke();
+      }
+      // 末端风压：三道向前甩出的弧形残影
+      for (let i = 0; i < 3; i++) {
+        const a = a1 - i * 0.09;
+        const rr = e.radius + i * 7 + k * 8;
+        ctx.strokeStyle = rgba(e.color, (0.4 - i * 0.1) * fade);
+        ctx.lineWidth = 4 - i;
+        ctx.beginPath();
+        ctx.arc(0, 0, rr, a - 0.34, a + 0.06);
+        ctx.stroke();
+      }
+      ctx.restore();
+      return true;
+    }
+
+    // 连击爪：三道平行裂口，第二段叠一条交叉斩痕
+    if (e.kind === 'rendArc') {
+      const len = e.radius * (0.5 + 0.6 * Math.min(1, k * 1.45));
+      ctx.save();
+      ctx.translate(e.x, e.y);
+      ctx.rotate(e.angle);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.lineCap = 'round';
+      for (let i = -1; i <= 1; i++) {
+        const off = i * e.radius * 0.12;
+        const ex = len * (0.92 + (i === 0 ? 0.12 : 0));
+        ctx.strokeStyle = rgba(e.color, 0.32 * fade);
+        ctx.lineWidth = 7;
+        ctx.beginPath();
+        ctx.moveTo(e.radius * 0.18, off);
+        ctx.quadraticCurveTo(len * 0.55, off - i * 4, ex, off * 0.55);
+        ctx.stroke();
+        ctx.strokeStyle = rgba(i === 0 ? '#fff4e4' : '#ffffff', (0.8 - Math.abs(i) * 0.2) * fade);
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(e.radius * 0.2, off);
+        ctx.quadraticCurveTo(len * 0.55, off - i * 4, ex, off * 0.55);
+        ctx.stroke();
+      }
+      if (k > 0.28) {
+        const kk = Math.min(1, (k - 0.28) / 0.5);
+        ctx.strokeStyle = rgba(e.color, 0.55 * fade * kk);
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.moveTo(len * 0.2, -e.radius * 0.26);
+        ctx.lineTo(len * 0.95, e.radius * 0.22);
+        ctx.stroke();
+      }
+      ctx.restore();
+      return true;
+    }
+
+    // 突刺：狭长枪芒 + 速度线 + 尖端贯穿闪光
+    if (e.kind === 'thrustArc') {
+      const L = e.radius * (1.0 + 0.35 * Math.min(1, k * 2));
+      const w = 6 * (1 - k * 0.35);
+      ctx.save();
+      ctx.translate(e.x, e.y);
+      ctx.rotate(e.angle);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.lineCap = 'round';
+      ctx.fillStyle = rgba(e.color, 0.42 * fade);
+      ctx.beginPath();
+      ctx.moveTo(e.radius * 0.2, -w);
+      ctx.lineTo(L, -1.4);
+      ctx.lineTo(L + 12, 0);
+      ctx.lineTo(L, 1.4);
+      ctx.lineTo(e.radius * 0.2, w);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = rgba('#ffffff', 0.75 * fade);
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(e.radius * 0.25, 0);
+      ctx.lineTo(L + 8, 0);
+      ctx.stroke();
+      for (let i = 0; i < 3; i++) {
+        const off = (i - 1) * 6.5;
+        const st = e.radius * (0.15 + i * 0.12);
+        const en = L * (0.72 - Math.abs(i - 1) * 0.14);
+        ctx.strokeStyle = rgba(e.color, (0.6 - Math.abs(i - 1) * 0.16) * fade);
+        ctx.lineWidth = 2.6;
+        ctx.beginPath();
+        ctx.moveTo(st, off);
+        ctx.lineTo(en, off * 0.7);
+        ctx.stroke();
+      }
+      if (k > 0.15) {
+        const fg = ctx.createRadialGradient(L + 6, 0, 0, L + 6, 0, 18);
+        fg.addColorStop(0, rgba('#ffffff', 0.7 * fade));
+        fg.addColorStop(1, rgba(e.color, 0));
+        ctx.fillStyle = fg;
+        ctx.beginPath();
+        ctx.arc(L + 6, 0, 18, 0, PI2);
+        ctx.fill();
+      }
+      ctx.restore();
+      return true;
+    }
+
+    // 旋斩：一整圈刀环 + 两道反向飞旋的月牙
+    if (e.kind === 'spinArc') {
+      ctx.save();
+      ctx.translate(e.x, e.y);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = rgba(e.color, 0.2 * fade);
+      ctx.lineWidth = 15;
+      ctx.beginPath();
+      ctx.arc(0, 0, e.radius * 0.9, 0, PI2);
+      ctx.stroke();
+      for (let s = -1; s <= 1; s += 2) {
+        const start = e.angle + s * (k * 5.2);
+        ctx.strokeStyle = rgba(e.color, 0.75 * fade);
+        ctx.lineWidth = 9;
+        ctx.beginPath();
+        ctx.arc(0, 0, e.radius * (0.82 + s * 0.06), start, start + 2.0);
+        ctx.stroke();
+        ctx.strokeStyle = rgba('#fff2e0', 0.55 * fade);
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        ctx.arc(0, 0, e.radius * (0.82 + s * 0.06), start, start + 2.0);
+        ctx.stroke();
+      }
+      for (let i = 0; i < 8; i++) {
+        const a = e.angle + i * PI2 / 8 + k * 1.4;
+        const r0 = e.radius * 0.6;
+        const r1 = e.radius * (0.94 + (i % 2) * 0.12);
+        ctx.strokeStyle = rgba(e.color, 0.5 * fade);
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a) * r0, Math.sin(a) * r0);
+        ctx.lineTo(Math.cos(a) * r1, Math.sin(a) * r1);
+        ctx.stroke();
+      }
+      ctx.restore();
+      return true;
+    }
+
+    // 震地：贴地扩散的椭圆冲击环 + 放射裂缝 + 迸溅碎石
+    if (e.kind === 'slamShock') {
+      ctx.save();
+      ctx.translate(e.x, e.y);
+      ctx.scale(1, 0.52);
+      ctx.globalCompositeOperation = 'lighter';
+      const R = e.radius * (0.3 + k * 1.05);
+      for (let j = 0; j < 3; j++) {
+        const rr = R * (0.62 + j * 0.22);
+        ctx.strokeStyle = rgba(e.color, (0.45 - j * 0.12) * fade);
+        ctx.lineWidth = 5 - j * 1.2;
+        ctx.beginPath();
+        ctx.arc(0, 0, rr, 0, PI2);
+        ctx.stroke();
+      }
+      // 放射裂缝：三段折线，越靠外越细
+      for (let i = 0; i < 10; i++) {
+        const a = i * PI2 / 10 + 0.4;
+        ctx.strokeStyle = rgba(e.color, 0.5 * fade);
+        ctx.lineWidth = 3.2;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a) * R * 0.14, Math.sin(a) * R * 0.14);
+        ctx.lineTo(Math.cos(a + 0.07) * R * 0.52, Math.sin(a + 0.07) * R * 0.52);
+        ctx.lineTo(Math.cos(a - 0.05) * R * (0.84 + k * 0.2), Math.sin(a - 0.05) * R * (0.84 + k * 0.2));
+        ctx.stroke();
+      }
+      // 中心冲击闪光
+      const cg = ctx.createRadialGradient(0, 0, 0, 0, 0, R * 0.5);
+      cg.addColorStop(0, rgba('#ffffff', 0.5 * fade));
+      cg.addColorStop(0.4, rgba(e.color, 0.28 * fade));
+      cg.addColorStop(1, rgba(e.color, 0));
+      ctx.fillStyle = cg;
+      ctx.beginPath();
+      ctx.arc(0, 0, R * 0.5, 0, PI2);
+      ctx.fill();
+      // 碎石：从中心向外抛出的方块
+      for (let i = 0; i < 7; i++) {
+        const a = i * 0.9 + 0.3;
+        const rr = R * (0.35 + k * 0.7);
+        const s = 2.2 + (i % 3) * 1.4;
+        ctx.fillStyle = rgba('#e6dcc6', (0.55 - k * 0.35) * fade);
+        ctx.save();
+        ctx.translate(Math.cos(a) * rr, Math.sin(a) * rr);
+        ctx.rotate(a + k * 3);
+        ctx.fillRect(-s, -s * 0.6, s * 2, s * 1.2);
+        ctx.restore();
+      }
+      ctx.restore();
+      return true;
+    }
+
     return false;
   }
 
@@ -14373,8 +14584,8 @@
   const ACTOR_W = 240, ACTOR_H = 256;
   // 步幅基准：330px/s 对应 11rad/s（30px/rad），主城与战斗共用同一换算
   const WALK_REF_SPEED = 330;
-  // 进入主城（含从副本返回）固定落点：屏幕水平正中、篝火下方空地
-  const START = [0.50, 0.695];
+  // 进入主城固定落点：角色绘制的视觉中心对准屏幕正中（左右居中由相机保证，上下按立绘包围盒校正）
+  const START = [0.50, 0.55];
 
   // 可行走区域：参考图二，取营地中央空地，边缘避开帐篷、木箱、篝火与岩石
   const WALK = [
@@ -14621,10 +14832,8 @@
       world.style.width = WORLD_W + 'px';
       world.style.height = WORLD_H + 'px';
 
-      // 进入主城：回到上次离开时的位置（从副本/面板返回也一样），首次进入落在篝火下方
-      const saved = DG.game.townPos;
-      const savedPos = saved ? clampIntoWalk(saved.x, saved.y) : null;
-      const pos = savedPos || { x: WORLD_W * START[0], y: WORLD_H * START[1] };
+      // 进入主城：角色固定落在屏幕正中，不沿用上次离开的位置
+      const pos = { x: WORLD_W * START[0], y: WORLD_H * START[1] };
       let camX = 0, dir = 1, target = null, moving = false, phase = 0;
       const keys = Object.create(null);
       const stick = { x: 0, y: 0 };
@@ -14824,8 +15033,6 @@
         // 是否有真实位移：顶死在墙角时不再原地踏步
         const stepped = Math.hypot(pos.x - beforeX, pos.y - beforeY);
         moving = stepped > 0.2;
-        // 记录当前位置，下次回到主城时从这里续上
-        if (moving) DG.game.townPos = { x: pos.x, y: pos.y };
         // 步频与实际移速成正比：与战斗同一公式，保证同一角色两边走路完全一致
         if (moving) phase += dt * 11 * walkSpeed / WALK_REF_SPEED;
         else if (vlen < 1) phase = 0;
@@ -17036,17 +17243,7 @@
   Object.assign(DG.scenes.dungeon.prototype, {
   buildHud() {
     const el = U.el('div', 'dungeon-ui');
-    const slots = this.skillList.map((sk, i) => {
-      const cd = i === 0 ? '' : ` · 冷却 ${U.round(this.skillCooldown(sk), 1)}s`;
-      const art = sk.icon
-        ? `<img src="${sk.icon}" alt="">`
-        : `<span class="strip-glyph">${sk.glyph}</span>`;
-      return `<div class="strip-slot" data-slot="${i}" title="${U.escapeHtml(sk.name)}${cd}">` +
-        art +
-        `<div class="cd" data-cd="${i}"></div>` +
-        `<div class="cdtext" data-cdt="${i}"></div>` +
-      `</div>`;
-    }).join('');
+    const slots = this.skillStripHtml();
     // 技能图标全职业共用，装备图标按职业取用
     const skillIcon = DG.data.iconFor(this.char.cls, 'skill');
     const equipIcon = DG.data.iconFor(this.char.cls, 'equip');
@@ -17143,31 +17340,26 @@
     this.$bossFill = el.querySelector('[data-boss-fill]');
     this.$bossHp = el.querySelector('[data-boss-hp]');
     this.$pauseMask = el.querySelector('[data-pause-mask]');
-    this.$cd = Array.from(el.querySelectorAll('[data-cd]'));
-    this.$cdt = Array.from(el.querySelectorAll('[data-cdt]'));
     this.$touch = el.querySelector('[data-touch]');
     this.$pauseHint = el.querySelector('[data-pause-hint]');
     this.$knob = el.querySelector('[data-knob]');
     this.$auto = el.querySelector('[data-auto]');
     this.$xpPct = el.querySelector('[data-xp-pct]');
     this.$xpNum = el.querySelector('[data-xp-num]');
-    // 底部两端功能键：打开面板时静默暂停战斗，关闭后自动继续
+    // 底部两端功能键：打开面板时静默暂停战斗，关闭后自动继续；
+    // 面板内换装 / 点技能后立刻重算战斗属性并刷新技能条
     el.querySelector('[data-open-equip]').addEventListener('click', () => {
-      this.openPanel(done => DG.ui.openEquipment(this.char, () => this.updateHud(), { onClose: done }));
+      this.openPanel(done => DG.ui.openEquipment(this.char, () => this.refreshBuild(), { onClose: done }));
     });
     el.querySelector('[data-open-skills]').addEventListener('click', () => {
-      this.openPanel(done => DG.ui.openSkills(this.char, () => this.updateHud(), { onClose: done }));
+      this.openPanel(done => DG.ui.openSkills(this.char, () => this.refreshBuild(), { onClose: done }));
     });
     // 等级牌：与主城一致，点开角色信息
     el.querySelector('[data-open-char]').addEventListener('click', () => {
       this.openPanel(done => DG.ui.openCharacterInfo(this.char, { onClose: done }));
     });
     // 中间技能格同样可查看技能详情（战斗期间静默暂停）
-    el.querySelectorAll('.strip-slot[data-slot]').forEach(slot => {
-      slot.addEventListener('click', () => {
-        this.openPanel(done => DG.ui.openSkills(this.char, () => this.updateHud(), { onClose: done }));
-      });
-    });
+    this.bindStripSlots();
     this.$auto.addEventListener('click', () => this.toggleAutoMode());
     this.syncAutoButton();
     this.updateWaveText();
@@ -17283,6 +17475,42 @@
       if (m.boss && !m.dead) return m;
     }
     return null;
+  },
+  // 技能条槽位：普攻 + 已解锁主动技能（重建与首次构建共用同一份模板）
+  skillStripHtml() {
+    return this.skillList.map((sk, i) => {
+      const cd = i === 0 ? '' : ` · 冷却 ${U.round(this.skillCooldown(sk), 1)}s`;
+      const art = sk.icon
+        ? `<img src="${sk.icon}" alt="">`
+        : `<span class="strip-glyph">${sk.glyph}</span>`;
+      return `<div class="strip-slot" data-slot="${i}" title="${U.escapeHtml(sk.name)}${cd}">` +
+        art +
+        `<div class="cd" data-cd="${i}"></div>` +
+        `<div class="cdtext" data-cdt="${i}"></div>` +
+      `</div>`;
+    }).join('');
+  },
+  // 战斗中升级解锁技能 / 换装改变冷却后，按最新 skillList 重建技能条并重绑点击
+  bindStripSlots() {
+    if (!this.hud) return;
+    const host = this.hud.querySelector('.strip-slots');
+    if (!host) return;
+    host.innerHTML = this.skillStripHtml();
+    this.$cd = Array.from(host.querySelectorAll('[data-cd]'));
+    this.$cdt = Array.from(host.querySelectorAll('[data-cdt]'));
+    // 槽位数量变化后清掉旧索引的缓存，避免冷却层与 "ready" 状态错位
+    if (this._hudCache) {
+      for (let i = 0; i < 12; i++) {
+        delete this._hudCache['cd' + i];
+        delete this._hudCache['cdt' + i];
+        delete this._hudCache['cdr' + i];
+      }
+    }
+    host.querySelectorAll('.strip-slot[data-slot]').forEach(slot => {
+      slot.addEventListener('click', () => {
+        this.openPanel(done => DG.ui.openSkills(this.char, () => this.refreshBuild(), { onClose: done }));
+      });
+    });
   },
   updateHud() {
     if (!this.hud) return;
@@ -20645,7 +20873,10 @@
     // 飘字：直接显示升到的等级，一次连升多级也显示最终等级
     this.addFloater(p.x, p.y - p.r - 48, `LV.${now}`, '#ffe08a', 30);
     this.addFloater(p.x, p.y - p.r - 20, now > from + 1 ? `等级提升 +${now - from}` : '等级提升', '#ffd166', 20);
-    this.announce(`等级提升 · Lv.${now}`, 1900);
+    // 升级立刻重算属性并解锁新技能：新技能当帧进入技能栏并参与自动战斗
+    const unlocked = this.refreshBuild();
+    const unlockText = unlocked.length ? ` · 解锁 ${unlocked.map(sk => sk.name).join(' / ')}` : '';
+    this.announce(`等级提升 · Lv.${now}${unlockText}`, unlocked.length ? 2600 : 1900);
     this.syncLevelBadge(now, true);
     if (DG.audio) {
       // 升级号角立刻起，清脆的 UI 升级音稍后叠上，两声错开避免糊在一起
@@ -20889,6 +21120,7 @@
         vx: Math.cos(a.angle) * m.projSpeed,
         vy: Math.sin(a.angle) * m.projSpeed,
         r: 8, dmg: m.dmg, color: c,
+        art: m.art,
         life: 3.2, maxLife: 3.2, pierce: 0
       });
       this.effects.push({
@@ -20978,6 +21210,7 @@
       r: m.castTime ? 8 : 6,
       dmg: m.dmg,
       color: projColor,
+      art: m.art,
       life: 3.2, maxLife: 3.2,
       pierce: 0
     });
@@ -21868,6 +22101,39 @@
   const { W, H, ARENA_W, ARENA_H } = DG.scenes.dungeon.size;
 
   Object.assign(DG.scenes.dungeon.prototype, {
+    // 战斗内成长即时生效：升级 / 换装 / 点天赋后重算属性、同步技能栏与冷却，
+    // 返回本次新解锁的技能（供升级公告展示）
+    refreshBuild() {
+      if (!this.player || !this.stats || !this.cls) return [];
+      const oldMax = this.player.maxHp;
+      const oldHp = this.player.hp;
+      // 天赋/流派词缀由 char 实时聚合，换装或点树后必须丢弃战斗内缓存
+      this.talents = null;
+      this.stats = DG.stats.compute(this.char);
+      this.talents = this.stats.talents || null;
+      const newMax = this.stats.maxHp;
+      this.player.maxHp = newMax;
+      // 上限提升时把新增生命补进当前血量；上限下降时按新上限收口，避免换装瞬间残血
+      this.player.hp = newMax >= oldMax
+        ? Math.min(newMax, oldHp + (newMax - oldMax))
+        : Math.min(newMax, oldHp);
+      if (this.player.hp <= 0) this.player.hp = 1;
+
+      // 旧冷却按技能 id 迁移：升级只追加新槽位，不会把已在冷却的技能清零
+      const cdById = {};
+      for (let i = 1; i < this.skillList.length; i++) cdById[this.skillList[i].id] = this.skillCd[i] || 0;
+      const prevIds = this.activeSkills.map(sk => sk.id);
+      this.activeSkills = this.cls.skills
+        .filter(id => DG.data.skillUnlocked(this.char, id))
+        .map(id => DG.data.skills[id]);
+      this.skillList = [this.basicSkill, ...this.activeSkills];
+      this.skillCd = this.skillList.map((sk, i) => (i === 0 ? 0 : (cdById[sk.id] || 0)));
+      if (this.hud) {
+        this.bindStripSlots();
+        this.updateHud();
+      }
+      return this.activeSkills.filter(sk => prevIds.indexOf(sk.id) < 0);
+    },
     autoMoveDirection() {
       const now = this.time || 0;
       if (this.autoDecision && this.autoDecision.until > now) return this.autoDecision.dir;
@@ -24499,6 +24765,148 @@
       ctx.globalCompositeOperation = 'lighter';
       ctx.drawImage(this.glowSprite(p.color || '#ffffff'), p.x - gr, p.y - gr, gr * 2, gr * 2);
       ctx.restore();
+      // 敌方弹道按施法者区分造型，避免所有远程怪都是同一种光球
+      const art = p.art;
+      const ang = Math.atan2(p.vy, p.vx);
+      if (art === 'musketeer') {
+        // 火枪：细长曳光弹
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(ang);
+        ctx.globalCompositeOperation = 'lighter';
+        const g = ctx.createLinearGradient(-p.r * 6, 0, p.r * 1.4, 0);
+        g.addColorStop(0, withAlpha(p.color, 0));
+        g.addColorStop(0.75, withAlpha(p.color, 0.45));
+        g.addColorStop(1, withAlpha('#fff2cf', 0.95));
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.moveTo(-p.r * 6, -1.1);
+        ctx.lineTo(p.r * 1.4, 0);
+        ctx.lineTo(-p.r * 6, 1.1);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#fff8e2';
+        ctx.beginPath();
+        ctx.arc(p.r * 0.8, 0, p.r * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        continue;
+      }
+      if (art === 'hornet') {
+        // 毒蜂：尖锐毒针 + 细尾迹
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(ang);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.strokeStyle = withAlpha(p.color, 0.5);
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(-p.r * 4.5, 0);
+        ctx.lineTo(-p.r * 0.6, 0);
+        ctx.stroke();
+        ctx.fillStyle = withAlpha(p.color, 0.9);
+        ctx.beginPath();
+        ctx.moveTo(p.r * 2.1, 0);
+        ctx.lineTo(-p.r * 0.6, -p.r * 0.62);
+        ctx.lineTo(-p.r * 0.6, p.r * 0.62);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#f4e2ff';
+        ctx.beginPath();
+        ctx.moveTo(p.r * 1.9, 0);
+        ctx.lineTo(p.r * 0.2, -p.r * 0.22);
+        ctx.lineTo(p.r * 0.2, p.r * 0.22);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+        continue;
+      }
+      if (art === 'cinderraven' || art === 'candle' || art === 'emberdrake') {
+        // 火焰：抖动的火舌 + 火星尾
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(ang);
+        ctx.globalCompositeOperation = 'lighter';
+        const flick = 0.85 + Math.sin((p.x + p.y) * 0.35 + (this.time || 0) * 22) * 0.15;
+        ctx.fillStyle = withAlpha(p.color, 0.55);
+        ctx.beginPath();
+        ctx.moveTo(-p.r * 2.6 * flick, 0);
+        ctx.quadraticCurveTo(0, -p.r * 1.5, p.r * 1.5, 0);
+        ctx.quadraticCurveTo(0, p.r * 1.5, -p.r * 2.6 * flick, 0);
+        ctx.fill();
+        ctx.fillStyle = withAlpha('#ffe9a8', 0.9);
+        ctx.beginPath();
+        ctx.arc(p.r * 0.3, 0, p.r * 0.62, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        continue;
+      }
+      if (art === 'mistwalker') {
+        // 迷雾：外围柔雾 + 双层虚影
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.strokeStyle = withAlpha(p.color, 0.45);
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r * 1.5, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = withAlpha(p.color, 0.32);
+        ctx.beginPath();
+        ctx.arc(p.x - Math.cos(ang) * p.r * 1.6, p.y - Math.sin(ang) * p.r * 1.6, p.r * 0.7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = withAlpha('#e8fbff', 0.75);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r * 0.55, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        continue;
+      }
+      if (art === 'angler') {
+        // 渊灯：水泡实心球 + 高光
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.strokeStyle = withAlpha(p.color, 0.6);
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r * 1.25, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = withAlpha(p.color, 0.5);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r * 0.9, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = withAlpha('#ffffff', 0.85);
+        ctx.beginPath();
+        ctx.arc(p.x - p.r * 0.35, p.y - p.r * 0.35, p.r * 0.28, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        continue;
+      }
+      if (art === 'warlock') {
+        // 深渊：旋转虚空菱环
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate((this.time || 0) * 4 + ang);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.strokeStyle = withAlpha(p.color, 0.4);
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.arc(0, 0, p.r * 1.7, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = withAlpha(p.color, 0.85);
+        ctx.beginPath();
+        ctx.moveTo(0, -p.r * 1.35);
+        ctx.lineTo(p.r * 0.9, 0);
+        ctx.lineTo(0, p.r * 1.35);
+        ctx.lineTo(-p.r * 0.9, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = withAlpha('#ffffff', 0.7);
+        ctx.beginPath();
+        ctx.arc(0, 0, p.r * 0.32, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        continue;
+      }
       ctx.fillStyle = p.color;
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
@@ -24804,7 +25212,7 @@
 
   drawEffects(ctx, groundOnly) {
     for (const e of this.effects) {
-      const ground = e.kind === 'teleArc' || e.kind === 'teleBeam' || e.kind === 'teleCircle' || e.kind === 'rollMark' || e.kind === 'arrowRainMarker';
+      const ground = e.kind === 'teleArc' || e.kind === 'teleBeam' || e.kind === 'teleCircle' || e.kind === 'rollMark' || e.kind === 'arrowRainMarker' || e.kind === 'slamShock';
       if (ground !== !!groundOnly) continue;
       const t = 1 - e.life / e.max;
       if (e.kind === 'roarCore') {

@@ -3306,6 +3306,217 @@
       ctx.restore();
       return true;
     }
+    // 横扫：宽幅月牙，弧线更长更厚，前端甩出风压残影
+    if (e.kind === 'sweepArc') {
+      const sweep = Math.min(1, k * 1.32);
+      const a0 = -e.arc / 2;
+      const a1 = a0 + e.arc * sweep;
+      ctx.save();
+      ctx.translate(e.x, e.y);
+      ctx.rotate(e.angle);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = rgba(e.color, 0.16 * fade);
+      ctx.lineWidth = 30;
+      ctx.beginPath();
+      ctx.arc(0, 0, e.radius * 0.92, a0, a1);
+      ctx.stroke();
+      for (let i = 0; i < 4; i++) {
+        ctx.strokeStyle = rgba(i === 0 ? '#fff6e2' : e.color, (0.88 - i * 0.18) * fade);
+        ctx.lineWidth = 13 - i * 2.6;
+        ctx.beginPath();
+        ctx.arc(0, 0, e.radius - i * 2.5, a0, a1);
+        ctx.stroke();
+      }
+      // 末端风压：三道向前甩出的弧形残影
+      for (let i = 0; i < 3; i++) {
+        const a = a1 - i * 0.09;
+        const rr = e.radius + i * 7 + k * 8;
+        ctx.strokeStyle = rgba(e.color, (0.4 - i * 0.1) * fade);
+        ctx.lineWidth = 4 - i;
+        ctx.beginPath();
+        ctx.arc(0, 0, rr, a - 0.34, a + 0.06);
+        ctx.stroke();
+      }
+      ctx.restore();
+      return true;
+    }
+
+    // 连击爪：三道平行裂口，第二段叠一条交叉斩痕
+    if (e.kind === 'rendArc') {
+      const len = e.radius * (0.5 + 0.6 * Math.min(1, k * 1.45));
+      ctx.save();
+      ctx.translate(e.x, e.y);
+      ctx.rotate(e.angle);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.lineCap = 'round';
+      for (let i = -1; i <= 1; i++) {
+        const off = i * e.radius * 0.12;
+        const ex = len * (0.92 + (i === 0 ? 0.12 : 0));
+        ctx.strokeStyle = rgba(e.color, 0.32 * fade);
+        ctx.lineWidth = 7;
+        ctx.beginPath();
+        ctx.moveTo(e.radius * 0.18, off);
+        ctx.quadraticCurveTo(len * 0.55, off - i * 4, ex, off * 0.55);
+        ctx.stroke();
+        ctx.strokeStyle = rgba(i === 0 ? '#fff4e4' : '#ffffff', (0.8 - Math.abs(i) * 0.2) * fade);
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(e.radius * 0.2, off);
+        ctx.quadraticCurveTo(len * 0.55, off - i * 4, ex, off * 0.55);
+        ctx.stroke();
+      }
+      if (k > 0.28) {
+        const kk = Math.min(1, (k - 0.28) / 0.5);
+        ctx.strokeStyle = rgba(e.color, 0.55 * fade * kk);
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.moveTo(len * 0.2, -e.radius * 0.26);
+        ctx.lineTo(len * 0.95, e.radius * 0.22);
+        ctx.stroke();
+      }
+      ctx.restore();
+      return true;
+    }
+
+    // 突刺：狭长枪芒 + 速度线 + 尖端贯穿闪光
+    if (e.kind === 'thrustArc') {
+      const L = e.radius * (1.0 + 0.35 * Math.min(1, k * 2));
+      const w = 6 * (1 - k * 0.35);
+      ctx.save();
+      ctx.translate(e.x, e.y);
+      ctx.rotate(e.angle);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.lineCap = 'round';
+      ctx.fillStyle = rgba(e.color, 0.42 * fade);
+      ctx.beginPath();
+      ctx.moveTo(e.radius * 0.2, -w);
+      ctx.lineTo(L, -1.4);
+      ctx.lineTo(L + 12, 0);
+      ctx.lineTo(L, 1.4);
+      ctx.lineTo(e.radius * 0.2, w);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = rgba('#ffffff', 0.75 * fade);
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(e.radius * 0.25, 0);
+      ctx.lineTo(L + 8, 0);
+      ctx.stroke();
+      for (let i = 0; i < 3; i++) {
+        const off = (i - 1) * 6.5;
+        const st = e.radius * (0.15 + i * 0.12);
+        const en = L * (0.72 - Math.abs(i - 1) * 0.14);
+        ctx.strokeStyle = rgba(e.color, (0.6 - Math.abs(i - 1) * 0.16) * fade);
+        ctx.lineWidth = 2.6;
+        ctx.beginPath();
+        ctx.moveTo(st, off);
+        ctx.lineTo(en, off * 0.7);
+        ctx.stroke();
+      }
+      if (k > 0.15) {
+        const fg = ctx.createRadialGradient(L + 6, 0, 0, L + 6, 0, 18);
+        fg.addColorStop(0, rgba('#ffffff', 0.7 * fade));
+        fg.addColorStop(1, rgba(e.color, 0));
+        ctx.fillStyle = fg;
+        ctx.beginPath();
+        ctx.arc(L + 6, 0, 18, 0, PI2);
+        ctx.fill();
+      }
+      ctx.restore();
+      return true;
+    }
+
+    // 旋斩：一整圈刀环 + 两道反向飞旋的月牙
+    if (e.kind === 'spinArc') {
+      ctx.save();
+      ctx.translate(e.x, e.y);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = rgba(e.color, 0.2 * fade);
+      ctx.lineWidth = 15;
+      ctx.beginPath();
+      ctx.arc(0, 0, e.radius * 0.9, 0, PI2);
+      ctx.stroke();
+      for (let s = -1; s <= 1; s += 2) {
+        const start = e.angle + s * (k * 5.2);
+        ctx.strokeStyle = rgba(e.color, 0.75 * fade);
+        ctx.lineWidth = 9;
+        ctx.beginPath();
+        ctx.arc(0, 0, e.radius * (0.82 + s * 0.06), start, start + 2.0);
+        ctx.stroke();
+        ctx.strokeStyle = rgba('#fff2e0', 0.55 * fade);
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        ctx.arc(0, 0, e.radius * (0.82 + s * 0.06), start, start + 2.0);
+        ctx.stroke();
+      }
+      for (let i = 0; i < 8; i++) {
+        const a = e.angle + i * PI2 / 8 + k * 1.4;
+        const r0 = e.radius * 0.6;
+        const r1 = e.radius * (0.94 + (i % 2) * 0.12);
+        ctx.strokeStyle = rgba(e.color, 0.5 * fade);
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a) * r0, Math.sin(a) * r0);
+        ctx.lineTo(Math.cos(a) * r1, Math.sin(a) * r1);
+        ctx.stroke();
+      }
+      ctx.restore();
+      return true;
+    }
+
+    // 震地：贴地扩散的椭圆冲击环 + 放射裂缝 + 迸溅碎石
+    if (e.kind === 'slamShock') {
+      ctx.save();
+      ctx.translate(e.x, e.y);
+      ctx.scale(1, 0.52);
+      ctx.globalCompositeOperation = 'lighter';
+      const R = e.radius * (0.3 + k * 1.05);
+      for (let j = 0; j < 3; j++) {
+        const rr = R * (0.62 + j * 0.22);
+        ctx.strokeStyle = rgba(e.color, (0.45 - j * 0.12) * fade);
+        ctx.lineWidth = 5 - j * 1.2;
+        ctx.beginPath();
+        ctx.arc(0, 0, rr, 0, PI2);
+        ctx.stroke();
+      }
+      // 放射裂缝：三段折线，越靠外越细
+      for (let i = 0; i < 10; i++) {
+        const a = i * PI2 / 10 + 0.4;
+        ctx.strokeStyle = rgba(e.color, 0.5 * fade);
+        ctx.lineWidth = 3.2;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a) * R * 0.14, Math.sin(a) * R * 0.14);
+        ctx.lineTo(Math.cos(a + 0.07) * R * 0.52, Math.sin(a + 0.07) * R * 0.52);
+        ctx.lineTo(Math.cos(a - 0.05) * R * (0.84 + k * 0.2), Math.sin(a - 0.05) * R * (0.84 + k * 0.2));
+        ctx.stroke();
+      }
+      // 中心冲击闪光
+      const cg = ctx.createRadialGradient(0, 0, 0, 0, 0, R * 0.5);
+      cg.addColorStop(0, rgba('#ffffff', 0.5 * fade));
+      cg.addColorStop(0.4, rgba(e.color, 0.28 * fade));
+      cg.addColorStop(1, rgba(e.color, 0));
+      ctx.fillStyle = cg;
+      ctx.beginPath();
+      ctx.arc(0, 0, R * 0.5, 0, PI2);
+      ctx.fill();
+      // 碎石：从中心向外抛出的方块
+      for (let i = 0; i < 7; i++) {
+        const a = i * 0.9 + 0.3;
+        const rr = R * (0.35 + k * 0.7);
+        const s = 2.2 + (i % 3) * 1.4;
+        ctx.fillStyle = rgba('#e6dcc6', (0.55 - k * 0.35) * fade);
+        ctx.save();
+        ctx.translate(Math.cos(a) * rr, Math.sin(a) * rr);
+        ctx.rotate(a + k * 3);
+        ctx.fillRect(-s, -s * 0.6, s * 2, s * 1.2);
+        ctx.restore();
+      }
+      ctx.restore();
+      return true;
+    }
+
     return false;
   }
 

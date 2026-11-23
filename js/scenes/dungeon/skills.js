@@ -5,6 +5,39 @@
   const { W, H, ARENA_W, ARENA_H } = DG.scenes.dungeon.size;
 
   Object.assign(DG.scenes.dungeon.prototype, {
+    // 战斗内成长即时生效：升级 / 换装 / 点天赋后重算属性、同步技能栏与冷却，
+    // 返回本次新解锁的技能（供升级公告展示）
+    refreshBuild() {
+      if (!this.player || !this.stats || !this.cls) return [];
+      const oldMax = this.player.maxHp;
+      const oldHp = this.player.hp;
+      // 天赋/流派词缀由 char 实时聚合，换装或点树后必须丢弃战斗内缓存
+      this.talents = null;
+      this.stats = DG.stats.compute(this.char);
+      this.talents = this.stats.talents || null;
+      const newMax = this.stats.maxHp;
+      this.player.maxHp = newMax;
+      // 上限提升时把新增生命补进当前血量；上限下降时按新上限收口，避免换装瞬间残血
+      this.player.hp = newMax >= oldMax
+        ? Math.min(newMax, oldHp + (newMax - oldMax))
+        : Math.min(newMax, oldHp);
+      if (this.player.hp <= 0) this.player.hp = 1;
+
+      // 旧冷却按技能 id 迁移：升级只追加新槽位，不会把已在冷却的技能清零
+      const cdById = {};
+      for (let i = 1; i < this.skillList.length; i++) cdById[this.skillList[i].id] = this.skillCd[i] || 0;
+      const prevIds = this.activeSkills.map(sk => sk.id);
+      this.activeSkills = this.cls.skills
+        .filter(id => DG.data.skillUnlocked(this.char, id))
+        .map(id => DG.data.skills[id]);
+      this.skillList = [this.basicSkill, ...this.activeSkills];
+      this.skillCd = this.skillList.map((sk, i) => (i === 0 ? 0 : (cdById[sk.id] || 0)));
+      if (this.hud) {
+        this.bindStripSlots();
+        this.updateHud();
+      }
+      return this.activeSkills.filter(sk => prevIds.indexOf(sk.id) < 0);
+    },
     autoMoveDirection() {
       const now = this.time || 0;
       if (this.autoDecision && this.autoDecision.until > now) return this.autoDecision.dir;
