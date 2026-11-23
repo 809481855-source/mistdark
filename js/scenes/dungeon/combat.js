@@ -127,6 +127,16 @@
     warlock:     { bits: 'shadow', n: 8, color: '#b28bff', cast: true }
   };
 
+  const MATERIALS = {
+    wolf: 'flesh', frostwolf: 'ice', skeleton: 'bone', boneknight: 'bone',
+    mistwalker: 'mist', pea: 'spore', musketeer: 'iron', pumpkin: 'iron',
+    slime: 'mucus', frostslime: 'ice', mummy: 'cloth', bat: 'flesh',
+    hornet: 'needle', beetle: 'shell', cinderraven: 'ash', candle: 'flame',
+    urchin: 'spike', deepfin: 'water', cowlbandit: 'iron', angler: 'water',
+    fleece: 'cloth', foxraider: 'flesh', emberdrake: 'flame', venomlisk: 'toxin',
+    bulwark: 'shell', mawflower: 'petal', plaguedoc: 'toxin', warlock: 'shadow'
+  };
+
 
 
   Object.assign(DG.scenes.dungeon.prototype, {
@@ -557,6 +567,10 @@
     m.facing = ang;
     m.moving = false;
     m.hop = 0;
+    this.addGritFx('monsterTension', m.x, m.y - m.r * 0.54, {
+      angle: ang, radius: m.r * 1.9, color: m.fxColor || '#847161',
+      material: MATERIALS[m.art] || 'iron', life: Math.min(0.36, m.action.windup * 0.55), seed: m.seed || 0
+    });
   },
   // 出手突进：分小步推进，避免一帧位移过大穿墙
   dashMonster(m, ang, dist) {
@@ -707,6 +721,10 @@
     }
     this.addBurst(fx, fy, color, second ? 5 : 7);
     this.addRing(m.x, m.y, 8, m.r * 2.2, color, second ? 0.24 : 0.3);
+    this.addGritFx('monsterStrikeGrit', fx, fy, {
+      angle: ang, radius: radius * 0.7, color, material: MATERIALS[m.art] || 'iron',
+      life: second ? 0.17 : 0.25, seed: m.seed || 0
+    });
     if (mv.shake && !second) this.shake = Math.max(this.shake, mv.shake);
 
     if (p.hp <= 0) return;

@@ -164,36 +164,34 @@
       const height = doc.clientHeight || window.innerHeight;
       if (!width || !height) return;
       const screen = this.stageSize();
-      // 屏幕比例接近竖版时不再留黑边：舞台提升到场景画幅 810×1680 并铺满屏幕，
-      // 多出的部分由 #stage 裁掉，露出的是真实场景；UI 层反向缩放，
-      // 物理尺寸与 720×1440 时完全一致，布局、按钮位置和字号都不变。
-      // 超过 0.60（横屏窗口）或低于 0.36（极窄）时仍按原逻辑完整显示，避免裁掉过多画面。
-      const aspect = width / height;
-      const fill = aspect >= 0.36 && aspect <= 0.60;
-      const sw = fill ? SCENE_W : screen.w;
-      const sh = fill ? SCENE_H : screen.h;
-      stage.style.width = sw + 'px';
-      stage.style.height = sh + 'px';
+      stage.style.width = screen.w + 'px';
+      stage.style.height = screen.h + 'px';
       // UI 固定 720×1440 居中，场景层要按舞台原点铺开：这两个偏移供场景元素（主城地图）使用
-      stage.style.setProperty('--ui-ox', ((720 - sw) / 2) + 'px');
-      stage.style.setProperty('--ui-oy', ((1440 - sh) / 2) + 'px');
-      stage.style.setProperty('--stage-w', sw + 'px');
-      stage.style.setProperty('--stage-h', sh + 'px');
+      stage.style.setProperty('--ui-ox', ((720 - screen.w) / 2) + 'px');
+      stage.style.setProperty('--ui-oy', ((1440 - screen.h) / 2) + 'px');
+      stage.style.setProperty('--stage-w', screen.w + 'px');
+      stage.style.setProperty('--stage-h', screen.h + 'px');
       // 等比缩放，绝不横向 / 纵向拉伸（拉伸会让插画和 UI 明显变形）：
-      // 铺满模式下按 cover 裁切，其余情况按 fit 完整显示
-      const uiScale = Math.min(width / screen.w, height / screen.h);
-      const scale = fill ? Math.max(width / sw, height / sh) : uiScale;
+      // 优先按 cover 铺满屏幕，但只允许裁掉舞台为 UI 预留的背景边；
+      // 超出这个范围（桌面 / 平板等比例差异过大）就退回完整显示，宁可留边也不变形。
+      const sx = width / screen.w;
+      const sy = height / screen.h;
+      const cover = Math.max(sx, sy);
+      const fit = Math.min(sx, sy);
+      const marginX = (screen.w - 720) / 2;   // 舞台左右预留的背景宽度
+      const marginY = (screen.h - 1440) / 2;  // 舞台上下预留的背景高度
+      const cropX = Math.max(0, (screen.w - width / cover) / 2);
+      const cropY = Math.max(0, (screen.h - height / cover) / 2);
+      const scale = (cropX <= marginX + 0.5 && cropY <= marginY + 0.5) ? cover : fit;
       stage.style.transform = `scale(${scale})`;
-      // UI 反向缩放抵消舞台放大，保证界面物理尺寸与原来一致
-      if (this.ui) this.ui.style.transform = fill ? `scale(${(uiScale / scale).toFixed(4)})` : '';
       // 场景固定 810×1680：等比放大到刚好盖住舞台，多出的边缘由 #stage 裁掉
-      const coverScale = Math.max(sw / SCENE_W, sh / SCENE_H);
+      const coverScale = Math.max(screen.w / SCENE_W, screen.h / SCENE_H);
       const cw = SCENE_W * coverScale;
       const ch = SCENE_H * coverScale;
       this.canvas.style.width = cw + 'px';
       this.canvas.style.height = ch + 'px';
-      this.canvas.style.left = ((sw - cw) / 2) + 'px';
-      this.canvas.style.top = ((sh - ch) / 2) + 'px';
+      this.canvas.style.left = ((screen.w - cw) / 2) + 'px';
+      this.canvas.style.top = ((screen.h - ch) / 2) + 'px';
       // 画布后备像素跟随设备物理像素，避免拉伸显示导致角色模糊
       this.setRenderScale(this.nativeRenderScale());
     },

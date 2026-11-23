@@ -7,7 +7,17 @@
   Object.assign(DG.scenes.dungeon.prototype, {
   buildHud() {
     const el = U.el('div', 'dungeon-ui');
-    const slots = this.skillStripHtml();
+    const slots = this.skillList.map((sk, i) => {
+      const cd = i === 0 ? '' : ` · 冷却 ${U.round(this.skillCooldown(sk), 1)}s`;
+      const art = sk.icon
+        ? `<img src="${sk.icon}" alt="">`
+        : `<span class="strip-glyph">${sk.glyph}</span>`;
+      return `<div class="strip-slot" data-slot="${i}" title="${U.escapeHtml(sk.name)}${cd}">` +
+        art +
+        `<div class="cd" data-cd="${i}"></div>` +
+        `<div class="cdtext" data-cdt="${i}"></div>` +
+      `</div>`;
+    }).join('');
     // 技能图标全职业共用，装备图标按职业取用
     const skillIcon = DG.data.iconFor(this.char.cls, 'skill');
     const equipIcon = DG.data.iconFor(this.char.cls, 'equip');
@@ -104,26 +114,31 @@
     this.$bossFill = el.querySelector('[data-boss-fill]');
     this.$bossHp = el.querySelector('[data-boss-hp]');
     this.$pauseMask = el.querySelector('[data-pause-mask]');
+    this.$cd = Array.from(el.querySelectorAll('[data-cd]'));
+    this.$cdt = Array.from(el.querySelectorAll('[data-cdt]'));
     this.$touch = el.querySelector('[data-touch]');
     this.$pauseHint = el.querySelector('[data-pause-hint]');
     this.$knob = el.querySelector('[data-knob]');
     this.$auto = el.querySelector('[data-auto]');
     this.$xpPct = el.querySelector('[data-xp-pct]');
     this.$xpNum = el.querySelector('[data-xp-num]');
-    // 底部两端功能键：打开面板时静默暂停战斗，关闭后自动继续；
-    // 面板内换装 / 点技能后立刻重算战斗属性并刷新技能条
+    // 底部两端功能键：打开面板时静默暂停战斗，关闭后自动继续
     el.querySelector('[data-open-equip]').addEventListener('click', () => {
-      this.openPanel(done => DG.ui.openEquipment(this.char, () => this.refreshBuild(), { onClose: done }));
+      this.openPanel(done => DG.ui.openEquipment(this.char, () => this.updateHud(), { onClose: done }));
     });
     el.querySelector('[data-open-skills]').addEventListener('click', () => {
-      this.openPanel(done => DG.ui.openSkills(this.char, () => this.refreshBuild(), { onClose: done }));
+      this.openPanel(done => DG.ui.openSkills(this.char, () => this.updateHud(), { onClose: done }));
     });
     // 等级牌：与主城一致，点开角色信息
     el.querySelector('[data-open-char]').addEventListener('click', () => {
       this.openPanel(done => DG.ui.openCharacterInfo(this.char, { onClose: done }));
     });
     // 中间技能格同样可查看技能详情（战斗期间静默暂停）
-    this.bindStripSlots();
+    el.querySelectorAll('.strip-slot[data-slot]').forEach(slot => {
+      slot.addEventListener('click', () => {
+        this.openPanel(done => DG.ui.openSkills(this.char, () => this.updateHud(), { onClose: done }));
+      });
+    });
     this.$auto.addEventListener('click', () => this.toggleAutoMode());
     this.syncAutoButton();
     this.updateWaveText();
@@ -239,42 +254,6 @@
       if (m.boss && !m.dead) return m;
     }
     return null;
-  },
-  // 技能条槽位：普攻 + 已解锁主动技能（重建与首次构建共用同一份模板）
-  skillStripHtml() {
-    return this.skillList.map((sk, i) => {
-      const cd = i === 0 ? '' : ` · 冷却 ${U.round(this.skillCooldown(sk), 1)}s`;
-      const art = sk.icon
-        ? `<img src="${sk.icon}" alt="">`
-        : `<span class="strip-glyph">${sk.glyph}</span>`;
-      return `<div class="strip-slot" data-slot="${i}" title="${U.escapeHtml(sk.name)}${cd}">` +
-        art +
-        `<div class="cd" data-cd="${i}"></div>` +
-        `<div class="cdtext" data-cdt="${i}"></div>` +
-      `</div>`;
-    }).join('');
-  },
-  // 战斗中升级解锁技能 / 换装改变冷却后，按最新 skillList 重建技能条并重绑点击
-  bindStripSlots() {
-    if (!this.hud) return;
-    const host = this.hud.querySelector('.strip-slots');
-    if (!host) return;
-    host.innerHTML = this.skillStripHtml();
-    this.$cd = Array.from(host.querySelectorAll('[data-cd]'));
-    this.$cdt = Array.from(host.querySelectorAll('[data-cdt]'));
-    // 槽位数量变化后清掉旧索引的缓存，避免冷却层与 "ready" 状态错位
-    if (this._hudCache) {
-      for (let i = 0; i < 12; i++) {
-        delete this._hudCache['cd' + i];
-        delete this._hudCache['cdt' + i];
-        delete this._hudCache['cdr' + i];
-      }
-    }
-    host.querySelectorAll('.strip-slot[data-slot]').forEach(slot => {
-      slot.addEventListener('click', () => {
-        this.openPanel(done => DG.ui.openSkills(this.char, () => this.refreshBuild(), { onClose: done }));
-      });
-    });
   },
   updateHud() {
     if (!this.hud) return;

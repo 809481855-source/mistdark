@@ -834,6 +834,13 @@
       w.ftick -= dt;
       const show = w.ftick <= 0;
       if (show) w.ftick += 0.5;
+      w.gritTick = (w.gritTick || 0) - dt;
+      if (w.gritTick <= 0) {
+        w.gritTick += 0.2;
+        this.addGritFx('barbWhirlDust', this.player.x, this.player.y + 12, {
+          angle: this.whirlSpin || 0, radius: w.radius * 0.8, color: '#755247', life: 0.34
+        });
+      }
       w.tick -= dt;
       if (w.tick <= 0) {
         w.tick += 0.1;
@@ -987,6 +994,9 @@
       const fx = DG.art.barbarian;
       const arc = fx ? fx.slashArc : this.skillArc(st.sk);
       const reach = fx ? fx.slashReach : st.sk.range;
+      this.addGritFx('barbCleaveGrit', this.player.x, this.player.y - 26, {
+        angle: st.ang, radius: reach, color: '#a85b43', life: 0.22
+      });
       for (const m of this.monsters) {
         if (m.dead) continue;
         if (U.dist(this.player, m) > reach + m.r) continue;
@@ -1045,6 +1055,9 @@
         });
       }
       this.addBurst(this.player.x, this.player.y - 24, '#ffe9a8', 10);
+      this.addGritFx('barbRoarPressure', this.player.x, this.player.y + 14, {
+        radius: r.radius, color: '#b58a5d', life: 0.58
+      });
       this.shake = Math.max(this.shake, 0.3);
       // 音效：人声吼叫 + 合成冲击波，两层叠在一起
       if (DG.audio) {
@@ -1393,6 +1406,9 @@
             });
           }
           this.addRing(ox, oy, 8, 42, '#d99a63', 0.26);
+          this.addGritFx('barbChargeBreak', nx, ny + this.player.r * 0.55, {
+            angle: ang, radius: 72, color: '#9d513d', life: 0.32
+          });
 
           let stunned = 0;
           for (const m of this.monsters) {
@@ -1557,6 +1573,11 @@
         hit: []
       });
       this.addBurst(this.player.x + Math.cos(ang) * 22, this.player.y + Math.sin(ang) * 22, sk.color, sk.id === 'snipe' ? 5 : 3);
+      if (sk.id === 'shockwave') {
+        this.addGritFx('barbShockRift', mz.x, mz.y + 10, {
+          angle: ang, radius: 54, color: '#b86843', life: 0.24
+        });
+      }
     }
   });
 })();

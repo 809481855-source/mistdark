@@ -40,6 +40,7 @@
       const amb = typeof cur.ambientVol === 'number' ? cur.ambientVol : 100;
       const music = cur.music !== false;
       const screen = cur.screen || 'std';
+      const combatFx = cur.combatFx || 'enhanced';
       const screenOpts = [
         ['max', '最大屏'],
         ['short', '短屏'],
@@ -82,6 +83,14 @@
             `<button class="seg-btn${!music ? ' sel' : ''}" data-music="0">关闭</button>` +
           `</div>` +
         `</div>` +
+        `<div class="setting-row">` +
+          `<div class="setting-title">战斗特效</div>` +
+          `<div class="setting-desc">粗粝强化以铁屑、尘土、裂地与材质碎屑强化打击感；原始会立即关闭本次新增表现，不影响伤害、判定与存档。</div>` +
+          `<div class="seg">` +
+            `<button class="seg-btn${combatFx === 'enhanced' ? ' sel' : ''}" data-combat-fx="enhanced">粗粝强化</button>` +
+            `<button class="seg-btn${combatFx === 'original' ? ' sel' : ''}" data-combat-fx="original">原始</button>` +
+          `</div>` +
+        `</div>` +
         `<div class="settings-note">${note}</div>`;
 
       body.querySelectorAll('.seg-btn[data-val]').forEach(btn => {
@@ -113,6 +122,15 @@
           DG.settings.set({ music: on });
           if (DG.audio) DG.audio.setMusicEnabled(on);
           render();
+        });
+      });
+      body.querySelectorAll('.seg-btn[data-combat-fx]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const mode = btn.getAttribute('data-combat-fx');
+          DG.settings.set({ combatFx: mode });
+          if (DG.ui && DG.ui.toast) DG.ui.toast(mode === 'enhanced' ? '粗粝强化特效已启用' : '已还原原始特效', 'gold');
+          render();
+          if (onChanged) onChanged(DG.settings.get());
         });
       });
       // 天气音量滑块：拖动时实时改变响度，松手后再落盘保存

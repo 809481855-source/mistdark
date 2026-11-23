@@ -297,7 +297,8 @@
     audio: true,       // 天气环境音总开关
     ambientVol: 100,   // 天气环境音音量 0-100
     music: true,       // 背景音乐（BGM）开关
-    screen: 'std'      // max 810×1680 | short 720×1680 | std 9:16 720×1440
+    screen: 'std',     // max 810×1680 | short 720×1680 | std 9:16 720×1440
+    combatFx: 'enhanced' // enhanced 暗黑强化表现 | original 原始表现
   };
 
   const data = Object.assign({}, DEFAULTS);
@@ -318,6 +319,9 @@
       if (saved && saved.music === false) data.music = false;
       if (saved && (saved.screen === 'max' || saved.screen === 'short' || saved.screen === 'std')) {
         data.screen = saved.screen;
+      }
+      if (saved && (saved.combatFx === 'enhanced' || saved.combatFx === 'original')) {
+        data.combatFx = saved.combatFx;
       }
     } else if (isTouchDevice()) {
       data.inputMode = 'touch';
@@ -904,126 +908,7 @@
     }
   }
 
-  /* ---------------- 小怪新招式：挥风声 + 命中质感 ---------------- */
-  // 只有新增的大幅招式有挥风声（横扫 / 连击 / 突刺 / 旋斩 / 震地），
-  // 普通挠击不发声，避免十几只小怪同时挥爪时声场糊掉。
-  const SWING_KINDS = { sweep: 1, rend: 1, impale: 1, spin: 1, slam: 1 };
-  let lastMinionSwingAt = 0;
-  let lastMinionHitAt = 0;
-
-  function minionSwing(kind) {
-    if (!SWING_KINDS[kind]) return;
-    if (!ctx || !master || !unlocked || !enabled) return;
-    const c = ctx;
-    const t = c.currentTime;
-    const gap = lastMinionSwingAt ? t - lastMinionSwingAt : 9;
-    if (gap < 0.06) return;
-    lastMinionSwingAt = t;
-    ensureSfxBus();
-    const bus = sfxBus || master;
-    const soft = gap < 0.16 ? 0.55 : 1;
-    // 不同招式的扫频方向与时长不同：横扫由高到低，旋斩由低到高，震地闷短
-    let f0 = 2400, f1 = 700, dur = 0.2, vol = 0.13;
-    if (kind === 'impale') { f0 = 3400; f1 = 1900; dur = 0.11; vol = 0.11; }
-    else if (kind === 'spin') { f0 = 1700; f1 = 2700; dur = 0.26; vol = 0.12; }
-    else if (kind === 'slam') { f0 = 900; f1 = 220; dur = 0.15; vol = 0.11; }
-    else if (kind === 'rend') { f0 = 3000; f1 = 1200; dur = 0.1; vol = 0.1; }
-    const n = noiseSource();
-    const bp = c.createBiquadFilter();
-    bp.type = 'bandpass';
-    bp.Q.value = 1.1;
-    bp.frequency.setValueAtTime(f0, t);
-    bp.frequency.exponentialRampToValueAtTime(f1, t + dur);
-    const g = c.createGain();
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(vol * soft, t + 0.015);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    n.connect(bp); bp.connect(g); g.connect(bus);
-    n.start(t); n.stop(t + dur + 0.03);
-  }
-
-  function minionHit(kind, opts) {
-    if (!ctx || !master || !unlocked || !enabled) return;
-    const c = ctx;
-    const t = c.currentTime;
-    const gap = lastMinionHitAt ? t - lastMinionHitAt : 9;
-    if (gap < 0.04) return;
-    lastMinionHitAt = t;
-    ensureSfxBus();
-    const bus = sfxBus || master;
-    const soft = (gap < 0.12 ? 0.55 : 1) * ((opts && opts.vol) || 1);
-    // 低频撞击
-    const thump = (f0, f1, dur, amp, delay) => {
-      const t0 = t + (delay || 0);
-      const o = c.createOscillator();
-      o.type = 'sine';
-      o.frequency.setValueAtTime(f0, t0);
-      o.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
-      const g = c.createGain();
-      g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(amp * soft, t0 + 0.008);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-      o.connect(g); g.connect(bus);
-      o.start(t0); o.stop(t0 + dur + 0.02);
-    };
-    // 频段噪声：划痕 / 金属 / 碎屑
-    const hiss = (f0, f1, q, dur, amp, type, delay) => {
-      const t0 = t + (delay || 0);
-      const n = noiseSource();
-      const f = c.createBiquadFilter();
-      f.type = type || 'bandpass';
-      f.Q.value = q;
-      f.frequency.setValueAtTime(f0, t0);
-      f.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
-      const g = c.createGain();
-      g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(amp * soft, t0 + 0.006);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-      n.connect(f); f.connect(g); g.connect(bus);
-      n.start(t0); n.stop(t0 + dur + 0.02);
-    };
-    // 金属泛音：旋斩、突刺的“锋利感”
-    const ring = (f0, f1, dur, amp, delay) => {
-      const t0 = t + (delay || 0);
-      const o = c.createOscillator();
-      o.type = 'triangle';
-      o.frequency.setValueAtTime(f0, t0);
-      o.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
-      const g = c.createGain();
-      g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(amp * soft, t0 + 0.01);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-      o.connect(g); g.connect(bus);
-      o.start(t0); o.stop(t0 + dur + 0.02);
-    };
-
-    if (kind === 'sweep') {
-      thump(120, 48, 0.2, 0.42);
-      hiss(2400, 620, 0.8, 0.16, 0.22);
-      hiss(4200, 2200, 1.3, 0.07, 0.12, 'highpass', 0.02);
-    } else if (kind === 'rend') {
-      thump(170, 80, 0.12, 0.3);
-      hiss(3400, 1500, 1.4, 0.055, 0.24, 'highpass');
-      hiss(2900, 1200, 1.4, 0.055, 0.18, 'highpass', 0.085);
-    } else if (kind === 'impale') {
-      thump(150, 70, 0.12, 0.24);
-      hiss(4400, 2800, 1.6, 0.05, 0.2, 'highpass');
-      ring(1900, 760, 0.09, 0.14, 0.005);
-    } else if (kind === 'spin') {
-      thump(115, 50, 0.18, 0.3);
-      ring(1500, 540, 0.26, 0.16);
-      hiss(1700, 2500, 1.0, 0.22, 0.13);
-    } else if (kind === 'slam') {
-      thump(96, 34, 0.36, 0.62);
-      hiss(720, 170, 0.7, 0.3, 0.26, 'lowpass');
-      hiss(3200, 900, 1.2, 0.07, 0.12, 'highpass', 0.01);
-    } else {
-      thump(130, 62, 0.15, 0.28);
-      hiss(1900, 760, 0.8, 0.11, 0.14);
-    }
-  }
-
-
+  /* ---------------- 解包音频资源（assets/audio） ---------------- */
   const AUDIO_DIR = 'assets/audio/';
 
   // 音效键 -> 文件；键名保持语义化，场景代码只引用键
@@ -1536,9 +1421,6 @@
   A.thunder = thunder;
   A.warcryBurst = warcryBurst;
   A.bossHit = bossHitBurst;
-  // 小怪新招式的挥风声与命中质感音
-  A.minionSwing = minionSwing;
-  A.minionHit = minionHit;
 
   A.play = play;
   A.playBgm = playBgm;
@@ -14153,6 +14035,7 @@
       const amb = typeof cur.ambientVol === 'number' ? cur.ambientVol : 100;
       const music = cur.music !== false;
       const screen = cur.screen || 'std';
+      const combatFx = cur.combatFx || 'enhanced';
       const screenOpts = [
         ['max', '最大屏'],
         ['short', '短屏'],
@@ -14195,6 +14078,14 @@
             `<button class="seg-btn${!music ? ' sel' : ''}" data-music="0">关闭</button>` +
           `</div>` +
         `</div>` +
+        `<div class="setting-row">` +
+          `<div class="setting-title">战斗特效</div>` +
+          `<div class="setting-desc">粗粝强化以铁屑、尘土、裂地与材质碎屑强化打击感；原始会立即关闭本次新增表现，不影响伤害、判定与存档。</div>` +
+          `<div class="seg">` +
+            `<button class="seg-btn${combatFx === 'enhanced' ? ' sel' : ''}" data-combat-fx="enhanced">粗粝强化</button>` +
+            `<button class="seg-btn${combatFx === 'original' ? ' sel' : ''}" data-combat-fx="original">原始</button>` +
+          `</div>` +
+        `</div>` +
         `<div class="settings-note">${note}</div>`;
 
       body.querySelectorAll('.seg-btn[data-val]').forEach(btn => {
@@ -14226,6 +14117,15 @@
           DG.settings.set({ music: on });
           if (DG.audio) DG.audio.setMusicEnabled(on);
           render();
+        });
+      });
+      body.querySelectorAll('.seg-btn[data-combat-fx]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const mode = btn.getAttribute('data-combat-fx');
+          DG.settings.set({ combatFx: mode });
+          if (DG.ui && DG.ui.toast) DG.ui.toast(mode === 'enhanced' ? '粗粝强化特效已启用' : '已还原原始特效', 'gold');
+          render();
+          if (onChanged) onChanged(DG.settings.get());
         });
       });
       // 天气音量滑块：拖动时实时改变响度，松手后再落盘保存
@@ -14706,8 +14606,8 @@
   const ACTOR_W = 240, ACTOR_H = 256;
   // 步幅基准：330px/s 对应 11rad/s（30px/rad），主城与战斗共用同一换算
   const WALK_REF_SPEED = 330;
-  // 进入主城固定落点：角色绘制的视觉中心对准屏幕正中（左右居中由相机保证，上下按立绘包围盒校正）
-  const START = [0.50, 0.55];
+  // 进入主城（含从副本返回）固定落点：屏幕水平正中、篝火下方空地
+  const START = [0.50, 0.695];
 
   // 可行走区域：参考图二，取营地中央空地，边缘避开帐篷、木箱、篝火与岩石
   const WALK = [
@@ -14954,8 +14854,10 @@
       world.style.width = WORLD_W + 'px';
       world.style.height = WORLD_H + 'px';
 
-      // 进入主城：角色固定落在屏幕正中，不沿用上次离开的位置
-      const pos = { x: WORLD_W * START[0], y: WORLD_H * START[1] };
+      // 进入主城：回到上次离开时的位置（从副本/面板返回也一样），首次进入落在篝火下方
+      const saved = DG.game.townPos;
+      const savedPos = saved ? clampIntoWalk(saved.x, saved.y) : null;
+      const pos = savedPos || { x: WORLD_W * START[0], y: WORLD_H * START[1] };
       let camX = 0, dir = 1, target = null, moving = false, phase = 0;
       const keys = Object.create(null);
       const stick = { x: 0, y: 0 };
@@ -15155,6 +15057,8 @@
         // 是否有真实位移：顶死在墙角时不再原地踏步
         const stepped = Math.hypot(pos.x - beforeX, pos.y - beforeY);
         moving = stepped > 0.2;
+        // 记录当前位置，下次回到主城时从这里续上
+        if (moving) DG.game.townPos = { x: pos.x, y: pos.y };
         // 步频与实际移速成正比：与战斗同一公式，保证同一角色两边走路完全一致
         if (moving) phase += dt * 11 * walkSpeed / WALK_REF_SPEED;
         else if (vlen < 1) phase = 0;
@@ -17374,7 +17278,17 @@
   Object.assign(DG.scenes.dungeon.prototype, {
   buildHud() {
     const el = U.el('div', 'dungeon-ui');
-    const slots = this.skillStripHtml();
+    const slots = this.skillList.map((sk, i) => {
+      const cd = i === 0 ? '' : ` · 冷却 ${U.round(this.skillCooldown(sk), 1)}s`;
+      const art = sk.icon
+        ? `<img src="${sk.icon}" alt="">`
+        : `<span class="strip-glyph">${sk.glyph}</span>`;
+      return `<div class="strip-slot" data-slot="${i}" title="${U.escapeHtml(sk.name)}${cd}">` +
+        art +
+        `<div class="cd" data-cd="${i}"></div>` +
+        `<div class="cdtext" data-cdt="${i}"></div>` +
+      `</div>`;
+    }).join('');
     // 技能图标全职业共用，装备图标按职业取用
     const skillIcon = DG.data.iconFor(this.char.cls, 'skill');
     const equipIcon = DG.data.iconFor(this.char.cls, 'equip');
@@ -17471,26 +17385,31 @@
     this.$bossFill = el.querySelector('[data-boss-fill]');
     this.$bossHp = el.querySelector('[data-boss-hp]');
     this.$pauseMask = el.querySelector('[data-pause-mask]');
+    this.$cd = Array.from(el.querySelectorAll('[data-cd]'));
+    this.$cdt = Array.from(el.querySelectorAll('[data-cdt]'));
     this.$touch = el.querySelector('[data-touch]');
     this.$pauseHint = el.querySelector('[data-pause-hint]');
     this.$knob = el.querySelector('[data-knob]');
     this.$auto = el.querySelector('[data-auto]');
     this.$xpPct = el.querySelector('[data-xp-pct]');
     this.$xpNum = el.querySelector('[data-xp-num]');
-    // 底部两端功能键：打开面板时静默暂停战斗，关闭后自动继续；
-    // 面板内换装 / 点技能后立刻重算战斗属性并刷新技能条
+    // 底部两端功能键：打开面板时静默暂停战斗，关闭后自动继续
     el.querySelector('[data-open-equip]').addEventListener('click', () => {
-      this.openPanel(done => DG.ui.openEquipment(this.char, () => this.refreshBuild(), { onClose: done }));
+      this.openPanel(done => DG.ui.openEquipment(this.char, () => this.updateHud(), { onClose: done }));
     });
     el.querySelector('[data-open-skills]').addEventListener('click', () => {
-      this.openPanel(done => DG.ui.openSkills(this.char, () => this.refreshBuild(), { onClose: done }));
+      this.openPanel(done => DG.ui.openSkills(this.char, () => this.updateHud(), { onClose: done }));
     });
     // 等级牌：与主城一致，点开角色信息
     el.querySelector('[data-open-char]').addEventListener('click', () => {
       this.openPanel(done => DG.ui.openCharacterInfo(this.char, { onClose: done }));
     });
     // 中间技能格同样可查看技能详情（战斗期间静默暂停）
-    this.bindStripSlots();
+    el.querySelectorAll('.strip-slot[data-slot]').forEach(slot => {
+      slot.addEventListener('click', () => {
+        this.openPanel(done => DG.ui.openSkills(this.char, () => this.updateHud(), { onClose: done }));
+      });
+    });
     this.$auto.addEventListener('click', () => this.toggleAutoMode());
     this.syncAutoButton();
     this.updateWaveText();
@@ -17606,42 +17525,6 @@
       if (m.boss && !m.dead) return m;
     }
     return null;
-  },
-  // 技能条槽位：普攻 + 已解锁主动技能（重建与首次构建共用同一份模板）
-  skillStripHtml() {
-    return this.skillList.map((sk, i) => {
-      const cd = i === 0 ? '' : ` · 冷却 ${U.round(this.skillCooldown(sk), 1)}s`;
-      const art = sk.icon
-        ? `<img src="${sk.icon}" alt="">`
-        : `<span class="strip-glyph">${sk.glyph}</span>`;
-      return `<div class="strip-slot" data-slot="${i}" title="${U.escapeHtml(sk.name)}${cd}">` +
-        art +
-        `<div class="cd" data-cd="${i}"></div>` +
-        `<div class="cdtext" data-cdt="${i}"></div>` +
-      `</div>`;
-    }).join('');
-  },
-  // 战斗中升级解锁技能 / 换装改变冷却后，按最新 skillList 重建技能条并重绑点击
-  bindStripSlots() {
-    if (!this.hud) return;
-    const host = this.hud.querySelector('.strip-slots');
-    if (!host) return;
-    host.innerHTML = this.skillStripHtml();
-    this.$cd = Array.from(host.querySelectorAll('[data-cd]'));
-    this.$cdt = Array.from(host.querySelectorAll('[data-cdt]'));
-    // 槽位数量变化后清掉旧索引的缓存，避免冷却层与 "ready" 状态错位
-    if (this._hudCache) {
-      for (let i = 0; i < 12; i++) {
-        delete this._hudCache['cd' + i];
-        delete this._hudCache['cdt' + i];
-        delete this._hudCache['cdr' + i];
-      }
-    }
-    host.querySelectorAll('.strip-slot[data-slot]').forEach(slot => {
-      slot.addEventListener('click', () => {
-        this.openPanel(done => DG.ui.openSkills(this.char, () => this.refreshBuild(), { onClose: done }));
-      });
-    });
   },
   updateHud() {
     if (!this.hud) return;
@@ -18782,6 +18665,23 @@
   const { W, H, ARENA_W, ARENA_H } = DG.scenes.dungeon.size;
 
   Object.assign(DG.scenes.dungeon.prototype, {
+  combatFxEnabled() {
+    return !DG.settings || !DG.settings.get || DG.settings.get().combatFx !== 'original';
+  },
+  addGritFx(kind, x, y, opt) {
+    if (!this.combatFxEnabled()) return;
+    const o = opt || {};
+    const life = o.life || 0.3;
+    this.effects.push({
+      kind, x, y,
+      angle: o.angle || 0,
+      radius: o.radius || 42,
+      color: o.color || '#9c6b50',
+      material: o.material || 'iron',
+      life, max: life,
+      seed: o.seed == null ? ((this.time || 0) * 17 + x * 0.031 + y * 0.071) : o.seed
+    });
+  },
   addFloater(x, y, text, color, size) {
     this.floaters.push({ x, y, text, color, size: size || 20, life: 1, max: 1, vy: -52 });
   },
@@ -20897,6 +20797,16 @@
     warlock:     { bits: 'shadow', n: 8, color: '#b28bff', cast: true }
   };
 
+  const MATERIALS = {
+    wolf: 'flesh', frostwolf: 'ice', skeleton: 'bone', boneknight: 'bone',
+    mistwalker: 'mist', pea: 'spore', musketeer: 'iron', pumpkin: 'iron',
+    slime: 'mucus', frostslime: 'ice', mummy: 'cloth', bat: 'flesh',
+    hornet: 'needle', beetle: 'shell', cinderraven: 'ash', candle: 'flame',
+    urchin: 'spike', deepfin: 'water', cowlbandit: 'iron', angler: 'water',
+    fleece: 'cloth', foxraider: 'flesh', emberdrake: 'flame', venomlisk: 'toxin',
+    bulwark: 'shell', mawflower: 'petal', plaguedoc: 'toxin', warlock: 'shadow'
+  };
+
 
 
   Object.assign(DG.scenes.dungeon.prototype, {
@@ -21327,6 +21237,10 @@
     m.facing = ang;
     m.moving = false;
     m.hop = 0;
+    this.addGritFx('monsterTension', m.x, m.y - m.r * 0.54, {
+      angle: ang, radius: m.r * 1.9, color: m.fxColor || '#847161',
+      material: MATERIALS[m.art] || 'iron', life: Math.min(0.36, m.action.windup * 0.55), seed: m.seed || 0
+    });
   },
   // 出手突进：分小步推进，避免一帧位移过大穿墙
   dashMonster(m, ang, dist) {
@@ -21477,6 +21391,10 @@
     }
     this.addBurst(fx, fy, color, second ? 5 : 7);
     this.addRing(m.x, m.y, 8, m.r * 2.2, color, second ? 0.24 : 0.3);
+    this.addGritFx('monsterStrikeGrit', fx, fy, {
+      angle: ang, radius: radius * 0.7, color, material: MATERIALS[m.art] || 'iron',
+      life: second ? 0.17 : 0.25, seed: m.seed || 0
+    });
     if (mv.shake && !second) this.shake = Math.max(this.shake, mv.shake);
 
     if (p.hp <= 0) return;
@@ -23274,6 +23192,13 @@
       w.ftick -= dt;
       const show = w.ftick <= 0;
       if (show) w.ftick += 0.5;
+      w.gritTick = (w.gritTick || 0) - dt;
+      if (w.gritTick <= 0) {
+        w.gritTick += 0.2;
+        this.addGritFx('barbWhirlDust', this.player.x, this.player.y + 12, {
+          angle: this.whirlSpin || 0, radius: w.radius * 0.8, color: '#755247', life: 0.34
+        });
+      }
       w.tick -= dt;
       if (w.tick <= 0) {
         w.tick += 0.1;
@@ -23427,6 +23352,9 @@
       const fx = DG.art.barbarian;
       const arc = fx ? fx.slashArc : this.skillArc(st.sk);
       const reach = fx ? fx.slashReach : st.sk.range;
+      this.addGritFx('barbCleaveGrit', this.player.x, this.player.y - 26, {
+        angle: st.ang, radius: reach, color: '#a85b43', life: 0.22
+      });
       for (const m of this.monsters) {
         if (m.dead) continue;
         if (U.dist(this.player, m) > reach + m.r) continue;
@@ -23485,6 +23413,9 @@
         });
       }
       this.addBurst(this.player.x, this.player.y - 24, '#ffe9a8', 10);
+      this.addGritFx('barbRoarPressure', this.player.x, this.player.y + 14, {
+        radius: r.radius, color: '#b58a5d', life: 0.58
+      });
       this.shake = Math.max(this.shake, 0.3);
       // 音效：人声吼叫 + 合成冲击波，两层叠在一起
       if (DG.audio) {
@@ -23833,6 +23764,9 @@
             });
           }
           this.addRing(ox, oy, 8, 42, '#d99a63', 0.26);
+          this.addGritFx('barbChargeBreak', nx, ny + this.player.r * 0.55, {
+            angle: ang, radius: 72, color: '#9d513d', life: 0.32
+          });
 
           let stunned = 0;
           for (const m of this.monsters) {
@@ -23997,6 +23931,11 @@
         hit: []
       });
       this.addBurst(this.player.x + Math.cos(ang) * 22, this.player.y + Math.sin(ang) * 22, sk.color, sk.id === 'snipe' ? 5 : 3);
+      if (sk.id === 'shockwave') {
+        this.addGritFx('barbShockRift', mz.x, mz.y + 10, {
+          angle: ang, radius: 54, color: '#b86843', life: 0.24
+        });
+      }
     }
   });
 })();
@@ -25556,10 +25495,178 @@
 
   drawEffects(ctx, groundOnly) {
     for (const e of this.effects) {
+      if (!this.combatFxEnabled() && (e.kind === 'barbCleaveGrit' || e.kind === 'barbWhirlDust' ||
+        e.kind === 'barbRoarPressure' || e.kind === 'barbChargeBreak' || e.kind === 'barbShockRift' ||
+        e.kind === 'monsterTension' || e.kind === 'monsterStrikeGrit')) continue;
       const ground = e.kind === 'teleArc' || e.kind === 'teleBeam' || e.kind === 'teleCircle' || e.kind === 'rollMark' || e.kind === 'arrowRainMarker' || e.kind === 'slamShock';
       if (ground !== !!groundOnly) continue;
       const t = 1 - e.life / e.max;
-      if (e.kind === 'roarCore') {
+      if (e.kind === 'barbCleaveGrit') {
+        const fade = Math.max(0, e.life / e.max);
+        ctx.save();
+        ctx.translate(e.x, e.y);
+        ctx.rotate(e.angle);
+        ctx.lineCap = 'round';
+        ctx.globalAlpha = fade * 0.45;
+        ctx.strokeStyle = '#321d1b';
+        ctx.lineWidth = 14;
+        ctx.beginPath();
+        ctx.arc(0, 0, e.radius * (0.74 + t * 0.16), -0.8, 0.8);
+        ctx.stroke();
+        ctx.globalAlpha = fade * 0.92;
+        ctx.strokeStyle = e.color;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(0, 0, e.radius * (0.77 + t * 0.14), -0.72, 0.72);
+        ctx.stroke();
+        ctx.globalAlpha = fade * 0.82;
+        ctx.strokeStyle = '#efd5a6';
+        ctx.lineWidth = 1.35;
+        ctx.beginPath();
+        ctx.arc(0, 0, e.radius * (0.79 + t * 0.12), -0.67, 0.67);
+        ctx.stroke();
+        ctx.restore();
+      } else if (e.kind === 'barbWhirlDust') {
+        const fade = Math.max(0, e.life / e.max);
+        ctx.save();
+        ctx.translate(e.x, e.y);
+        ctx.rotate(e.angle);
+        ctx.globalAlpha = fade * 0.42;
+        ctx.strokeStyle = e.color;
+        ctx.lineCap = 'round';
+        for (let i = 0; i < 3; i++) {
+          ctx.lineWidth = 4 - i * 0.8;
+          ctx.beginPath();
+          ctx.arc(0, 0, e.radius * (0.4 + i * 0.18), -1.22 + i * 0.46, 0.68 + i * 0.46);
+          ctx.stroke();
+        }
+        ctx.restore();
+      } else if (e.kind === 'barbRoarPressure') {
+        const fade = Math.max(0, e.life / e.max);
+        const r = e.radius * (0.12 + t * 0.88);
+        ctx.save();
+        ctx.translate(e.x, e.y);
+        ctx.scale(1, 0.56);
+        ctx.globalAlpha = fade * 0.62;
+        ctx.strokeStyle = e.color;
+        ctx.lineWidth = 4;
+        ctx.setLineDash([9, 12]);
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.globalAlpha = fade * 0.45;
+        ctx.strokeStyle = '#ead4a2';
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 0.88, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      } else if (e.kind === 'barbChargeBreak') {
+        const fade = Math.max(0, e.life / e.max);
+        ctx.save();
+        ctx.translate(e.x, e.y);
+        ctx.rotate(e.angle);
+        ctx.globalAlpha = fade * 0.7;
+        ctx.strokeStyle = '#3c201d';
+        ctx.lineWidth = 8;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(-e.radius * 0.55, 3);
+        ctx.lineTo(-e.radius * 0.14, -5);
+        ctx.lineTo(e.radius * 0.16, 4);
+        ctx.lineTo(e.radius * 0.58, -2);
+        ctx.stroke();
+        ctx.globalAlpha = fade;
+        ctx.strokeStyle = e.color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(-e.radius * 0.55, 3);
+        ctx.lineTo(-e.radius * 0.14, -5);
+        ctx.lineTo(e.radius * 0.16, 4);
+        ctx.lineTo(e.radius * 0.58, -2);
+        ctx.stroke();
+        ctx.restore();
+      } else if (e.kind === 'barbShockRift') {
+        const fade = Math.max(0, e.life / e.max);
+        ctx.save();
+        ctx.translate(e.x, e.y);
+        ctx.rotate(e.angle);
+        ctx.globalAlpha = fade * 0.72;
+        ctx.strokeStyle = '#502b25';
+        ctx.lineWidth = 6;
+        for (let i = -1; i <= 1; i++) {
+          ctx.beginPath();
+          ctx.moveTo(-e.radius * 0.18, i * 7);
+          ctx.lineTo(e.radius * (0.4 + Math.abs(i) * 0.12), i * 3);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = fade;
+        ctx.strokeStyle = e.color;
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(e.radius * 0.64, 0);
+        ctx.stroke();
+        ctx.restore();
+      } else if (e.kind === 'monsterTension') {
+        const fade = Math.max(0, e.life / e.max);
+        ctx.save();
+        ctx.translate(e.x, e.y);
+        ctx.rotate(e.angle);
+        ctx.globalAlpha = fade * 0.52;
+        ctx.strokeStyle = e.color;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 7]);
+        ctx.beginPath();
+        ctx.arc(0, 0, e.radius * (0.72 + t * 0.18), -0.46, 0.46);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.globalAlpha = fade * 0.84;
+        ctx.fillStyle = e.color;
+        ctx.beginPath();
+        ctx.moveTo(e.radius * 0.88, 0);
+        ctx.lineTo(e.radius * 0.88 - 7, -3.5);
+        ctx.lineTo(e.radius * 0.88 - 7, 3.5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      } else if (e.kind === 'monsterStrikeGrit') {
+        const fade = Math.max(0, e.life / e.max);
+        const isHard = e.material === 'shell' || e.material === 'bone' || e.material === 'iron' || e.material === 'spike';
+        ctx.save();
+        ctx.translate(e.x, e.y);
+        ctx.rotate(e.angle);
+        ctx.globalAlpha = fade * 0.66;
+        ctx.strokeStyle = e.color;
+        ctx.lineWidth = isHard ? 2.5 : 3.6;
+        ctx.lineCap = 'round';
+        for (let i = -1; i <= 1; i++) {
+          ctx.beginPath();
+          ctx.moveTo(-e.radius * 0.14, i * 7);
+          ctx.lineTo(e.radius * (0.5 + Math.abs(i) * 0.1), i * 2.6);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = fade * 0.88;
+        ctx.fillStyle = isHard ? '#ebe0c7' : e.color;
+        for (let i = 0; i < 3; i++) {
+          const a = -0.42 + i * 0.42;
+          const d = e.radius * (0.34 + i * 0.12);
+          const px = Math.cos(a) * d, py = Math.sin(a) * d;
+          if (isHard) {
+            ctx.save();
+            ctx.translate(px, py);
+            ctx.rotate(a + i);
+            ctx.fillRect(-2.5, -1.3, 5, 2.6);
+            ctx.restore();
+          } else {
+            ctx.beginPath();
+            ctx.arc(px, py, 2.2 + i * 0.55, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        ctx.restore();
+      } else if (e.kind === 'roarCore') {
         // 战吼核心闪光：胸口一团金白亮光快速膨胀后消失
         const k = 1 - e.life / e.max;
         const r = U.lerp(e.r0, e.r1, Math.sqrt(k));
@@ -26162,36 +26269,34 @@
       const height = doc.clientHeight || window.innerHeight;
       if (!width || !height) return;
       const screen = this.stageSize();
-      // 屏幕比例接近竖版时不再留黑边：舞台提升到场景画幅 810×1680 并铺满屏幕，
-      // 多出的部分由 #stage 裁掉，露出的是真实场景；UI 层反向缩放，
-      // 物理尺寸与 720×1440 时完全一致，布局、按钮位置和字号都不变。
-      // 超过 0.60（横屏窗口）或低于 0.36（极窄）时仍按原逻辑完整显示，避免裁掉过多画面。
-      const aspect = width / height;
-      const fill = aspect >= 0.36 && aspect <= 0.60;
-      const sw = fill ? SCENE_W : screen.w;
-      const sh = fill ? SCENE_H : screen.h;
-      stage.style.width = sw + 'px';
-      stage.style.height = sh + 'px';
+      stage.style.width = screen.w + 'px';
+      stage.style.height = screen.h + 'px';
       // UI 固定 720×1440 居中，场景层要按舞台原点铺开：这两个偏移供场景元素（主城地图）使用
-      stage.style.setProperty('--ui-ox', ((720 - sw) / 2) + 'px');
-      stage.style.setProperty('--ui-oy', ((1440 - sh) / 2) + 'px');
-      stage.style.setProperty('--stage-w', sw + 'px');
-      stage.style.setProperty('--stage-h', sh + 'px');
+      stage.style.setProperty('--ui-ox', ((720 - screen.w) / 2) + 'px');
+      stage.style.setProperty('--ui-oy', ((1440 - screen.h) / 2) + 'px');
+      stage.style.setProperty('--stage-w', screen.w + 'px');
+      stage.style.setProperty('--stage-h', screen.h + 'px');
       // 等比缩放，绝不横向 / 纵向拉伸（拉伸会让插画和 UI 明显变形）：
-      // 铺满模式下按 cover 裁切，其余情况按 fit 完整显示
-      const uiScale = Math.min(width / screen.w, height / screen.h);
-      const scale = fill ? Math.max(width / sw, height / sh) : uiScale;
+      // 优先按 cover 铺满屏幕，但只允许裁掉舞台为 UI 预留的背景边；
+      // 超出这个范围（桌面 / 平板等比例差异过大）就退回完整显示，宁可留边也不变形。
+      const sx = width / screen.w;
+      const sy = height / screen.h;
+      const cover = Math.max(sx, sy);
+      const fit = Math.min(sx, sy);
+      const marginX = (screen.w - 720) / 2;   // 舞台左右预留的背景宽度
+      const marginY = (screen.h - 1440) / 2;  // 舞台上下预留的背景高度
+      const cropX = Math.max(0, (screen.w - width / cover) / 2);
+      const cropY = Math.max(0, (screen.h - height / cover) / 2);
+      const scale = (cropX <= marginX + 0.5 && cropY <= marginY + 0.5) ? cover : fit;
       stage.style.transform = `scale(${scale})`;
-      // UI 反向缩放抵消舞台放大，保证界面物理尺寸与原来一致
-      if (this.ui) this.ui.style.transform = fill ? `scale(${(uiScale / scale).toFixed(4)})` : '';
       // 场景固定 810×1680：等比放大到刚好盖住舞台，多出的边缘由 #stage 裁掉
-      const coverScale = Math.max(sw / SCENE_W, sh / SCENE_H);
+      const coverScale = Math.max(screen.w / SCENE_W, screen.h / SCENE_H);
       const cw = SCENE_W * coverScale;
       const ch = SCENE_H * coverScale;
       this.canvas.style.width = cw + 'px';
       this.canvas.style.height = ch + 'px';
-      this.canvas.style.left = ((sw - cw) / 2) + 'px';
-      this.canvas.style.top = ((sh - ch) / 2) + 'px';
+      this.canvas.style.left = ((screen.w - cw) / 2) + 'px';
+      this.canvas.style.top = ((screen.h - ch) / 2) + 'px';
       // 画布后备像素跟随设备物理像素，避免拉伸显示导致角色模糊
       this.setRenderScale(this.nativeRenderScale());
     },

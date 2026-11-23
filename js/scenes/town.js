@@ -15,8 +15,8 @@
   const ACTOR_W = 240, ACTOR_H = 256;
   // 步幅基准：330px/s 对应 11rad/s（30px/rad），主城与战斗共用同一换算
   const WALK_REF_SPEED = 330;
-  // 进入主城固定落点：角色绘制的视觉中心对准屏幕正中（左右居中由相机保证，上下按立绘包围盒校正）
-  const START = [0.50, 0.55];
+  // 进入主城（含从副本返回）固定落点：屏幕水平正中、篝火下方空地
+  const START = [0.50, 0.695];
 
   // 可行走区域：参考图二，取营地中央空地，边缘避开帐篷、木箱、篝火与岩石
   const WALK = [
@@ -263,8 +263,10 @@
       world.style.width = WORLD_W + 'px';
       world.style.height = WORLD_H + 'px';
 
-      // 进入主城：角色固定落在屏幕正中，不沿用上次离开的位置
-      const pos = { x: WORLD_W * START[0], y: WORLD_H * START[1] };
+      // 进入主城：回到上次离开时的位置（从副本/面板返回也一样），首次进入落在篝火下方
+      const saved = DG.game.townPos;
+      const savedPos = saved ? clampIntoWalk(saved.x, saved.y) : null;
+      const pos = savedPos || { x: WORLD_W * START[0], y: WORLD_H * START[1] };
       let camX = 0, dir = 1, target = null, moving = false, phase = 0;
       const keys = Object.create(null);
       const stick = { x: 0, y: 0 };
@@ -464,6 +466,8 @@
         // 是否有真实位移：顶死在墙角时不再原地踏步
         const stepped = Math.hypot(pos.x - beforeX, pos.y - beforeY);
         moving = stepped > 0.2;
+        // 记录当前位置，下次回到主城时从这里续上
+        if (moving) DG.game.townPos = { x: pos.x, y: pos.y };
         // 步频与实际移速成正比：与战斗同一公式，保证同一角色两边走路完全一致
         if (moving) phase += dt * 11 * walkSpeed / WALK_REF_SPEED;
         else if (vlen < 1) phase = 0;

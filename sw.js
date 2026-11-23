@@ -12,7 +12,7 @@
  *   音频 Range  → 命中完整缓存时本地切片返回 206，BGM 可秒播、可拖动；
  *   后台预热    → 首屏完成后由页面发消息，按清单把未访问过的资源补进缓存。
  */
-const CORE_VERSION = 'c6';             // 脚本 / 样式更新策略变化时 +1
+const CORE_VERSION = 'c7';             // 脚本 / 样式更新策略变化时 +1
 const ASSET_VERSION = 'r5';            // 美术 / 音频有改动时 +1
 const CORE_CACHE = 'mistdark-core-' + CORE_VERSION;
 const ASSET_CACHE = 'mistdark-asset-' + ASSET_VERSION;

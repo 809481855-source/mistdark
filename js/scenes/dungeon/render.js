@@ -1473,10 +1473,178 @@
 
   drawEffects(ctx, groundOnly) {
     for (const e of this.effects) {
+      if (!this.combatFxEnabled() && (e.kind === 'barbCleaveGrit' || e.kind === 'barbWhirlDust' ||
+        e.kind === 'barbRoarPressure' || e.kind === 'barbChargeBreak' || e.kind === 'barbShockRift' ||
+        e.kind === 'monsterTension' || e.kind === 'monsterStrikeGrit')) continue;
       const ground = e.kind === 'teleArc' || e.kind === 'teleBeam' || e.kind === 'teleCircle' || e.kind === 'rollMark' || e.kind === 'arrowRainMarker' || e.kind === 'slamShock';
       if (ground !== !!groundOnly) continue;
       const t = 1 - e.life / e.max;
-      if (e.kind === 'roarCore') {
+      if (e.kind === 'barbCleaveGrit') {
+        const fade = Math.max(0, e.life / e.max);
+        ctx.save();
+        ctx.translate(e.x, e.y);
+        ctx.rotate(e.angle);
+        ctx.lineCap = 'round';
+        ctx.globalAlpha = fade * 0.45;
+        ctx.strokeStyle = '#321d1b';
+        ctx.lineWidth = 14;
+        ctx.beginPath();
+        ctx.arc(0, 0, e.radius * (0.74 + t * 0.16), -0.8, 0.8);
+        ctx.stroke();
+        ctx.globalAlpha = fade * 0.92;
+        ctx.strokeStyle = e.color;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(0, 0, e.radius * (0.77 + t * 0.14), -0.72, 0.72);
+        ctx.stroke();
+        ctx.globalAlpha = fade * 0.82;
+        ctx.strokeStyle = '#efd5a6';
+        ctx.lineWidth = 1.35;
+        ctx.beginPath();
+        ctx.arc(0, 0, e.radius * (0.79 + t * 0.12), -0.67, 0.67);
+        ctx.stroke();
+        ctx.restore();
+      } else if (e.kind === 'barbWhirlDust') {
+        const fade = Math.max(0, e.life / e.max);
+        ctx.save();
+        ctx.translate(e.x, e.y);
+        ctx.rotate(e.angle);
+        ctx.globalAlpha = fade * 0.42;
+        ctx.strokeStyle = e.color;
+        ctx.lineCap = 'round';
+        for (let i = 0; i < 3; i++) {
+          ctx.lineWidth = 4 - i * 0.8;
+          ctx.beginPath();
+          ctx.arc(0, 0, e.radius * (0.4 + i * 0.18), -1.22 + i * 0.46, 0.68 + i * 0.46);
+          ctx.stroke();
+        }
+        ctx.restore();
+      } else if (e.kind === 'barbRoarPressure') {
+        const fade = Math.max(0, e.life / e.max);
+        const r = e.radius * (0.12 + t * 0.88);
+        ctx.save();
+        ctx.translate(e.x, e.y);
+        ctx.scale(1, 0.56);
+        ctx.globalAlpha = fade * 0.62;
+        ctx.strokeStyle = e.color;
+        ctx.lineWidth = 4;
+        ctx.setLineDash([9, 12]);
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.globalAlpha = fade * 0.45;
+        ctx.strokeStyle = '#ead4a2';
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 0.88, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      } else if (e.kind === 'barbChargeBreak') {
+        const fade = Math.max(0, e.life / e.max);
+        ctx.save();
+        ctx.translate(e.x, e.y);
+        ctx.rotate(e.angle);
+        ctx.globalAlpha = fade * 0.7;
+        ctx.strokeStyle = '#3c201d';
+        ctx.lineWidth = 8;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(-e.radius * 0.55, 3);
+        ctx.lineTo(-e.radius * 0.14, -5);
+        ctx.lineTo(e.radius * 0.16, 4);
+        ctx.lineTo(e.radius * 0.58, -2);
+        ctx.stroke();
+        ctx.globalAlpha = fade;
+        ctx.strokeStyle = e.color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(-e.radius * 0.55, 3);
+        ctx.lineTo(-e.radius * 0.14, -5);
+        ctx.lineTo(e.radius * 0.16, 4);
+        ctx.lineTo(e.radius * 0.58, -2);
+        ctx.stroke();
+        ctx.restore();
+      } else if (e.kind === 'barbShockRift') {
+        const fade = Math.max(0, e.life / e.max);
+        ctx.save();
+        ctx.translate(e.x, e.y);
+        ctx.rotate(e.angle);
+        ctx.globalAlpha = fade * 0.72;
+        ctx.strokeStyle = '#502b25';
+        ctx.lineWidth = 6;
+        for (let i = -1; i <= 1; i++) {
+          ctx.beginPath();
+          ctx.moveTo(-e.radius * 0.18, i * 7);
+          ctx.lineTo(e.radius * (0.4 + Math.abs(i) * 0.12), i * 3);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = fade;
+        ctx.strokeStyle = e.color;
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(e.radius * 0.64, 0);
+        ctx.stroke();
+        ctx.restore();
+      } else if (e.kind === 'monsterTension') {
+        const fade = Math.max(0, e.life / e.max);
+        ctx.save();
+        ctx.translate(e.x, e.y);
+        ctx.rotate(e.angle);
+        ctx.globalAlpha = fade * 0.52;
+        ctx.strokeStyle = e.color;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 7]);
+        ctx.beginPath();
+        ctx.arc(0, 0, e.radius * (0.72 + t * 0.18), -0.46, 0.46);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.globalAlpha = fade * 0.84;
+        ctx.fillStyle = e.color;
+        ctx.beginPath();
+        ctx.moveTo(e.radius * 0.88, 0);
+        ctx.lineTo(e.radius * 0.88 - 7, -3.5);
+        ctx.lineTo(e.radius * 0.88 - 7, 3.5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      } else if (e.kind === 'monsterStrikeGrit') {
+        const fade = Math.max(0, e.life / e.max);
+        const isHard = e.material === 'shell' || e.material === 'bone' || e.material === 'iron' || e.material === 'spike';
+        ctx.save();
+        ctx.translate(e.x, e.y);
+        ctx.rotate(e.angle);
+        ctx.globalAlpha = fade * 0.66;
+        ctx.strokeStyle = e.color;
+        ctx.lineWidth = isHard ? 2.5 : 3.6;
+        ctx.lineCap = 'round';
+        for (let i = -1; i <= 1; i++) {
+          ctx.beginPath();
+          ctx.moveTo(-e.radius * 0.14, i * 7);
+          ctx.lineTo(e.radius * (0.5 + Math.abs(i) * 0.1), i * 2.6);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = fade * 0.88;
+        ctx.fillStyle = isHard ? '#ebe0c7' : e.color;
+        for (let i = 0; i < 3; i++) {
+          const a = -0.42 + i * 0.42;
+          const d = e.radius * (0.34 + i * 0.12);
+          const px = Math.cos(a) * d, py = Math.sin(a) * d;
+          if (isHard) {
+            ctx.save();
+            ctx.translate(px, py);
+            ctx.rotate(a + i);
+            ctx.fillRect(-2.5, -1.3, 5, 2.6);
+            ctx.restore();
+          } else {
+            ctx.beginPath();
+            ctx.arc(px, py, 2.2 + i * 0.55, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        ctx.restore();
+      } else if (e.kind === 'roarCore') {
         // 战吼核心闪光：胸口一团金白亮光快速膨胀后消失
         const k = 1 - e.life / e.max;
         const r = U.lerp(e.r0, e.r1, Math.sqrt(k));

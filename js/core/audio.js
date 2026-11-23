@@ -531,126 +531,7 @@
     }
   }
 
-  /* ---------------- 小怪新招式：挥风声 + 命中质感 ---------------- */
-  // 只有新增的大幅招式有挥风声（横扫 / 连击 / 突刺 / 旋斩 / 震地），
-  // 普通挠击不发声，避免十几只小怪同时挥爪时声场糊掉。
-  const SWING_KINDS = { sweep: 1, rend: 1, impale: 1, spin: 1, slam: 1 };
-  let lastMinionSwingAt = 0;
-  let lastMinionHitAt = 0;
-
-  function minionSwing(kind) {
-    if (!SWING_KINDS[kind]) return;
-    if (!ctx || !master || !unlocked || !enabled) return;
-    const c = ctx;
-    const t = c.currentTime;
-    const gap = lastMinionSwingAt ? t - lastMinionSwingAt : 9;
-    if (gap < 0.06) return;
-    lastMinionSwingAt = t;
-    ensureSfxBus();
-    const bus = sfxBus || master;
-    const soft = gap < 0.16 ? 0.55 : 1;
-    // 不同招式的扫频方向与时长不同：横扫由高到低，旋斩由低到高，震地闷短
-    let f0 = 2400, f1 = 700, dur = 0.2, vol = 0.13;
-    if (kind === 'impale') { f0 = 3400; f1 = 1900; dur = 0.11; vol = 0.11; }
-    else if (kind === 'spin') { f0 = 1700; f1 = 2700; dur = 0.26; vol = 0.12; }
-    else if (kind === 'slam') { f0 = 900; f1 = 220; dur = 0.15; vol = 0.11; }
-    else if (kind === 'rend') { f0 = 3000; f1 = 1200; dur = 0.1; vol = 0.1; }
-    const n = noiseSource();
-    const bp = c.createBiquadFilter();
-    bp.type = 'bandpass';
-    bp.Q.value = 1.1;
-    bp.frequency.setValueAtTime(f0, t);
-    bp.frequency.exponentialRampToValueAtTime(f1, t + dur);
-    const g = c.createGain();
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(vol * soft, t + 0.015);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    n.connect(bp); bp.connect(g); g.connect(bus);
-    n.start(t); n.stop(t + dur + 0.03);
-  }
-
-  function minionHit(kind, opts) {
-    if (!ctx || !master || !unlocked || !enabled) return;
-    const c = ctx;
-    const t = c.currentTime;
-    const gap = lastMinionHitAt ? t - lastMinionHitAt : 9;
-    if (gap < 0.04) return;
-    lastMinionHitAt = t;
-    ensureSfxBus();
-    const bus = sfxBus || master;
-    const soft = (gap < 0.12 ? 0.55 : 1) * ((opts && opts.vol) || 1);
-    // 低频撞击
-    const thump = (f0, f1, dur, amp, delay) => {
-      const t0 = t + (delay || 0);
-      const o = c.createOscillator();
-      o.type = 'sine';
-      o.frequency.setValueAtTime(f0, t0);
-      o.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
-      const g = c.createGain();
-      g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(amp * soft, t0 + 0.008);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-      o.connect(g); g.connect(bus);
-      o.start(t0); o.stop(t0 + dur + 0.02);
-    };
-    // 频段噪声：划痕 / 金属 / 碎屑
-    const hiss = (f0, f1, q, dur, amp, type, delay) => {
-      const t0 = t + (delay || 0);
-      const n = noiseSource();
-      const f = c.createBiquadFilter();
-      f.type = type || 'bandpass';
-      f.Q.value = q;
-      f.frequency.setValueAtTime(f0, t0);
-      f.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
-      const g = c.createGain();
-      g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(amp * soft, t0 + 0.006);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-      n.connect(f); f.connect(g); g.connect(bus);
-      n.start(t0); n.stop(t0 + dur + 0.02);
-    };
-    // 金属泛音：旋斩、突刺的“锋利感”
-    const ring = (f0, f1, dur, amp, delay) => {
-      const t0 = t + (delay || 0);
-      const o = c.createOscillator();
-      o.type = 'triangle';
-      o.frequency.setValueAtTime(f0, t0);
-      o.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
-      const g = c.createGain();
-      g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(amp * soft, t0 + 0.01);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-      o.connect(g); g.connect(bus);
-      o.start(t0); o.stop(t0 + dur + 0.02);
-    };
-
-    if (kind === 'sweep') {
-      thump(120, 48, 0.2, 0.42);
-      hiss(2400, 620, 0.8, 0.16, 0.22);
-      hiss(4200, 2200, 1.3, 0.07, 0.12, 'highpass', 0.02);
-    } else if (kind === 'rend') {
-      thump(170, 80, 0.12, 0.3);
-      hiss(3400, 1500, 1.4, 0.055, 0.24, 'highpass');
-      hiss(2900, 1200, 1.4, 0.055, 0.18, 'highpass', 0.085);
-    } else if (kind === 'impale') {
-      thump(150, 70, 0.12, 0.24);
-      hiss(4400, 2800, 1.6, 0.05, 0.2, 'highpass');
-      ring(1900, 760, 0.09, 0.14, 0.005);
-    } else if (kind === 'spin') {
-      thump(115, 50, 0.18, 0.3);
-      ring(1500, 540, 0.26, 0.16);
-      hiss(1700, 2500, 1.0, 0.22, 0.13);
-    } else if (kind === 'slam') {
-      thump(96, 34, 0.36, 0.62);
-      hiss(720, 170, 0.7, 0.3, 0.26, 'lowpass');
-      hiss(3200, 900, 1.2, 0.07, 0.12, 'highpass', 0.01);
-    } else {
-      thump(130, 62, 0.15, 0.28);
-      hiss(1900, 760, 0.8, 0.11, 0.14);
-    }
-  }
-
-
+  /* ---------------- 解包音频资源（assets/audio） ---------------- */
   const AUDIO_DIR = 'assets/audio/';
 
   // 音效键 -> 文件；键名保持语义化，场景代码只引用键
@@ -1163,9 +1044,6 @@
   A.thunder = thunder;
   A.warcryBurst = warcryBurst;
   A.bossHit = bossHitBurst;
-  // 小怪新招式的挥风声与命中质感音
-  A.minionSwing = minionSwing;
-  A.minionHit = minionHit;
 
   A.play = play;
   A.playBgm = playBgm;
