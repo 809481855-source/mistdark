@@ -924,7 +924,19 @@
       m.patterns = (t.patterns || []).map(a => Object.assign({ timer: 0 }, a));
       m.preferRange = t.preferRange || 130;
       m.facing = U.angle(m, this.player);
-      m.aiCd = 0.6;
+      // 初见压制：出手更快、走位更凶、每招读条与前摇压短
+      m.aiCd = 0.3;
+      m.speed *= 1.15;
+      for (const a of m.patterns) {
+        a.windup = Math.max(0.3, a.windup * 0.8);
+        a.recover = Math.max(0.24, (a.recover || 0.45) * 0.85);
+      }
+      // 第 5 组招式：狂暴连击，贴身后连续两段横扫，保证每个首领 ≥5 组
+      m.patterns.push({
+        type: 'arc', label: '狂暴连击', range: 215,
+        windup: 0.36, recover: 0.3, cd: 3.6, dmgMul: 0.68, arc: 2.0,
+        radius: 168, color: m.glow || '#e0a090', fx: 'arcSlash', filler: true, timer: 0
+      });
       m.cast = null;
       m.enraged = false;
       m.ambTimer = U.rand(0.1, 0.5);

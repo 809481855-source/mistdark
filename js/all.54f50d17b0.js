@@ -6713,20 +6713,21 @@
     }
     if (windup) {
       const e = Math.sin(k * Math.PI * 0.5);
-      sy += e * (meleeAct ? 0.085 : 0.055);
-      sx -= e * (meleeAct ? 0.05 : 0.03);
-      rot -= Math.cos(m.facing || 0) * (meleeAct ? 0.048 : 0.02) * e;
-      bob -= e * (meleeAct ? 4 : 2);
+      sy += e * (meleeAct ? 0.115 : 0.07);
+      sx -= e * (meleeAct ? 0.075 : 0.045);
+      rot -= Math.cos(m.facing || 0) * (meleeAct ? 0.07 : 0.032) * e;
+      bob -= e * (meleeAct ? 6 : 3);
     } else if (strike) {
       const e = atkEnv(k);
       const hd = holdEnv(k);
       const mc = Math.cos(m.facing || 0);
       // 先接住蓄力姿态，再释放出手冲量；收招时全部归零，不会出现姿态跳变
-      sy += (meleeAct ? 0.085 : 0.055) * hd - e * (meleeAct ? 0.035 : 0.02);
-      sx -= (meleeAct ? 0.05 : 0.03) * hd - e * (meleeAct ? 0.08 : 0.05);
-      rot -= mc * (meleeAct ? 0.048 : 0.02) * hd;
-      bob += (meleeAct ? 4 : 2) * hd - e * (meleeAct ? 5 : 3);
-      dx = mc * e * (meleeAct ? 26 : 14);
+      sy += (meleeAct ? 0.115 : 0.07) * hd - e * (meleeAct ? 0.055 : 0.03);
+      sx -= (meleeAct ? 0.075 : 0.045) * hd - e * (meleeAct ? 0.11 : 0.07);
+      rot -= mc * (meleeAct ? 0.07 : 0.032) * hd;
+      rot += mc * (meleeAct ? 0.045 : 0.02) * e;
+      bob += (meleeAct ? 6 : 3) * hd - e * (meleeAct ? 7.5 : 4.5);
+      dx = mc * e * (meleeAct ? 40 : 22);
     }
     // ---- 受击回弹：沿来击方向后退、下压并轻微侧倾，平方衰减让冲击更干脆 ----
     const hr = m.hitReact || 0;
@@ -18281,7 +18282,19 @@
       m.patterns = (t.patterns || []).map(a => Object.assign({ timer: 0 }, a));
       m.preferRange = t.preferRange || 130;
       m.facing = U.angle(m, this.player);
-      m.aiCd = 0.6;
+      // 初见压制：出手更快、走位更凶、每招读条与前摇压短
+      m.aiCd = 0.3;
+      m.speed *= 1.15;
+      for (const a of m.patterns) {
+        a.windup = Math.max(0.3, a.windup * 0.8);
+        a.recover = Math.max(0.24, (a.recover || 0.45) * 0.85);
+      }
+      // 第 5 组招式：狂暴连击，贴身后连续两段横扫，保证每个首领 ≥5 组
+      m.patterns.push({
+        type: 'arc', label: '狂暴连击', range: 215,
+        windup: 0.36, recover: 0.3, cd: 3.6, dmgMul: 0.68, arc: 2.0,
+        radius: 168, color: m.glow || '#e0a090', fx: 'arcSlash', filler: true, timer: 0
+      });
       m.cast = null;
       m.enraged = false;
       m.ambTimer = U.rand(0.1, 0.5);
@@ -21302,11 +21315,12 @@
   // 主动贴身型首领（其余保持中远距离）
   const MELEE_KIND = {
     reaper: 1, croc: 1, mummy: 1, crab: 1, maw: 1, goat: 1,
-    knight: 1, snake: 1, demon: 1, ogre: 1, golem: 1
+    knight: 1, snake: 1, demon: 1, ogre: 1, golem: 1,
+    cauldron: 1, octo: 1, crystal: 1
   };
 
   // 首领出手节奏：招式冷却统一按此倍率缩短，让首领更主动、压迫更强
-  const BOSS_CD_PACE = 0.62;
+  const BOSS_CD_PACE = 0.30;
 
   // 章内唯一：每个首领只归属一个章节；跨章再出场会被视为“复现”并强化
   const BOSS_ACT = {
@@ -21347,8 +21361,9 @@
 
   // 近战型首领出手前冲距离：让横扫/镰击真的有扑上去的动作感
   const LUNGE = {
-    reaper: 34, croc: 40, mummy: 30, crab: 26, maw: 38,
-    goat: 42, knight: 34, snake: 30, demon: 44, ogre: 38, golem: 30
+    reaper: 42, croc: 50, mummy: 38, crab: 33, maw: 48,
+    goat: 52, knight: 42, snake: 38, demon: 55, ogre: 48, golem: 38,
+    cauldron: 38, octo: 42, crystal: 30
   };
 
   Object.assign(DG.scenes.dungeon.prototype, {
@@ -21431,9 +21446,9 @@
             vx = Math.cos(ang);
             vy = Math.sin(ang);
           }
-        } else if (d < 110) {
-          vx = -Math.cos(ang) * 0.55;
-          vy = -Math.sin(ang) * 0.55;
+        } else if (d < 80) {
+          vx = -Math.cos(ang) * 0.4;
+          vy = -Math.sin(ang) * 0.4;
         }
       }
       m.moving = !!(vx || vy);
@@ -21450,15 +21465,19 @@
       for (const a of list) {
         let score = Math.random() * 0.6;
         if (a.type === 'slash' || a.type === 'arc') score += d < 190 ? 1.2 : 0.2;
-        if (a.type === 'beam' || a.type === 'fan') score += d > 260 ? 1.1 : 0.25;
+        if (a.type === 'beam' || a.type === 'fan') score += d > 260 ? 1.1 : 0.55;
         if (a.type === 'blink') score += d > 420 ? 0.9 : 0.35;
         if (a.type === 'summon') score += minions >= 6 ? -1.5 : 0.5;
         if (a === this._lastBossAtk) score -= 0.45;
+        if (a === this._prevBossAtk) score -= 0.3;
+        // 补位招式（狂暴连击）只在主招式都在冷却时兜底，避免盖过签名招式
+        if (a.filler) score -= 0.6;
         if (score > bestScore) {
           bestScore = score;
           best = a;
         }
       }
+      this._prevBossAtk = this._lastBossAtk;
       this._lastBossAtk = best;
       return best;
     },
@@ -21470,7 +21489,12 @@
       m.cast = cast;
       this.bossTelegraph(m, atk, ang, cast.dest);
       this.bossCastCharge(m, atk, ang);
-      this.announce(`${m.name} · ${atk.label}`, Math.max(900, Math.round(atk.windup * 1000)));
+      // 高频连段下避免招式名刷屏：1.4 秒内只提示一次
+      const now = this.time || 0;
+      if (!m._annAt || now - m._annAt > 1.4) {
+        m._annAt = now;
+        this.announce(`${m.name} · ${atk.label}`, Math.max(900, Math.round(atk.windup * 1000)));
+      }
     },
 
     // 读条聚能：专属法阵 + 胸口能量球，和出手特效共用一套皮肤
@@ -21511,8 +21535,20 @@
       }
       if (cast.t >= (atk.recover || 0.45)) {
         m.cast = null;
-        m.aiCd = Math.max(0.45, (atk.cd || 3) * BOSS_CD_PACE * (m.enraged ? 0.7 : 1));
+        // 收招后若玩家还在近身范围内，有较高概率立刻接下一击（连段）
+        const chain = this.bossChainNext(m, atk);
+        m.aiCd = chain ? 0.12
+          : Math.max(0.3, (atk.cd || 3) * BOSS_CD_PACE * (m.enraged ? 0.72 : 1));
       }
+    },
+
+    // 连段判定：近战招式收招后玩家仍在攻击圈内时，按狂暴状态概率追加下一击
+    bossChainNext(m, atk) {
+      const p = this.player;
+      if (!p || p.hp <= 0) return false;
+      if (atk.type !== 'arc' && atk.type !== 'slash') return false;
+      if (U.dist(m, p) > (atk.range || 200) + 40) return false;
+      return Math.random() < (m.enraged ? 0.62 : 0.42);
     },
 
     bossTelegraph(m, atk, ang, dest) {
@@ -21578,11 +21614,11 @@
         const kind = def ? def.kind : 'eye';
         const lunge = LUNGE[kind] || 0;
         if (lunge) {
-          this.dashMonster(m, cast.angle, lunge * (m.enraged ? 1.25 : 1));
+          this.dashMonster(m, cast.angle, lunge * (m.enraged ? 1.35 : 1.15));
           this.effects.push({
             kind: 'quakeRing', x: m.x, y: m.y,
-            radius: atk.radius * 0.92, color: atk.color,
-            life: 0.32, max: 0.32
+            radius: atk.radius * 0.95, color: atk.color,
+            life: 0.42, max: 0.42
           });
         }
         this.effects.push({
@@ -21595,7 +21631,7 @@
           m.y + Math.sin(cast.angle) * atk.radius * 0.8,
           atk.color, 10
         );
-        this.shake = Math.max(this.shake, 0.24);
+        this.shake = Math.max(this.shake, 0.36);
         if (this.bossArcHit(m, cast.angle, atk.radius, atk.arc)) this.hurtPlayer(dmg);
       } else if (atk.type === 'beam') {
         const len = this.bossBeamLength(m, cast.angle, atk.range);
@@ -21609,7 +21645,7 @@
           m.y + Math.sin(cast.angle) * len,
           atk.color, 12
         );
-        this.shake = Math.max(this.shake, 0.34);
+        this.shake = Math.max(this.shake, 0.44);
         if (this.bossBeamHit(m, cast.angle, len, atk.width)) this.hurtPlayer(dmg);
       } else if (atk.type === 'fan') {
         const cone = (atk.spread || 0.6) * ((atk.count || 5) - 1) / 2;
@@ -21643,7 +21679,7 @@
           arc: atk.arc, radius: atk.radius, color: atk.color,
           life: 0.34, max: 0.34, skin
         });
-        this.shake = Math.max(this.shake, 0.3);
+        this.shake = Math.max(this.shake, 0.38);
         if (this.bossArcHit(m, ang, atk.radius, atk.arc)) this.hurtPlayer(dmg);
       } else if (atk.type === 'summon') {
         this.effects.push({
@@ -25318,34 +25354,36 @@
       const height = doc.clientHeight || window.innerHeight;
       if (!width || !height) return;
       const screen = this.stageSize();
-      stage.style.width = screen.w + 'px';
-      stage.style.height = screen.h + 'px';
+      // 屏幕比例接近竖版时不再留黑边：舞台提升到场景画幅 810×1680 并铺满屏幕，
+      // 多出的部分由 #stage 裁掉，露出的是真实场景；UI 层反向缩放，
+      // 物理尺寸与 720×1440 时完全一致，布局、按钮位置和字号都不变。
+      // 超过 0.60（横屏窗口）或低于 0.36（极窄）时仍按原逻辑完整显示，避免裁掉过多画面。
+      const aspect = width / height;
+      const fill = aspect >= 0.36 && aspect <= 0.60;
+      const sw = fill ? SCENE_W : screen.w;
+      const sh = fill ? SCENE_H : screen.h;
+      stage.style.width = sw + 'px';
+      stage.style.height = sh + 'px';
       // UI 固定 720×1440 居中，场景层要按舞台原点铺开：这两个偏移供场景元素（主城地图）使用
-      stage.style.setProperty('--ui-ox', ((720 - screen.w) / 2) + 'px');
-      stage.style.setProperty('--ui-oy', ((1440 - screen.h) / 2) + 'px');
-      stage.style.setProperty('--stage-w', screen.w + 'px');
-      stage.style.setProperty('--stage-h', screen.h + 'px');
+      stage.style.setProperty('--ui-ox', ((720 - sw) / 2) + 'px');
+      stage.style.setProperty('--ui-oy', ((1440 - sh) / 2) + 'px');
+      stage.style.setProperty('--stage-w', sw + 'px');
+      stage.style.setProperty('--stage-h', sh + 'px');
       // 等比缩放，绝不横向 / 纵向拉伸（拉伸会让插画和 UI 明显变形）：
-      // 优先按 cover 铺满屏幕，但只允许裁掉舞台为 UI 预留的背景边；
-      // 超出这个范围（桌面 / 平板等比例差异过大）就退回完整显示，宁可留边也不变形。
-      const sx = width / screen.w;
-      const sy = height / screen.h;
-      const cover = Math.max(sx, sy);
-      const fit = Math.min(sx, sy);
-      const marginX = (screen.w - 720) / 2;   // 舞台左右预留的背景宽度
-      const marginY = (screen.h - 1440) / 2;  // 舞台上下预留的背景高度
-      const cropX = Math.max(0, (screen.w - width / cover) / 2);
-      const cropY = Math.max(0, (screen.h - height / cover) / 2);
-      const scale = (cropX <= marginX + 0.5 && cropY <= marginY + 0.5) ? cover : fit;
+      // 铺满模式下按 cover 裁切，其余情况按 fit 完整显示
+      const uiScale = Math.min(width / screen.w, height / screen.h);
+      const scale = fill ? Math.max(width / sw, height / sh) : uiScale;
       stage.style.transform = `scale(${scale})`;
+      // UI 反向缩放抵消舞台放大，保证界面物理尺寸与原来一致
+      if (this.ui) this.ui.style.transform = fill ? `scale(${(uiScale / scale).toFixed(4)})` : '';
       // 场景固定 810×1680：等比放大到刚好盖住舞台，多出的边缘由 #stage 裁掉
-      const coverScale = Math.max(screen.w / SCENE_W, screen.h / SCENE_H);
+      const coverScale = Math.max(sw / SCENE_W, sh / SCENE_H);
       const cw = SCENE_W * coverScale;
       const ch = SCENE_H * coverScale;
       this.canvas.style.width = cw + 'px';
       this.canvas.style.height = ch + 'px';
-      this.canvas.style.left = ((screen.w - cw) / 2) + 'px';
-      this.canvas.style.top = ((screen.h - ch) / 2) + 'px';
+      this.canvas.style.left = ((sw - cw) / 2) + 'px';
+      this.canvas.style.top = ((sh - ch) / 2) + 'px';
       // 画布后备像素跟随设备物理像素，避免拉伸显示导致角色模糊
       this.setRenderScale(this.nativeRenderScale());
     },

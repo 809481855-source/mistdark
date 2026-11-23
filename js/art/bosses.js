@@ -1091,20 +1091,21 @@
     }
     if (windup) {
       const e = Math.sin(k * Math.PI * 0.5);
-      sy += e * (meleeAct ? 0.085 : 0.055);
-      sx -= e * (meleeAct ? 0.05 : 0.03);
-      rot -= Math.cos(m.facing || 0) * (meleeAct ? 0.048 : 0.02) * e;
-      bob -= e * (meleeAct ? 4 : 2);
+      sy += e * (meleeAct ? 0.115 : 0.07);
+      sx -= e * (meleeAct ? 0.075 : 0.045);
+      rot -= Math.cos(m.facing || 0) * (meleeAct ? 0.07 : 0.032) * e;
+      bob -= e * (meleeAct ? 6 : 3);
     } else if (strike) {
       const e = atkEnv(k);
       const hd = holdEnv(k);
       const mc = Math.cos(m.facing || 0);
       // 先接住蓄力姿态，再释放出手冲量；收招时全部归零，不会出现姿态跳变
-      sy += (meleeAct ? 0.085 : 0.055) * hd - e * (meleeAct ? 0.035 : 0.02);
-      sx -= (meleeAct ? 0.05 : 0.03) * hd - e * (meleeAct ? 0.08 : 0.05);
-      rot -= mc * (meleeAct ? 0.048 : 0.02) * hd;
-      bob += (meleeAct ? 4 : 2) * hd - e * (meleeAct ? 5 : 3);
-      dx = mc * e * (meleeAct ? 26 : 14);
+      sy += (meleeAct ? 0.115 : 0.07) * hd - e * (meleeAct ? 0.055 : 0.03);
+      sx -= (meleeAct ? 0.075 : 0.045) * hd - e * (meleeAct ? 0.11 : 0.07);
+      rot -= mc * (meleeAct ? 0.07 : 0.032) * hd;
+      rot += mc * (meleeAct ? 0.045 : 0.02) * e;
+      bob += (meleeAct ? 6 : 3) * hd - e * (meleeAct ? 7.5 : 4.5);
+      dx = mc * e * (meleeAct ? 40 : 22);
     }
     // ---- 受击回弹：沿来击方向后退、下压并轻微侧倾，平方衰减让冲击更干脆 ----
     const hr = m.hitReact || 0;

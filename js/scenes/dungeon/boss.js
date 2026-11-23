@@ -34,11 +34,12 @@
   // 主动贴身型首领（其余保持中远距离）
   const MELEE_KIND = {
     reaper: 1, croc: 1, mummy: 1, crab: 1, maw: 1, goat: 1,
-    knight: 1, snake: 1, demon: 1, ogre: 1, golem: 1
+    knight: 1, snake: 1, demon: 1, ogre: 1, golem: 1,
+    cauldron: 1, octo: 1, crystal: 1
   };
 
   // 首领出手节奏：招式冷却统一按此倍率缩短，让首领更主动、压迫更强
-  const BOSS_CD_PACE = 0.62;
+  const BOSS_CD_PACE = 0.30;
 
   // 章内唯一：每个首领只归属一个章节；跨章再出场会被视为“复现”并强化
   const BOSS_ACT = {
@@ -79,8 +80,9 @@
 
   // 近战型首领出手前冲距离：让横扫/镰击真的有扑上去的动作感
   const LUNGE = {
-    reaper: 34, croc: 40, mummy: 30, crab: 26, maw: 38,
-    goat: 42, knight: 34, snake: 30, demon: 44, ogre: 38, golem: 30
+    reaper: 42, croc: 50, mummy: 38, crab: 33, maw: 48,
+    goat: 52, knight: 42, snake: 38, demon: 55, ogre: 48, golem: 38,
+    cauldron: 38, octo: 42, crystal: 30
   };
 
   Object.assign(DG.scenes.dungeon.prototype, {
@@ -163,9 +165,9 @@
             vx = Math.cos(ang);
             vy = Math.sin(ang);
           }
-        } else if (d < 110) {
-          vx = -Math.cos(ang) * 0.55;
-          vy = -Math.sin(ang) * 0.55;
+        } else if (d < 80) {
+          vx = -Math.cos(ang) * 0.4;
+          vy = -Math.sin(ang) * 0.4;
         }
       }
       m.moving = !!(vx || vy);
@@ -182,15 +184,19 @@
       for (const a of list) {
         let score = Math.random() * 0.6;
         if (a.type === 'slash' || a.type === 'arc') score += d < 190 ? 1.2 : 0.2;
-        if (a.type === 'beam' || a.type === 'fan') score += d > 260 ? 1.1 : 0.25;
+        if (a.type === 'beam' || a.type === 'fan') score += d > 260 ? 1.1 : 0.55;
         if (a.type === 'blink') score += d > 420 ? 0.9 : 0.35;
         if (a.type === 'summon') score += minions >= 6 ? -1.5 : 0.5;
         if (a === this._lastBossAtk) score -= 0.45;
+        if (a === this._prevBossAtk) score -= 0.3;
+        // 补位招式（狂暴连击）只在主招式都在冷却时兜底，避免盖过签名招式
+        if (a.filler) score -= 0.6;
         if (score > bestScore) {
           bestScore = score;
           best = a;
         }
       }
+      this._prevBossAtk = this._lastBossAtk;
       this._lastBossAtk = best;
       return best;
     },
@@ -202,7 +208,12 @@
       m.cast = cast;
       this.bossTelegraph(m, atk, ang, cast.dest);
       this.bossCastCharge(m, atk, ang);
-      this.announce(`${m.name} · ${atk.label}`, Math.max(900, Math.round(atk.windup * 1000)));
+      // 高频连段下避免招式名刷屏：1.4 秒内只提示一次
+      const now = this.time || 0;
+      if (!m._annAt || now - m._annAt > 1.4) {
+        m._annAt = now;
+        this.announce(`${m.name} · ${atk.label}`, Math.max(900, Math.round(atk.windup * 1000)));
+      }
     },
 
     // 读条聚能：专属法阵 + 胸口能量球，和出手特效共用一套皮肤
@@ -243,8 +254,20 @@
       }
       if (cast.t >= (atk.recover || 0.45)) {
         m.cast = null;
-        m.aiCd = Math.max(0.45, (atk.cd || 3) * BOSS_CD_PACE * (m.enraged ? 0.7 : 1));
+        // 收招后若玩家还在近身范围内，有较高概率立刻接下一击（连段）
+        const chain = this.bossChainNext(m, atk);
+        m.aiCd = chain ? 0.12
+          : Math.max(0.3, (atk.cd || 3) * BOSS_CD_PACE * (m.enraged ? 0.72 : 1));
       }
+    },
+
+    // 连段判定：近战招式收招后玩家仍在攻击圈内时，按狂暴状态概率追加下一击
+    bossChainNext(m, atk) {
+      const p = this.player;
+      if (!p || p.hp <= 0) return false;
+      if (atk.type !== 'arc' && atk.type !== 'slash') return false;
+      if (U.dist(m, p) > (atk.range || 200) + 40) return false;
+      return Math.random() < (m.enraged ? 0.62 : 0.42);
     },
 
     bossTelegraph(m, atk, ang, dest) {
@@ -310,11 +333,11 @@
         const kind = def ? def.kind : 'eye';
         const lunge = LUNGE[kind] || 0;
         if (lunge) {
-          this.dashMonster(m, cast.angle, lunge * (m.enraged ? 1.25 : 1));
+          this.dashMonster(m, cast.angle, lunge * (m.enraged ? 1.35 : 1.15));
           this.effects.push({
             kind: 'quakeRing', x: m.x, y: m.y,
-            radius: atk.radius * 0.92, color: atk.color,
-            life: 0.32, max: 0.32
+            radius: atk.radius * 0.95, color: atk.color,
+            life: 0.42, max: 0.42
           });
         }
         this.effects.push({
@@ -327,7 +350,7 @@
           m.y + Math.sin(cast.angle) * atk.radius * 0.8,
           atk.color, 10
         );
-        this.shake = Math.max(this.shake, 0.24);
+        this.shake = Math.max(this.shake, 0.36);
         if (this.bossArcHit(m, cast.angle, atk.radius, atk.arc)) this.hurtPlayer(dmg);
       } else if (atk.type === 'beam') {
         const len = this.bossBeamLength(m, cast.angle, atk.range);
@@ -341,7 +364,7 @@
           m.y + Math.sin(cast.angle) * len,
           atk.color, 12
         );
-        this.shake = Math.max(this.shake, 0.34);
+        this.shake = Math.max(this.shake, 0.44);
         if (this.bossBeamHit(m, cast.angle, len, atk.width)) this.hurtPlayer(dmg);
       } else if (atk.type === 'fan') {
         const cone = (atk.spread || 0.6) * ((atk.count || 5) - 1) / 2;
@@ -375,7 +398,7 @@
           arc: atk.arc, radius: atk.radius, color: atk.color,
           life: 0.34, max: 0.34, skin
         });
-        this.shake = Math.max(this.shake, 0.3);
+        this.shake = Math.max(this.shake, 0.38);
         if (this.bossArcHit(m, ang, atk.radius, atk.arc)) this.hurtPlayer(dmg);
       } else if (atk.type === 'summon') {
         this.effects.push({
