@@ -735,7 +735,7 @@
         ctx.arc(0, 0, m.r + 9 + pulse * 5, 0, Math.PI * 2);
         ctx.stroke();
       }
-      if (m.elite) {
+      if (m.elite || (m.affixes && m.affixes.length)) {
         const affixes = m.affixes || [];
         const table = DG.scenes.dungeon.ELITE_AFFIXES || {};
         if (affixes.length) {

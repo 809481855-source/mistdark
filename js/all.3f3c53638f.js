@@ -904,7 +904,126 @@
     }
   }
 
-  /* ---------------- 解包音频资源（assets/audio） ---------------- */
+  /* ---------------- 小怪新招式：挥风声 + 命中质感 ---------------- */
+  // 只有新增的大幅招式有挥风声（横扫 / 连击 / 突刺 / 旋斩 / 震地），
+  // 普通挠击不发声，避免十几只小怪同时挥爪时声场糊掉。
+  const SWING_KINDS = { sweep: 1, rend: 1, impale: 1, spin: 1, slam: 1 };
+  let lastMinionSwingAt = 0;
+  let lastMinionHitAt = 0;
+
+  function minionSwing(kind) {
+    if (!SWING_KINDS[kind]) return;
+    if (!ctx || !master || !unlocked || !enabled) return;
+    const c = ctx;
+    const t = c.currentTime;
+    const gap = lastMinionSwingAt ? t - lastMinionSwingAt : 9;
+    if (gap < 0.06) return;
+    lastMinionSwingAt = t;
+    ensureSfxBus();
+    const bus = sfxBus || master;
+    const soft = gap < 0.16 ? 0.55 : 1;
+    // 不同招式的扫频方向与时长不同：横扫由高到低，旋斩由低到高，震地闷短
+    let f0 = 2400, f1 = 700, dur = 0.2, vol = 0.13;
+    if (kind === 'impale') { f0 = 3400; f1 = 1900; dur = 0.11; vol = 0.11; }
+    else if (kind === 'spin') { f0 = 1700; f1 = 2700; dur = 0.26; vol = 0.12; }
+    else if (kind === 'slam') { f0 = 900; f1 = 220; dur = 0.15; vol = 0.11; }
+    else if (kind === 'rend') { f0 = 3000; f1 = 1200; dur = 0.1; vol = 0.1; }
+    const n = noiseSource();
+    const bp = c.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.Q.value = 1.1;
+    bp.frequency.setValueAtTime(f0, t);
+    bp.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol * soft, t + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    n.connect(bp); bp.connect(g); g.connect(bus);
+    n.start(t); n.stop(t + dur + 0.03);
+  }
+
+  function minionHit(kind, opts) {
+    if (!ctx || !master || !unlocked || !enabled) return;
+    const c = ctx;
+    const t = c.currentTime;
+    const gap = lastMinionHitAt ? t - lastMinionHitAt : 9;
+    if (gap < 0.04) return;
+    lastMinionHitAt = t;
+    ensureSfxBus();
+    const bus = sfxBus || master;
+    const soft = (gap < 0.12 ? 0.55 : 1) * ((opts && opts.vol) || 1);
+    // 低频撞击
+    const thump = (f0, f1, dur, amp, delay) => {
+      const t0 = t + (delay || 0);
+      const o = c.createOscillator();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(f0, t0);
+      o.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
+      const g = c.createGain();
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(amp * soft, t0 + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.connect(g); g.connect(bus);
+      o.start(t0); o.stop(t0 + dur + 0.02);
+    };
+    // 频段噪声：划痕 / 金属 / 碎屑
+    const hiss = (f0, f1, q, dur, amp, type, delay) => {
+      const t0 = t + (delay || 0);
+      const n = noiseSource();
+      const f = c.createBiquadFilter();
+      f.type = type || 'bandpass';
+      f.Q.value = q;
+      f.frequency.setValueAtTime(f0, t0);
+      f.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
+      const g = c.createGain();
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(amp * soft, t0 + 0.006);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      n.connect(f); f.connect(g); g.connect(bus);
+      n.start(t0); n.stop(t0 + dur + 0.02);
+    };
+    // 金属泛音：旋斩、突刺的“锋利感”
+    const ring = (f0, f1, dur, amp, delay) => {
+      const t0 = t + (delay || 0);
+      const o = c.createOscillator();
+      o.type = 'triangle';
+      o.frequency.setValueAtTime(f0, t0);
+      o.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
+      const g = c.createGain();
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(amp * soft, t0 + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.connect(g); g.connect(bus);
+      o.start(t0); o.stop(t0 + dur + 0.02);
+    };
+
+    if (kind === 'sweep') {
+      thump(120, 48, 0.2, 0.42);
+      hiss(2400, 620, 0.8, 0.16, 0.22);
+      hiss(4200, 2200, 1.3, 0.07, 0.12, 'highpass', 0.02);
+    } else if (kind === 'rend') {
+      thump(170, 80, 0.12, 0.3);
+      hiss(3400, 1500, 1.4, 0.055, 0.24, 'highpass');
+      hiss(2900, 1200, 1.4, 0.055, 0.18, 'highpass', 0.085);
+    } else if (kind === 'impale') {
+      thump(150, 70, 0.12, 0.24);
+      hiss(4400, 2800, 1.6, 0.05, 0.2, 'highpass');
+      ring(1900, 760, 0.09, 0.14, 0.005);
+    } else if (kind === 'spin') {
+      thump(115, 50, 0.18, 0.3);
+      ring(1500, 540, 0.26, 0.16);
+      hiss(1700, 2500, 1.0, 0.22, 0.13);
+    } else if (kind === 'slam') {
+      thump(96, 34, 0.36, 0.62);
+      hiss(720, 170, 0.7, 0.3, 0.26, 'lowpass');
+      hiss(3200, 900, 1.2, 0.07, 0.12, 'highpass', 0.01);
+    } else {
+      thump(130, 62, 0.15, 0.28);
+      hiss(1900, 760, 0.8, 0.11, 0.14);
+    }
+  }
+
+
   const AUDIO_DIR = 'assets/audio/';
 
   // 音效键 -> 文件；键名保持语义化，场景代码只引用键
@@ -1417,6 +1536,9 @@
   A.thunder = thunder;
   A.warcryBurst = warcryBurst;
   A.bossHit = bossHitBurst;
+  // 小怪新招式的挥风声与命中质感音
+  A.minionSwing = minionSwing;
+  A.minionHit = minionHit;
 
   A.play = play;
   A.playBgm = playBgm;
@@ -15194,7 +15316,11 @@
         // 连续受击：3 秒窗口内再次被击中会削弱反馈并取消击退
         hurtChain: 0, hurtChainT: 0, hurtWeak: false,
         // 冰缓：精英「冰冻」词缀命中后短暂减速
-        chillT: 0
+        chillT: 0,
+        // 冻结：精英「冻结」词缀命中后短暂定身
+        freezeT: 0,
+        // 冻结免疫窗口：解冻后数秒内不会被连续定身，避免被控到死
+        freezeImmuneT: 0
       };
       this.energy = ENERGY;
       this.camera = { x: this.player.x, y: this.player.y };
@@ -15458,6 +15584,8 @@
       this.player.hurtChainT = Math.max(0, (this.player.hurtChainT || 0) - dt);
       if (this.player.hurtChainT <= 0) { this.player.hurtChain = 0; this.player.hurtWeak = false; }
       this.player.chillT = Math.max(0, this.player.chillT - dt);
+      this.player.freezeT = Math.max(0, (this.player.freezeT || 0) - dt);
+      this.player.freezeImmuneT = Math.max(0, (this.player.freezeImmuneT || 0) - dt);
       this.player.atkAnim = Math.max(0, (this.player.atkAnim || 0) - dt);
       // 受击硬直：按当前后退速度位移并衰减
       if (this.player.hurtT > 0) {
@@ -15545,6 +15673,8 @@
         }
       }
       if (this.player.hurtT > 0) { mx = 0; my = 0; moveFactor = 0; }
+      // 冻结期间无法移动（仍可出手），定身结束后恢复
+      if (this.player.freezeT > 0) { mx = 0; my = 0; moveFactor = 0; }
       if (mx || my) {
         const step = this.moveSpeedNow() * moveFactor * dt;
         const beforeX = this.player.x, beforeY = this.player.y;
@@ -15594,6 +15724,7 @@
       this.updateRoar(dt);
       this.updateChop(dt);
       this.updateMonsters(dt);
+      this.updateAffixStrikes(dt);
       this.updateProjectiles(dt);
       this.updateDrops(dt);
       this.updateEffects(dt);
@@ -18552,6 +18683,8 @@
     this.monsters.push(m);
     // 随机精英同样吃本关词缀（词缀在属性算完之后再叠，避免倍率互相污染）
     if (elite) this.applyEliteAffixes(m);
+    // 普通小怪按关卡深度小概率携带单条词缀
+    else if (!m.boss) this.maybeAffixNormal(m);
     return m;
   },
   spawnBoss() {
@@ -19377,10 +19510,11 @@
 
 ;
 /* ==== js/scenes/dungeon/affix.js ==== */
-/* 副本战斗 · 精英词缀：每关随机 1~2 条，贴在精英身上改变打法
- * 词缀只作用于精英（含密室守卫、宝箱怪），首领不受影响。
- * 数值改动集中在 promoteElite / hitMonster / onMonsterDeath 三处，
- * 视觉只多画一圈彩色环与护盾弧，不引入额外逐帧对象。
+/* 副本战斗 · 精英词缀：每关随机 1~2 条，贴在精英身上改变打法；
+ * 普通小怪也有小概率携带单条词缀，让战斗更随机。
+ * 词缀只作用于小怪（含密室守卫、宝箱怪），首领不受影响。
+ * 数值改动集中在 applyEliteAffixes / affixTick / hitMonster / affixOnHit /
+ * onMonsterDeath 几处，视觉只多画一圈彩色环与地面预警，不引入额外逐帧对象。
  */
 (function () {
   const DG = window.DG;
@@ -19391,9 +19525,17 @@
     thorn: { name: '荆棘', color: '#c98b5a', desc: '受击反弹 18% 伤害' },
     split: { name: '分裂', color: '#b07ce0', desc: '死亡时裂成两个小体' },
     haste: { name: '加速', color: '#e0c060', desc: '移速与起手更快' },
-    ward: { name: '护盾', color: '#7fd0c0', desc: '额外 40% 生命的护盾' }
+    ward: { name: '护盾', color: '#7fd0c0', desc: '额外 40% 生命的护盾' },
+    dodge: { name: '闪避', color: '#9fd0ff', desc: '20% 概率完全闪开攻击' },
+    blink: { name: '闪现', color: '#c090ff', desc: '离得远时瞬移到玩家身边' },
+    volatile: { name: '自爆', color: '#ff9a5c', desc: '死亡时爆炸并震伤玩家' },
+    nature: { name: '自然', color: '#8fe08a', desc: '每 2 秒回复 3% 最大生命' },
+    storm: { name: '引雷', color: '#bcd9ff', desc: '定期在玩家脚下召来落雷' },
+    freeze: { name: '冻结', color: '#a8dcff', desc: '命中时概率定身玩家' }
   };
   const AFFIX_IDS = Object.keys(ELITE_AFFIXES);
+  // 普怪池剔除强控与反伤：数量太多时会把走位和续航压死，这两条只留给精英
+  const NORMAL_AFFIX_IDS = AFFIX_IDS.filter(id => id !== 'freeze' && id !== 'thorn');
 
   Object.assign(DG.scenes.dungeon.prototype, {
     // 每局开局掷 1~2 条；关卡越靠后越容易出两条
@@ -19407,6 +19549,7 @@
       }
       this.eliteAffixes = out;
       this.eliteAffixText = out.map(id => ELITE_AFFIXES[id].name).join('·');
+      this.affixStrikes = [];
       return out;
     },
     // 贴到精英身上：属性、名字与护盾一次算完
@@ -19428,12 +19571,148 @@
       m.name = ids.map(id => ELITE_AFFIXES[id].name).join('·') + ' · ' + base;
       return m;
     },
-    // 精英打中玩家后触发（目前只有冰冻）
+    // 普通小怪：关卡越深越容易出现单条词缀，数值按普怪幅度收敛
+    maybeAffixNormal(m) {
+      if (!m || m.boss || m.elite || this.noAffixSpawn || (m.affixes && m.affixes.length)) return m;
+      const lv = (this.def && this.def.index) || 1;
+      const p = Math.min(0.17, 0.05 + lv * 0.0015);
+      if (!U.chance(p)) return m;
+      const id = NORMAL_AFFIX_IDS[U.randInt(0, NORMAL_AFFIX_IDS.length - 1)];
+      m.affixes = [id];
+      const base = m.name || '小怪';
+      m.baseName = base;
+      if (id === 'haste') {
+        m.speed *= 1.16;
+        m.windupMul = 0.9;
+      }
+      if (id === 'ward') {
+        m.shield = Math.round(m.maxHp * 0.25);
+        m.maxShield = m.shield;
+      }
+      m.name = ELITE_AFFIXES[id].name + ' · ' + base;
+      return m;
+    },
+    // 词缀的持续效果：自然再生 / 闪现换位 / 引雷排程（每帧由 updateMonsters 调用）
+    affixTick(m, dt) {
+      if (!m.affixes || !m.affixes.length) return;
+      const ids = m.affixes;
+      // 自然：每 2 秒回复 3% 最大生命，逼玩家先集火再换目标
+      if (ids.indexOf('nature') >= 0) {
+        m.affixHealT = (m.affixHealT == null ? 2 : m.affixHealT) - dt;
+        if (m.affixHealT <= 0) {
+          m.affixHealT = 2;
+          if (m.hp > 0 && m.hp < m.maxHp) {
+            const heal = Math.max(2, Math.round(m.maxHp * 0.03));
+            m.hp = Math.min(m.maxHp, m.hp + heal);
+            this.addFloater(m.x + U.rand(-4, 4), m.y - m.r - 16, `+${heal}`, '#8fe08a', 16);
+          }
+        }
+      }
+      // 闪现：拉开距离后瞬移到玩家身边，逼迫玩家处理近身威胁
+      if (ids.indexOf('blink') >= 0) {
+        m.affixBlinkT = (m.affixBlinkT == null ? U.rand(2.5, 4.5) : m.affixBlinkT) - dt;
+        if (m.affixBlinkT <= 0 && m.aggro && !m.action) {
+          if (U.dist(m, this.player) > 260) {
+            m.affixBlinkT = U.rand(5.5, 7.5);
+            this.blinkMonster(m);
+          } else {
+            m.affixBlinkT = 1.2;
+          }
+        }
+      }
+      // 引雷：在玩家脚下先画预警圈，0.85 秒后落雷
+      if (ids.indexOf('storm') >= 0 && m.aggro) {
+        m.affixStormT = (m.affixStormT == null ? U.rand(2, 4) : m.affixStormT) - dt;
+        if (m.affixStormT <= 0) {
+          m.affixStormT = U.rand(6, 8.5);
+          this.castAffixStorm();
+        }
+      }
+    },
+    blinkMonster(m) {
+      const p = this.player;
+      for (let i = 0; i < 12; i++) {
+        const a = U.rand(0, Math.PI * 2);
+        const rr = U.rand(150, 230);
+        const x = p.x + Math.cos(a) * rr;
+        const y = p.y + Math.sin(a) * rr;
+        if (this.circleWall(x, y, m.r) || this.circleProp(x, y, m.r)) continue;
+        this.addRing(m.x, m.y, 10, 46, '#c090ff', 0.3);
+        m.x = x;
+        m.y = y;
+        // 同步上一帧坐标：否则瞬移会被当成超高速移动，污染远程预判
+        m._px = x;
+        m._py = y;
+        m._vx = 0;
+        m._vy = 0;
+        m.aggro = true;
+        m.facing = U.angle(m, p);
+        this.addBurst(x, y, '#c090ff', 10);
+        this.addRing(x, y, 8, 44, '#c090ff', 0.3);
+        return true;
+      }
+      return false;
+    },
+    castAffixStorm() {
+      if (this.player.hp <= 0) return;
+      const p = this.player;
+      if (!this.affixStrikes) this.affixStrikes = [];
+      this.affixStrikes.push({ x: p.x, y: p.y, t: 0.85 });
+      this.effects.push({
+        kind: 'arrowRainMarker', x: p.x, y: p.y, angle: 0,
+        radius: 76, arc: Math.PI * 2, color: '#bcd9ff',
+        life: 0.85, max: 0.85
+      });
+    },
+    updateAffixStrikes(dt) {
+      if (!this.affixStrikes || !this.affixStrikes.length) return;
+      for (let i = this.affixStrikes.length - 1; i >= 0; i--) {
+        const s = this.affixStrikes[i];
+        s.t -= dt;
+        if (s.t > 0) continue;
+        this.affixStrikes.splice(i, 1);
+        this.strikeAffixBolt(s.x, s.y);
+      }
+    },
+    strikeAffixBolt(x, y) {
+      this.addBurst(x, y, '#cfe4ff', 14);
+      this.addRing(x, y, 10, 92, '#dceaff', 0.3);
+      this.shake = Math.max(this.shake, 0.14);
+      const R = 78;
+      if (this.player.hp > 0 && U.dist(this.player, { x: x, y: y }) < R + this.player.r) {
+        if (this.hurtPlayer(Math.round(this.player.maxHp * 0.06))) {
+          this.addFloater(this.player.x, this.player.y - 42, '雷击', '#bcd9ff', 22);
+        }
+      }
+    },
+    // 自爆：死亡瞬间炸开，对玩家造成按最大生命计算的伤害
+    volatileBurst(m) {
+      if (!m || m.noLoot) return;
+      const R = m.elite ? 118 : 92;
+      const dmg = Math.round(this.player.maxHp * (m.elite ? 0.07 : 0.05));
+      this.addBurst(m.x, m.y, '#ff9a5c', 18);
+      this.addRing(m.x, m.y, 14, R, '#ffb27a', 0.38);
+      this.shake = Math.max(this.shake, 0.18);
+      this.addFloater(m.x, m.y - m.r - 22, '自爆', '#ffb27a', 20);
+      if (this.player.hp > 0 && U.dist(this.player, m) < R + this.player.r) {
+        if (this.hurtPlayer(dmg)) {
+          this.addFloater(this.player.x, this.player.y - 52, `爆炸 -${dmg}`, '#ff9a5c', 20);
+        }
+      }
+    },
+    // 精英打中玩家后触发：冰缓 / 冻结
     affixOnHit(m) {
       if (!m || !m.affixes || this.player.hp <= 0) return;
       if (m.affixes.indexOf('frost') >= 0) {
         this.player.chillT = Math.max(this.player.chillT || 0, 1.8);
         this.addFloater(this.player.x, this.player.y - 46, '冰缓', '#8ec9e8', 20);
+      }
+      if (m.affixes.indexOf('freeze') >= 0 && U.chance(0.18) &&
+          (this.player.freezeT || 0) <= 0 && (this.player.freezeImmuneT || 0) <= 0) {
+        this.player.freezeT = 0.8;
+        this.player.freezeImmuneT = 4;
+        this.addRing(this.player.x, this.player.y, 14, 48, '#a8dcff', 0.32);
+        this.addFloater(this.player.x, this.player.y - 46, '冻结', '#a8dcff', 22);
       }
     },
     // 分裂：死亡瞬间裂成两个小体，不给经验、不掉落，避免刷资源
@@ -19441,6 +19720,8 @@
       const tpl = DG.data.monsters[m.typeId];
       if (!tpl || m.splitDone) return;
       m.splitDone = true;
+      // 裂片不再携带词缀：避免分裂体再生出分裂体
+      this.noAffixSpawn = true;
       for (let i = 0; i < 2; i++) {
         const a = (i ? Math.PI : 0) + U.rand(-0.5, 0.5);
         const pos = this.nearestFloorPoint(m.x + Math.cos(a) * 46, m.y + Math.sin(a) * 46, 3) ||
@@ -19464,6 +19745,7 @@
         c.name = '裂片 · ' + (tpl.name || c.name);
         this.addRing(c.x, c.y, 10, 60, '#b07ce0', 0.4);
       }
+      this.noAffixSpawn = false;
       this.addBurst(m.x, m.y, '#b07ce0', 14);
     }
   });
@@ -20550,15 +20832,20 @@
     // 刀光：原地挥砍，弧线最宽
     slash:  { windup: 1.00, strike: 0.18, recover: 0.30, lunge: 26,  hop: 0,  arc: 1.9,  reach: 1.15, fx: 'bladeArc',  fxScale: 2.9, fxLife: 0.38 },
     // 横扫：大幅侧身抡扫，覆盖身体两侧
-    sweep:  { windup: 0.94, strike: 0.20, recover: 0.34, lunge: 30,  hop: 0,  arc: 2.6,  reach: 1.14, fx: 'sweepArc',  fxScale: 3.2, fxLife: 0.36, knock: 12 },
-    // 连击：两段爪击，第一段轻、第二段补刀
-    rend:   { windup: 0.62, strike: 0.34, recover: 0.30, lunge: 44,  hop: 0,  arc: 1.5,  reach: 1.08, fx: 'rendArc',   fxScale: 2.7, fxLife: 0.24, double: 0.45, dmg2: 0.55 },
+    sweep:  { windup: 0.94, strike: 0.20, recover: 0.34, lunge: 30,  hop: 0,  arc: 2.6,  reach: 1.14, fx: 'sweepArc',  fxScale: 3.2, fxLife: 0.36, knock: 12,
+      hit: { shake: 0.28, flash: 0.36, sparks: 9,  ring: 34, color: '#ffc178' } },
+    // 连击：两段爪击，第一段轻、第二段补刀（第二段等无敌帧结束再落）
+    rend:   { windup: 0.62, strike: 0.34, recover: 0.30, lunge: 44,  hop: 0,  arc: 1.5,  reach: 1.08, fx: 'rendArc',   fxScale: 2.7, fxLife: 0.24, double: 0.86, dmg2: 0.55,
+      hit: { shake: 0.2,  flash: 0.3,  sparks: 5,  ring: 24, color: '#ff9aae' } },
     // 突刺：极窄角度长距离穿刺，专治正面站桩
-    impale: { windup: 0.86, strike: 0.16, recover: 0.32, lunge: 76,  hop: 0,  arc: 0.34, reach: 1.45, fx: 'thrustArc', fxScale: 3.4, fxLife: 0.30 },
+    impale: { windup: 0.86, strike: 0.16, recover: 0.32, lunge: 76,  hop: 0,  arc: 0.34, reach: 1.45, fx: 'thrustArc', fxScale: 3.4, fxLife: 0.30,
+      hit: { shake: 0.28, flash: 0.38, sparks: 7,  ring: 26, color: '#bfe8ff' } },
     // 旋斩：原地转体一周，命中四周
-    spin:   { windup: 1.06, strike: 0.28, recover: 0.40, lunge: 22,  hop: 0,  arc: Math.PI * 2, reach: 1.02, fx: 'spinArc', fxScale: 3.1, fxLife: 0.42, uniqueFx: true },
+    spin:   { windup: 1.06, strike: 0.28, recover: 0.40, lunge: 22,  hop: 0,  arc: Math.PI * 2, reach: 1.02, fx: 'spinArc', fxScale: 3.1, fxLife: 0.42, uniqueFx: true,
+      hit: { shake: 0.3,  flash: 0.36, sparks: 9,  ring: 36, color: '#d6a0ff' } },
     // 震地：砸地冲击波，贴身范围伤害并震屏
-    slam:   { windup: 1.14, strike: 0.22, recover: 0.44, lunge: 14,  hop: 0,  arc: Math.PI * 2, reach: 0.92, fx: 'slamShock', fxScale: 3.3, fxLife: 0.5, uniqueFx: true, shock: true, knock: 18, shake: 0.16 }
+    slam:   { windup: 1.14, strike: 0.22, recover: 0.44, lunge: 14,  hop: 0,  arc: Math.PI * 2, reach: 0.92, fx: 'slamShock', fxScale: 3.3, fxLife: 0.5, uniqueFx: true, shock: true, knock: 18, shake: 0.16,
+      hit: { shake: 0.4,  flash: 0.44, sparks: 12, ring: 44, color: '#ffcf7a', ground: true } }
   };
 
   // 各小怪按自身特色选招：支持单招或双招轮换，避免同一种小怪永远只做同一个动作
@@ -20644,6 +20931,12 @@
   hitMonster(m, dmg, crit, opts) {
     const quiet = !!(opts && opts.quiet);
     if (m.dead) return;
+    // 闪避词缀：有概率完全避开本次伤害（持续伤害不闪避，避免出血等永远打不中）
+    if (!quiet && m.affixes && m.affixes.indexOf('dodge') >= 0 && U.chance(0.2)) {
+      m.hitT = 1.4;
+      this.addFloater(m.x + U.rand(-6, 6), m.y - m.r - 18, '闪避', '#9fd0ff', 19);
+      return;
+    }
     const tm = this.talentMods();
     let executed = false;
 
@@ -20890,6 +21183,8 @@
   onMonsterDeath(m) {
     // 分裂词缀：先裂成两个小体，再走结算（小体自身不再分裂、无掉落）
     if (m.affixes && m.affixes.indexOf('split') >= 0) this.splitElite(m);
+    // 自爆词缀：尸体炸开，对附近玩家造成伤害
+    if (m.affixes && m.affixes.indexOf('volatile') >= 0) this.volatileBurst(m);
     if (DG.audio) {
       DG.audio.play('monsterDeath', { vol: m.boss ? 1 : 0.5, rate: 0.9 + Math.random() * 0.15, gap: 0.08 });
       // 首领倒下后战斗音乐回落，避免首领曲一直播到撤离
@@ -21079,6 +21374,8 @@
       if (a.t >= a.windup) {
         a.phase = 'strike';
         a.t = 0;
+        // 新增的大幅招式出手时补一层挥风声，听感上区分侧扫 / 直刺 / 旋转 / 砸地
+        if (!a.cast && DG.audio && DG.audio.minionSwing) DG.audio.minionSwing(a.move);
         this.resolveMonsterStrike(m);
       }
       return;
@@ -21139,7 +21436,10 @@
     // 突进：抓/扑/撞在出手瞬间位移，命中判定按落点算（连击第二段不再位移）
     if (!second && mv.lunge) {
       const ox = m.x, oy = m.y;
-      const moved = this.dashMonster(m, a.angle, mv.lunge);
+      // 按与玩家的间距截断突进距离：贴身时若冲过玩家身后，命中扇形会朝反方向而落空
+      const gap = U.dist(m, p);
+      const dash = Math.min(mv.lunge, Math.max(0, gap - p.r * 0.5));
+      const moved = this.dashMonster(m, a.angle, dash);
       if (moved > 3) {
         this.effects.push({
           kind: 'dashTrail',
@@ -21187,7 +21487,11 @@
     const halfArc = Math.max(0.6, arc / 2);
     const dmg = second ? Math.max(1, Math.round(m.dmg * (mv.dmg2 || 0.6))) : m.dmg;
     if (d <= reach && Math.abs(diff) <= halfArc) {
-      if (this.hurtPlayer(dmg)) this.affixOnHit(m);
+      const landed = this.hurtPlayer(dmg);
+      if (landed) {
+        this.affixOnHit(m);
+        if (mv.hit) this.minionImpact(m, mv, ang, second);
+      }
       this.addBurst(p.x, p.y, color, second ? 4 : 6);
       // 撞：击退玩家；抓：把玩家拖向怪物；连续受击期间取消这类受击位移
       if (!second && !p.hurtWeak) {
@@ -21197,6 +21501,44 @@
           this.movePlayer(p, -Math.cos(ang) * mv.pull, -Math.sin(ang) * mv.pull, p.r);
         }
       }
+    }
+  },
+  // 小怪新招式的命中反馈：沿来击方向溅出定向火星 + 冲击环 + 专属震屏 / 红闪 / 音效。
+  // 连续受击窗口内整体减弱，避免多只小怪围殴时反馈糊成一团。
+  minionImpact(m, mv, ang, second) {
+    const p = this.player;
+    const pf = mv.hit;
+    const weak = !!p.hurtWeak;
+    const k = weak ? 0.45 : 1;
+    const col = pf.color || m.fxColor || '#ffd2a0';
+    const hx = p.x - Math.cos(ang) * 6;
+    const hy = p.y - p.r * 1.1;
+    // 定向火花：从命中点朝攻击来向的反侧溅开，交代打击方向
+    const n = Math.max(2, Math.round((second ? pf.sparks * 0.5 : pf.sparks) * k));
+    for (let i = 0; i < n; i++) {
+      const spread = (Math.random() - 0.5) * 1.1;
+      const a = ang + Math.PI + spread;
+      const sp = 120 + Math.random() * 190;
+      this.effects.push({
+        kind: 'spark', x: hx, y: hy,
+        vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+        life: 0.22 + Math.random() * 0.22, max: 0.44,
+        r: 1.6 + Math.random() * 2, color: i % 3 === 0 ? '#fff4dc' : col
+      });
+    }
+    this.addRing(p.x, p.y - p.r * 0.4, 6, pf.ring * (weak ? 0.7 : 1), col, weak ? 0.2 : 0.28);
+    // 震地：额外在脚下压出一圈地面冲击
+    if (pf.ground) {
+      this.effects.push({
+        kind: 'quakeRing', x: p.x, y: p.y,
+        radius: pf.ring * 1.9, color: col, life: 0.3, max: 0.3
+      });
+    }
+    this.shake = Math.max(this.shake, weak ? 0.08 : pf.shake);
+    this.hurtFlash = Math.max(this.hurtFlash, weak ? Math.max(0.1, this.hurtFlash) : pf.flash);
+    if (DG.audio && DG.audio.minionHit) {
+      DG.audio.minionHit(mv.fx === 'slamShock' ? 'slam' : (m.action && m.action.move) || 'claw',
+        { vol: weak ? 0.45 : (second ? 0.75 : 1) });
     }
   },
   // 远程怪开火：弹道 + 开火表现（火枪为枪口闪光，法系为冷光汇聚）
@@ -21256,6 +21598,8 @@
       m.atkTimer = Math.max(0, m.atkTimer - dt);
       m.shootTimer = Math.max(0, m.shootTimer - dt);
       m.shotAnim = Math.max(0, (m.shotAnim || 0) - dt);
+      // 词缀持续效果：自然再生 / 闪现换位 / 引雷排程
+      if (m.affixes && m.affixes.length) this.affixTick(m, dt);
       if (m.slow > 0) m.slow -= dt;
       if (m.fear > 0) m.fear -= dt;
       if (m.hitT > 0) m.hitT -= dt;
@@ -24474,7 +24818,7 @@
         ctx.arc(0, 0, m.r + 9 + pulse * 5, 0, Math.PI * 2);
         ctx.stroke();
       }
-      if (m.elite) {
+      if (m.elite || (m.affixes && m.affixes.length)) {
         const affixes = m.affixes || [];
         const table = DG.scenes.dungeon.ELITE_AFFIXES || {};
         if (affixes.length) {

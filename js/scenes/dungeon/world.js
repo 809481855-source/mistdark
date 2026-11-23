@@ -945,6 +945,8 @@
     this.monsters.push(m);
     // 随机精英同样吃本关词缀（词缀在属性算完之后再叠，避免倍率互相污染）
     if (elite) this.applyEliteAffixes(m);
+    // 普通小怪按关卡深度小概率携带单条词缀
+    else if (!m.boss) this.maybeAffixNormal(m);
     return m;
   },
   spawnBoss() {

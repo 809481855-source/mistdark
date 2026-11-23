@@ -90,7 +90,11 @@
         // 连续受击：3 秒窗口内再次被击中会削弱反馈并取消击退
         hurtChain: 0, hurtChainT: 0, hurtWeak: false,
         // 冰缓：精英「冰冻」词缀命中后短暂减速
-        chillT: 0
+        chillT: 0,
+        // 冻结：精英「冻结」词缀命中后短暂定身
+        freezeT: 0,
+        // 冻结免疫窗口：解冻后数秒内不会被连续定身，避免被控到死
+        freezeImmuneT: 0
       };
       this.energy = ENERGY;
       this.camera = { x: this.player.x, y: this.player.y };
@@ -354,6 +358,8 @@
       this.player.hurtChainT = Math.max(0, (this.player.hurtChainT || 0) - dt);
       if (this.player.hurtChainT <= 0) { this.player.hurtChain = 0; this.player.hurtWeak = false; }
       this.player.chillT = Math.max(0, this.player.chillT - dt);
+      this.player.freezeT = Math.max(0, (this.player.freezeT || 0) - dt);
+      this.player.freezeImmuneT = Math.max(0, (this.player.freezeImmuneT || 0) - dt);
       this.player.atkAnim = Math.max(0, (this.player.atkAnim || 0) - dt);
       // 受击硬直：按当前后退速度位移并衰减
       if (this.player.hurtT > 0) {
@@ -441,6 +447,8 @@
         }
       }
       if (this.player.hurtT > 0) { mx = 0; my = 0; moveFactor = 0; }
+      // 冻结期间无法移动（仍可出手），定身结束后恢复
+      if (this.player.freezeT > 0) { mx = 0; my = 0; moveFactor = 0; }
       if (mx || my) {
         const step = this.moveSpeedNow() * moveFactor * dt;
         const beforeX = this.player.x, beforeY = this.player.y;
@@ -490,6 +498,7 @@
       this.updateRoar(dt);
       this.updateChop(dt);
       this.updateMonsters(dt);
+      this.updateAffixStrikes(dt);
       this.updateProjectiles(dt);
       this.updateDrops(dt);
       this.updateEffects(dt);

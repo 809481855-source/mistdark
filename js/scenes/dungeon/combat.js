@@ -62,15 +62,20 @@
     // 刀光：原地挥砍，弧线最宽
     slash:  { windup: 1.00, strike: 0.18, recover: 0.30, lunge: 26,  hop: 0,  arc: 1.9,  reach: 1.15, fx: 'bladeArc',  fxScale: 2.9, fxLife: 0.38 },
     // 横扫：大幅侧身抡扫，覆盖身体两侧
-    sweep:  { windup: 0.94, strike: 0.20, recover: 0.34, lunge: 30,  hop: 0,  arc: 2.6,  reach: 1.14, fx: 'sweepArc',  fxScale: 3.2, fxLife: 0.36, knock: 12 },
-    // 连击：两段爪击，第一段轻、第二段补刀
-    rend:   { windup: 0.62, strike: 0.34, recover: 0.30, lunge: 44,  hop: 0,  arc: 1.5,  reach: 1.08, fx: 'rendArc',   fxScale: 2.7, fxLife: 0.24, double: 0.45, dmg2: 0.55 },
+    sweep:  { windup: 0.94, strike: 0.20, recover: 0.34, lunge: 30,  hop: 0,  arc: 2.6,  reach: 1.14, fx: 'sweepArc',  fxScale: 3.2, fxLife: 0.36, knock: 12,
+      hit: { shake: 0.28, flash: 0.36, sparks: 9,  ring: 34, color: '#ffc178' } },
+    // 连击：两段爪击，第一段轻、第二段补刀（第二段等无敌帧结束再落）
+    rend:   { windup: 0.62, strike: 0.34, recover: 0.30, lunge: 44,  hop: 0,  arc: 1.5,  reach: 1.08, fx: 'rendArc',   fxScale: 2.7, fxLife: 0.24, double: 0.86, dmg2: 0.55,
+      hit: { shake: 0.2,  flash: 0.3,  sparks: 5,  ring: 24, color: '#ff9aae' } },
     // 突刺：极窄角度长距离穿刺，专治正面站桩
-    impale: { windup: 0.86, strike: 0.16, recover: 0.32, lunge: 76,  hop: 0,  arc: 0.34, reach: 1.45, fx: 'thrustArc', fxScale: 3.4, fxLife: 0.30 },
+    impale: { windup: 0.86, strike: 0.16, recover: 0.32, lunge: 76,  hop: 0,  arc: 0.34, reach: 1.45, fx: 'thrustArc', fxScale: 3.4, fxLife: 0.30,
+      hit: { shake: 0.28, flash: 0.38, sparks: 7,  ring: 26, color: '#bfe8ff' } },
     // 旋斩：原地转体一周，命中四周
-    spin:   { windup: 1.06, strike: 0.28, recover: 0.40, lunge: 22,  hop: 0,  arc: Math.PI * 2, reach: 1.02, fx: 'spinArc', fxScale: 3.1, fxLife: 0.42, uniqueFx: true },
+    spin:   { windup: 1.06, strike: 0.28, recover: 0.40, lunge: 22,  hop: 0,  arc: Math.PI * 2, reach: 1.02, fx: 'spinArc', fxScale: 3.1, fxLife: 0.42, uniqueFx: true,
+      hit: { shake: 0.3,  flash: 0.36, sparks: 9,  ring: 36, color: '#d6a0ff' } },
     // 震地：砸地冲击波，贴身范围伤害并震屏
-    slam:   { windup: 1.14, strike: 0.22, recover: 0.44, lunge: 14,  hop: 0,  arc: Math.PI * 2, reach: 0.92, fx: 'slamShock', fxScale: 3.3, fxLife: 0.5, uniqueFx: true, shock: true, knock: 18, shake: 0.16 }
+    slam:   { windup: 1.14, strike: 0.22, recover: 0.44, lunge: 14,  hop: 0,  arc: Math.PI * 2, reach: 0.92, fx: 'slamShock', fxScale: 3.3, fxLife: 0.5, uniqueFx: true, shock: true, knock: 18, shake: 0.16,
+      hit: { shake: 0.4,  flash: 0.44, sparks: 12, ring: 44, color: '#ffcf7a', ground: true } }
   };
 
   // 各小怪按自身特色选招：支持单招或双招轮换，避免同一种小怪永远只做同一个动作
@@ -156,6 +161,12 @@
   hitMonster(m, dmg, crit, opts) {
     const quiet = !!(opts && opts.quiet);
     if (m.dead) return;
+    // 闪避词缀：有概率完全避开本次伤害（持续伤害不闪避，避免出血等永远打不中）
+    if (!quiet && m.affixes && m.affixes.indexOf('dodge') >= 0 && U.chance(0.2)) {
+      m.hitT = 1.4;
+      this.addFloater(m.x + U.rand(-6, 6), m.y - m.r - 18, '闪避', '#9fd0ff', 19);
+      return;
+    }
     const tm = this.talentMods();
     let executed = false;
 
@@ -402,6 +413,8 @@
   onMonsterDeath(m) {
     // 分裂词缀：先裂成两个小体，再走结算（小体自身不再分裂、无掉落）
     if (m.affixes && m.affixes.indexOf('split') >= 0) this.splitElite(m);
+    // 自爆词缀：尸体炸开，对附近玩家造成伤害
+    if (m.affixes && m.affixes.indexOf('volatile') >= 0) this.volatileBurst(m);
     if (DG.audio) {
       DG.audio.play('monsterDeath', { vol: m.boss ? 1 : 0.5, rate: 0.9 + Math.random() * 0.15, gap: 0.08 });
       // 首领倒下后战斗音乐回落，避免首领曲一直播到撤离
@@ -591,6 +604,8 @@
       if (a.t >= a.windup) {
         a.phase = 'strike';
         a.t = 0;
+        // 新增的大幅招式出手时补一层挥风声，听感上区分侧扫 / 直刺 / 旋转 / 砸地
+        if (!a.cast && DG.audio && DG.audio.minionSwing) DG.audio.minionSwing(a.move);
         this.resolveMonsterStrike(m);
       }
       return;
@@ -651,7 +666,10 @@
     // 突进：抓/扑/撞在出手瞬间位移，命中判定按落点算（连击第二段不再位移）
     if (!second && mv.lunge) {
       const ox = m.x, oy = m.y;
-      const moved = this.dashMonster(m, a.angle, mv.lunge);
+      // 按与玩家的间距截断突进距离：贴身时若冲过玩家身后，命中扇形会朝反方向而落空
+      const gap = U.dist(m, p);
+      const dash = Math.min(mv.lunge, Math.max(0, gap - p.r * 0.5));
+      const moved = this.dashMonster(m, a.angle, dash);
       if (moved > 3) {
         this.effects.push({
           kind: 'dashTrail',
@@ -699,7 +717,11 @@
     const halfArc = Math.max(0.6, arc / 2);
     const dmg = second ? Math.max(1, Math.round(m.dmg * (mv.dmg2 || 0.6))) : m.dmg;
     if (d <= reach && Math.abs(diff) <= halfArc) {
-      if (this.hurtPlayer(dmg)) this.affixOnHit(m);
+      const landed = this.hurtPlayer(dmg);
+      if (landed) {
+        this.affixOnHit(m);
+        if (mv.hit) this.minionImpact(m, mv, ang, second);
+      }
       this.addBurst(p.x, p.y, color, second ? 4 : 6);
       // 撞：击退玩家；抓：把玩家拖向怪物；连续受击期间取消这类受击位移
       if (!second && !p.hurtWeak) {
@@ -709,6 +731,44 @@
           this.movePlayer(p, -Math.cos(ang) * mv.pull, -Math.sin(ang) * mv.pull, p.r);
         }
       }
+    }
+  },
+  // 小怪新招式的命中反馈：沿来击方向溅出定向火星 + 冲击环 + 专属震屏 / 红闪 / 音效。
+  // 连续受击窗口内整体减弱，避免多只小怪围殴时反馈糊成一团。
+  minionImpact(m, mv, ang, second) {
+    const p = this.player;
+    const pf = mv.hit;
+    const weak = !!p.hurtWeak;
+    const k = weak ? 0.45 : 1;
+    const col = pf.color || m.fxColor || '#ffd2a0';
+    const hx = p.x - Math.cos(ang) * 6;
+    const hy = p.y - p.r * 1.1;
+    // 定向火花：从命中点朝攻击来向的反侧溅开，交代打击方向
+    const n = Math.max(2, Math.round((second ? pf.sparks * 0.5 : pf.sparks) * k));
+    for (let i = 0; i < n; i++) {
+      const spread = (Math.random() - 0.5) * 1.1;
+      const a = ang + Math.PI + spread;
+      const sp = 120 + Math.random() * 190;
+      this.effects.push({
+        kind: 'spark', x: hx, y: hy,
+        vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+        life: 0.22 + Math.random() * 0.22, max: 0.44,
+        r: 1.6 + Math.random() * 2, color: i % 3 === 0 ? '#fff4dc' : col
+      });
+    }
+    this.addRing(p.x, p.y - p.r * 0.4, 6, pf.ring * (weak ? 0.7 : 1), col, weak ? 0.2 : 0.28);
+    // 震地：额外在脚下压出一圈地面冲击
+    if (pf.ground) {
+      this.effects.push({
+        kind: 'quakeRing', x: p.x, y: p.y,
+        radius: pf.ring * 1.9, color: col, life: 0.3, max: 0.3
+      });
+    }
+    this.shake = Math.max(this.shake, weak ? 0.08 : pf.shake);
+    this.hurtFlash = Math.max(this.hurtFlash, weak ? Math.max(0.1, this.hurtFlash) : pf.flash);
+    if (DG.audio && DG.audio.minionHit) {
+      DG.audio.minionHit(mv.fx === 'slamShock' ? 'slam' : (m.action && m.action.move) || 'claw',
+        { vol: weak ? 0.45 : (second ? 0.75 : 1) });
     }
   },
   // 远程怪开火：弹道 + 开火表现（火枪为枪口闪光，法系为冷光汇聚）
@@ -768,6 +828,8 @@
       m.atkTimer = Math.max(0, m.atkTimer - dt);
       m.shootTimer = Math.max(0, m.shootTimer - dt);
       m.shotAnim = Math.max(0, (m.shotAnim || 0) - dt);
+      // 词缀持续效果：自然再生 / 闪现换位 / 引雷排程
+      if (m.affixes && m.affixes.length) this.affixTick(m, dt);
       if (m.slow > 0) m.slow -= dt;
       if (m.fear > 0) m.fear -= dt;
       if (m.hitT > 0) m.hitT -= dt;
