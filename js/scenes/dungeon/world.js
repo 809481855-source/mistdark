@@ -751,6 +751,7 @@
   findMonsterSpawnPoint(x, y, r, ignore, ignoreMonsters) {
     const clear = (px, py) => {
       if (this.circleWall(px, py, r)) return false;
+      if (this.circleProp(px, py, r)) return false;
       if (!ignoreMonsters) {
         for (const other of this.monsters) {
           if (other.dead || other === ignore) continue;

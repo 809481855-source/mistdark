@@ -5,23 +5,6 @@
   const { W, H, ARENA_W, ARENA_H } = DG.scenes.dungeon.size;
 
   Object.assign(DG.scenes.dungeon.prototype, {
-  combatFxEnabled() {
-    return !DG.settings || !DG.settings.get || DG.settings.get().combatFx !== 'original';
-  },
-  addGritFx(kind, x, y, opt) {
-    if (!this.combatFxEnabled()) return;
-    const o = opt || {};
-    const life = o.life || 0.3;
-    this.effects.push({
-      kind, x, y,
-      angle: o.angle || 0,
-      radius: o.radius || 42,
-      color: o.color || '#9c6b50',
-      material: o.material || 'iron',
-      life, max: life,
-      seed: o.seed == null ? ((this.time || 0) * 17 + x * 0.031 + y * 0.071) : o.seed
-    });
-  },
   addFloater(x, y, text, color, size) {
     this.floaters.push({ x, y, text, color, size: size || 20, life: 1, max: 1, vy: -52 });
   },

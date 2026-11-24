@@ -8,8 +8,7 @@
     audio: true,       // 天气环境音总开关
     ambientVol: 100,   // 天气环境音音量 0-100
     music: true,       // 背景音乐（BGM）开关
-    screen: 'std',     // max 810×1680 | short 720×1680 | std 9:16 720×1440
-    combatFx: 'enhanced' // enhanced 暗黑强化表现 | original 原始表现
+    screen: 'std'      // max 810×1680 | short 720×1680 | std 9:16 720×1440
   };
 
   const data = Object.assign({}, DEFAULTS);
@@ -30,9 +29,6 @@
       if (saved && saved.music === false) data.music = false;
       if (saved && (saved.screen === 'max' || saved.screen === 'short' || saved.screen === 'std')) {
         data.screen = saved.screen;
-      }
-      if (saved && (saved.combatFx === 'enhanced' || saved.combatFx === 'original')) {
-        data.combatFx = saved.combatFx;
       }
     } else if (isTouchDevice()) {
       data.inputMode = 'touch';

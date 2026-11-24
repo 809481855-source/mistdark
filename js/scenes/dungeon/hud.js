@@ -5,9 +5,9 @@
   const { W, H, ARENA_W, ARENA_H } = DG.scenes.dungeon.size;
 
   Object.assign(DG.scenes.dungeon.prototype, {
-  buildHud() {
-    const el = U.el('div', 'dungeon-ui');
-    const slots = this.skillList.map((sk, i) => {
+  // 技能条槽位 HTML：首屏构建与战斗中重建共用同一份模板
+  skillStripHtml() {
+    return this.skillList.map((sk, i) => {
       const cd = i === 0 ? '' : ` · 冷却 ${U.round(this.skillCooldown(sk), 1)}s`;
       const art = sk.icon
         ? `<img src="${sk.icon}" alt="">`
@@ -18,6 +18,32 @@
         `<div class="cdtext" data-cdt="${i}"></div>` +
       `</div>`;
     }).join('');
+  },
+  // 战斗中升级解锁技能 / 换装改变冷却后，按最新 skillList 重建技能条并重绑点击
+  bindStripSlots() {
+    if (!this.hud) return;
+    const host = this.hud.querySelector('.strip-slots');
+    if (!host) return;
+    host.innerHTML = this.skillStripHtml();
+    this.$cd = Array.from(host.querySelectorAll('[data-cd]'));
+    this.$cdt = Array.from(host.querySelectorAll('[data-cdt]'));
+    // 槽位数量变化后清掉旧索引的缓存，避免冷却层与 "ready" 状态错位
+    if (this._hudCache) {
+      for (let i = 0; i < 12; i++) {
+        delete this._hudCache['cd' + i];
+        delete this._hudCache['cdt' + i];
+        delete this._hudCache['cdr' + i];
+      }
+    }
+    host.querySelectorAll('.strip-slot[data-slot]').forEach(slot => {
+      slot.addEventListener('click', () => {
+        this.openPanel(done => DG.ui.openSkills(this.char, () => this.updateHud(), { onClose: done }));
+      });
+    });
+  },
+  buildHud() {
+    const el = U.el('div', 'dungeon-ui');
+    const slots = this.skillStripHtml();
     // 技能图标全职业共用，装备图标按职业取用
     const skillIcon = DG.data.iconFor(this.char.cls, 'skill');
     const equipIcon = DG.data.iconFor(this.char.cls, 'equip');
@@ -158,6 +184,13 @@
     this.autoBlocked = 0;
     this.autoDetour = null;
     this.autoDecision = null;
+    if (this.autoMode) {
+      this.autoStartedAt = this.time || 0;
+      this.autoIgnore = null;
+      this.autoIgnorePack = null;
+      this.autoIgnoreOrb = null;
+      this.autoIgnoreOrbUntil = 0;
+    }
     this.syncAutoButton();
     this.announce(this.autoMode ? '自动战斗已开启' : '自动战斗已关闭', 1100);
   },

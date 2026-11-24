@@ -153,6 +153,9 @@
       } else if (goal && goal.kind === 'pack' && this.autoPack) {
         this.autoIgnorePack = this.autoPack;
         this.autoIgnorePackUntil = now + 10;
+      } else if (goal && goal.kind === 'orb' && goal.orb) {
+        this.autoIgnoreOrb = goal.orb;
+        this.autoIgnoreOrbUntil = now + 8;
       }
       // 首领不能放弃：不进探索模式，下一帧重新贴身打
       this.autoExploreUntil = bossGoal ? 0 : now + 6;
@@ -213,6 +216,7 @@
       let best = null, bestD = reach;
       for (const d of this.drops || []) {
         if (d.kind !== 'orb') continue;
+        if (d === this.autoIgnoreOrb && (this.autoIgnoreOrbUntil || 0) > (this.time || 0)) continue;
         const dist = U.dist(this.player, d);
         if (dist >= bestD) continue;
         // 只追直线可达或很近的球，避免为了捡球绕远路被围死
@@ -291,6 +295,7 @@
       // 目标临时不可达的黑名单，过期后重新尝试
       if (this.autoIgnore && this.autoIgnoreUntil < now) this.autoIgnore = null;
       if (this.autoIgnorePack && this.autoIgnorePackUntil < now) this.autoIgnorePack = null;
+      if (this.autoIgnoreOrb && this.autoIgnoreOrbUntil < now) this.autoIgnoreOrb = null;
       // 残血先捡恢复球：自动战斗优先保命，再继续输出
       const orb = this.autoHealOrbTarget();
       if (orb) {
@@ -308,7 +313,7 @@
       const pendingPacks = (this.chunkPacks || []).some(p => !p.spawned && p !== this.autoIgnorePack);
       // 长时间没有击杀（疑似被地形/怪群卡住）时放开“只打当前区块”的限制，
       // 让 AI 能直接去清掉地图上残留的怪，避免在空区块里反复打转
-      const stalled = now - (this.lastKillTime == null ? now : this.lastKillTime) > 45;
+      const stalled = now - (this.lastKillTime == null ? (this.autoStartedAt || now) : this.lastKillTime) > 45;
       let best = null, bestScore = Infinity, bestDist = Infinity;
       if (!exploring) {
         for (const m of this.monsters) {
@@ -649,7 +654,7 @@
       }
       // 兜底：自动模式长时间零击杀（>30s）时，把 AI 死磕的那只怪挪到玩家外围的开阔地。
       // 极少数怪会被隔间/墙体锁死、永远走不过来，不兜底就会卡死通关进度
-      if (now - (this.lastKillTime == null ? now : this.lastKillTime) < 30) return;
+      if (now - (this.lastKillTime == null ? (this.autoStartedAt || now) : this.lastKillTime) < 30) return;
       const goalM = this.autoGoal && this.autoGoal.monster;
       if (!goalM || goalM.dead || goalM.boss) return;
       if (now < (this.autoRelocateAt || 0)) return;
@@ -834,13 +839,6 @@
       w.ftick -= dt;
       const show = w.ftick <= 0;
       if (show) w.ftick += 0.5;
-      w.gritTick = (w.gritTick || 0) - dt;
-      if (w.gritTick <= 0) {
-        w.gritTick += 0.2;
-        this.addGritFx('barbWhirlDust', this.player.x, this.player.y + 12, {
-          angle: this.whirlSpin || 0, radius: w.radius * 0.8, color: '#755247', life: 0.34
-        });
-      }
       w.tick -= dt;
       if (w.tick <= 0) {
         w.tick += 0.1;
@@ -994,9 +992,6 @@
       const fx = DG.art.barbarian;
       const arc = fx ? fx.slashArc : this.skillArc(st.sk);
       const reach = fx ? fx.slashReach : st.sk.range;
-      this.addGritFx('barbCleaveGrit', this.player.x, this.player.y - 26, {
-        angle: st.ang, radius: reach, color: '#a85b43', life: 0.22
-      });
       for (const m of this.monsters) {
         if (m.dead) continue;
         if (U.dist(this.player, m) > reach + m.r) continue;
@@ -1055,9 +1050,6 @@
         });
       }
       this.addBurst(this.player.x, this.player.y - 24, '#ffe9a8', 10);
-      this.addGritFx('barbRoarPressure', this.player.x, this.player.y + 14, {
-        radius: r.radius, color: '#b58a5d', life: 0.58
-      });
       this.shake = Math.max(this.shake, 0.3);
       // 音效：人声吼叫 + 合成冲击波，两层叠在一起
       if (DG.audio) {
@@ -1406,9 +1398,6 @@
             });
           }
           this.addRing(ox, oy, 8, 42, '#d99a63', 0.26);
-          this.addGritFx('barbChargeBreak', nx, ny + this.player.r * 0.55, {
-            angle: ang, radius: 72, color: '#9d513d', life: 0.32
-          });
 
           let stunned = 0;
           for (const m of this.monsters) {
@@ -1573,11 +1562,6 @@
         hit: []
       });
       this.addBurst(this.player.x + Math.cos(ang) * 22, this.player.y + Math.sin(ang) * 22, sk.color, sk.id === 'snipe' ? 5 : 3);
-      if (sk.id === 'shockwave') {
-        this.addGritFx('barbShockRift', mz.x, mz.y + 10, {
-          angle: ang, radius: 54, color: '#b86843', life: 0.24
-        });
-      }
     }
   });
 })();

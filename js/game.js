@@ -64,6 +64,10 @@
       // 登录界面已经渲染，撤掉静态启动画面（背景图若未到还有渐变兜底，不会黑屏）
       requestAnimationFrame(() => this.hideBoot());
       this.registerServiceWorker();
+      // 事件回调 / 定时器里的异常同样不该静默，统一报到顶部提示
+      window.addEventListener('error', (e) => {
+        if (e && e.error) this.reportError(e.error);
+      });
     },
 
     // 注册本地缓存：线上服务器对所有资源返回 no-store，浏览器不会缓存，
@@ -425,10 +429,33 @@
     loop(ts) {
       const dt = Math.min(0.05, this.lastTs ? (ts - this.lastTs) / 1000 : 0);
       this.lastTs = ts;
-      if (this.dungeon && !this.dungeon.finished) {
-        this.dungeon.frame(dt);
+      // 单帧异常不能中断主循环：以前一帧报错就不再排下一帧，整个画面会静止不动。
+      // 这里兜住并把首条错误显示在顶部，方便定位问题。
+      try {
+        if (this.dungeon && !this.dungeon.finished) {
+          this.dungeon.frame(dt);
+        }
+      } catch (err) {
+        this.reportError(err);
       }
       requestAnimationFrame((t) => this.loop(t));
+    },
+
+    // 帧循环异常兜底：控制台留完整堆栈，画面上方留一行提示（15 秒后自动消失）
+    reportError(err) {
+      if (this._errCount == null) this._errCount = 0;
+      this._errCount++;
+      if (this._errCount <= 3) console.error('[DG] 帧循环异常 #' + this._errCount, err);
+      if (this._errShown) return;
+      this._errShown = true;
+      const text = (err && (err.stack || err.message)) || String(err);
+      const bar = document.createElement('div');
+      bar.textContent = '运行异常：' + String(text).split('\n').slice(0, 2).join(' | ');
+      bar.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:2147483647;' +
+        'background:#7a1f1f;color:#fff;font:12px/1.6 monospace;padding:6px 8px;' +
+        'white-space:pre-wrap;word-break:break-all;pointer-events:none;';
+      document.body.appendChild(bar);
+      setTimeout(() => { if (bar.parentNode) bar.remove(); }, 15000);
     }
   };
 
