@@ -7332,14 +7332,9 @@
 
 
 ;
-/* ==== js/art/monsters.js ==== */
-/* 美术 · 小怪：矢量分件角色（固定规范见 docs/monster-pipeline.md）
- * 设计坐标系：脚底原点 (0,0)，向上为负 Y，总高 DESIGN_H。
- * 分件顺序：腿 → 长袍 → 胸饰 → 头（脸 → 头巾 → 角 → 耳 → 毛簇 → 眼 → 鼻嘴）
- * 动作由 m.moving / m.walkPhase / m.action 驱动：
- *   idle → walk → windup → strike → recover
- * 用法：DG.art.monsters.draw(ctx, m, { t })
- *   ctx 已平移到怪物中心（与首领一致），内部按脚底贴地锚定。
+/* ==== js/art/monsters/art.js ==== */
+/* 美术 · 小怪绘制基础：调色板与公共绘制工具（自 js/art/monsters.js 拆出）
+ * 统一挂到 DG.art.monsterArt，供 monsters/draw.js 与 monsters.js 取用。
  */
 (function () {
   const DG = window.DG;
@@ -7825,6 +7820,71 @@
     drawHead(ctx, pal, pose);
   }
 
+  function drawStubLeg(ctx, x, rot, lift, fill, shade, pal) {
+    ctx.save();
+    ctx.translate(x, -12 - lift);
+    ctx.rotate(rot);
+    ctx.beginPath();
+    ctx.moveTo(-4, 0);
+    ctx.lineTo(-4.5, 7);
+    ctx.quadraticCurveTo(-4.5, 12, -1, 12);
+    ctx.lineTo(3.5, 12);
+    ctx.quadraticCurveTo(5.5, 10, 4.5, 6);
+    ctx.lineTo(3.5, 0);
+    ctx.closePath();
+    fs(ctx, fill, pal, 2.2);
+    ctx.beginPath();
+    ctx.ellipse(0, 8, 2.4, 2.8, 0, 0, PI2);
+    ctx.fillStyle = shade;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawWolfLeg(ctx, x, swing, lift, fill, pal) {
+    ctx.save();
+    ctx.translate(x, -24 - lift);
+    ctx.rotate(swing);
+    ctx.beginPath();
+    ctx.moveTo(-4.5, 0);
+    ctx.quadraticCurveTo(-6.5, 12, -4, 20);
+    ctx.lineTo(2, 22);
+    ctx.quadraticCurveTo(6, 14, 4.5, 0);
+    ctx.closePath();
+    fs(ctx, fill, pal, 2.2);
+    ctx.strokeStyle = pal.claw;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(-3.4, 21); ctx.lineTo(-3.4, 25);
+    ctx.moveTo(0.4, 22); ctx.lineTo(0.4, 26);
+    ctx.moveTo(3.2, 21); ctx.lineTo(3.2, 25);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  DG.art.monsterArt = {
+    PI2, DESIGN_H, ART_H, NECK, DARK_FILTER_TEX, clamp, easeOut,
+    PAL, FLASH_PAL, MUSH_PAL, PUMPKIN_PAL, SLIME_PAL, MUSH_FLASH, PUMPKIN_FLASH, SLIME_FLASH,
+    WOLF_PAL, SKEL_PAL, MIST_PAL, WOLF_FLASH, SKEL_FLASH, MIST_FLASH,
+    FROSTWOLF_PAL, BONEKNIGHT_PAL, FROSTSLIME_PAL, FROSTWOLF_FLASH, BONEKNIGHT_FLASH, FROSTSLIME_FLASH,
+    MIMIC_PAL, MIMIC_FLASH, MAW_PAL, DOC_PAL, WAR_PAL, MAW_FLASH, DOC_FLASH, WAR_FLASH,
+    dimHex, dimPal, whitePal, rgba, fs,
+    drawLeg, drawRobe, roundBar, facePath, drawEye, drawHead, drawPea, drawStubLeg, drawWolfLeg
+  };
+})();
+
+
+;
+/* ==== js/art/monsters/draw.js ==== */
+/* 美术 · 小怪绘制：各怪物的 pose 与 draw 函数、贴图分件与专属特效（自 js/art/monsters.js 拆出）
+ * 公共调色板与绘制工具取自 DG.art.monsterArt；贴图缓存与 defs 留在 monsters.js，
+ * 贴图缓存接口由 monsters.js 回填到 DG.art.monsterDraw 供本文件运行时取用。
+ */
+(function () {
+  const DG = window.DG;
+  DG.art = DG.art || {};
+  const {
+    PI2, clamp, easeOut, rgba, fs, roundBar, drawEye, drawStubLeg, drawWolfLeg
+  } = DG.art.monsterArt;
   // ---------- 批次一：菌帽枪手 ----------
   function poseMusketeer(m, t, seed) {
     const p = {
@@ -7852,26 +7912,6 @@
       p.capRot -= 0.1 * e;
     }
     return p;
-  }
-
-  function drawStubLeg(ctx, x, rot, lift, fill, shade, pal) {
-    ctx.save();
-    ctx.translate(x, -12 - lift);
-    ctx.rotate(rot);
-    ctx.beginPath();
-    ctx.moveTo(-4, 0);
-    ctx.lineTo(-4.5, 7);
-    ctx.quadraticCurveTo(-4.5, 12, -1, 12);
-    ctx.lineTo(3.5, 12);
-    ctx.quadraticCurveTo(5.5, 10, 4.5, 6);
-    ctx.lineTo(3.5, 0);
-    ctx.closePath();
-    fs(ctx, fill, pal, 2.2);
-    ctx.beginPath();
-    ctx.ellipse(0, 8, 2.4, 2.8, 0, 0, PI2);
-    ctx.fillStyle = shade;
-    ctx.fill();
-    ctx.restore();
   }
 
   function drawMusketeer(ctx, pal, p) {
@@ -8370,27 +8410,6 @@
       }
     }
     return p;
-  }
-
-  function drawWolfLeg(ctx, x, swing, lift, fill, pal) {
-    ctx.save();
-    ctx.translate(x, -24 - lift);
-    ctx.rotate(swing);
-    ctx.beginPath();
-    ctx.moveTo(-4.5, 0);
-    ctx.quadraticCurveTo(-6.5, 12, -4, 20);
-    ctx.lineTo(2, 22);
-    ctx.quadraticCurveTo(6, 14, 4.5, 0);
-    ctx.closePath();
-    fs(ctx, fill, pal, 2.2);
-    ctx.strokeStyle = pal.claw;
-    ctx.lineWidth = 1.6;
-    ctx.beginPath();
-    ctx.moveTo(-3.4, 21); ctx.lineTo(-3.4, 25);
-    ctx.moveTo(0.4, 22); ctx.lineTo(0.4, 26);
-    ctx.moveTo(3.2, 21); ctx.lineTo(3.2, 25);
-    ctx.stroke();
-    ctx.restore();
   }
 
   function drawWolf(ctx, pal, p) {
@@ -9747,57 +9766,6 @@
     ctx.restore();
   }
 
-  // ---------- 批次五：图鉴裁切贴图小怪 ----------
-  // 直接使用参考图鉴中的角色，不重绘；首次加载缓存画布与白闪剪影，运行时只做 drawImage。
-  const texCache = {};
-
-  function texSource(src) {
-    let s = texCache[src];
-    if (s) return s;
-    s = {
-      src, img: new Image(), ready: false, failed: false,
-      canvas: null, flash: null, w: 0, h: 0, bw: 0, bh: 0
-    };
-    s.img.onload = () => {
-      const w = s.img.naturalWidth;
-      const h = s.img.naturalHeight;
-      if (!w || !h) return;
-      s.w = w;
-      s.h = h;
-      s.ready = true;
-      // 运行时显示高度约 82~120px，原始素材往往大得多。这里把暗色调与白闪
-      // 一次性烘焙到接近显示尺寸（每帧只需一次小图 drawImage，成本极低）。
-      const MAXH = 192;
-      const sc = Math.min(1, MAXH / h);
-      const bw = Math.max(1, Math.round(w * sc));
-      const bh = Math.max(1, Math.round(h * sc));
-      s.bw = bw;
-      s.bh = bh;
-      // 暗色调只烘焙一次，运行时不再逐帧走 ctx.filter 离屏滤镜
-      const dc = document.createElement('canvas');
-      dc.width = bw;
-      dc.height = bh;
-      const dg = dc.getContext('2d');
-      dg.imageSmoothingQuality = 'high';   // 仅烘焙时用高质量，运行时零成本
-      dg.filter = DARK_FILTER_TEX;
-      dg.drawImage(s.img, 0, 0, w, h, 0, 0, bw, bh);
-      s.dark = dc;
-      const f = document.createElement('canvas');
-      f.width = bw;
-      f.height = bh;
-      const fg = f.getContext('2d');
-      fg.drawImage(dc, 0, 0);
-      fg.globalCompositeOperation = 'source-atop';
-      fg.fillStyle = '#ffffff';
-      fg.fillRect(0, 0, bw, bh);
-      s.flash = f;
-    };
-    s.img.onerror = () => { s.failed = true; };
-    DG.assets.assign(s.img, src);
-    texCache[src] = s;
-    return s;
-  }
-
   // 分件贴图：同一张图按部件矩形拆开绘制，绕接缝枢轴做微幅摆动。
   // 贴图本身不做任何修改；相邻部件在接缝处相互重叠，转动时不会露缝。
   function drawParts(ctx, s, parts, m, t, seed, w, h) {
@@ -9855,8 +9823,8 @@
   };
 
   function drawTex(ctx, m, d, t) {
-    const s = texSource(d.src);
-    const h = displayHeight(m);
+    const s = DG.art.monsterDraw.texSource(d.src);
+    const h = DG.art.monsterDraw.displayHeight(m);
     const seed = m.seed || 0;
     const a = m.action;
     const windup = !!(a && a.phase === 'windup');
@@ -9906,96 +9874,6 @@
         ctx.drawImage(s.flash, -w / 2, -h, w, h);
         ctx.globalAlpha = 1;
       }
-    }
-    ctx.restore();
-  }
-
-  // ---------- 对外接口 ----------
-  // 全部小怪统一使用本轮新贴图：src 走 drawTex（脚底锚定 + 呼吸 / 前冲 / 受击白闪）
-  const defs = {
-    wolf: { h: 62, name: '腐化野狼', src: 'assets/monsters/wolf.png' },
-    skeleton: { h: 80, name: '骷髅战士', src: 'assets/monsters/skeleton.png' },
-    mistwalker: { h: 82, name: '迷雾行者', src: 'assets/monsters/mistwalker.png' },
-    pea: { h: 52, name: '孢帽菌人', src: 'assets/monsters/pea.png' },
-    musketeer: { h: 66, name: '菌帽枪手', src: 'assets/monsters/musketeer.png' },
-    pumpkin: { h: 62, name: '裂口刈手', src: 'assets/monsters/pumpkin.png' },
-    slime: { h: 54, name: '赤红史莱姆', src: 'assets/monsters/slime.png' },
-    frostwolf: { h: 64, name: '霜牙狼', src: 'assets/monsters/frostwolf.png' },
-    boneknight: { h: 84, name: '缠尸卫士', src: 'assets/monsters/boneknight.png' },
-    frostslime: { h: 66, name: '霜颅骸骨', src: 'assets/monsters/frostslime.png' },
-    bat: { h: 44, name: '血翼蝠', src: 'assets/monsters/bat.png' },
-    hornet: { h: 44, name: '毒刺蜂', src: 'assets/monsters/hornet.png' },
-    beetle: { h: 54, name: '青壳甲虫', src: 'assets/monsters/beetle.png' },
-    cinderraven: { h: 52, name: '黑焰蝠', src: 'assets/monsters/cinderraven.png' },
-    candle: { h: 74, name: '魔锅炉怪', src: 'assets/monsters/candle.png' },
-    urchin: { h: 66, name: '棘刺仙人掌', src: 'assets/monsters/urchin.png' },
-    deepfin: { h: 54, name: '幽蓝喙兽', src: 'assets/monsters/deepfin.png' },
-    cowlbandit: { h: 62, name: '游荡菌人', src: 'assets/monsters/cowlbandit.png' },
-    angler: { h: 46, name: '渊灯兽', src: 'assets/monsters/angler.png' },
-    fleece: { h: 60, name: '绷带猫', src: 'assets/monsters/fleece.png' },
-    foxraider: { h: 64, name: '灰狐掠手', src: 'assets/monsters/foxraider.png' },
-    emberdrake: { h: 62, name: '赤棘龙', src: 'assets/monsters/emberdrake.png' },
-    venomlisk: { h: 58, name: '绿鳞蛇', src: 'assets/monsters/venomlisk.png' },
-    bulwark: { h: 58, name: '铁背野猪', src: 'assets/monsters/bulwark.png' },
-    mummy: { h: 86, name: '墓穴木乃伊', src: 'assets/monsters/mummy.png' },
-    mawflower: { h: 92, name: '噬人蠕虫', src: 'assets/monsters/mawflower.png' },
-    plaguedoc: { h: 96, name: '瘟疫医师', src: 'assets/monsters/plaguedoc.png' },
-    warlock: { h: 86, name: '深渊巫师', src: 'assets/monsters/warlock.png' }
-  };
-
-  function displayHeight(m) {
-    const d = defs[m.art];
-    const base = (d ? d.h : ART_H) * (m.artScale || 1);
-    // 体型偏小的小怪统一放大 10%：按原始美术高度判定，精英加成不参与
-    const small = base <= 52 ? 1.1 : 1;
-    return base * small * (m.elite ? 1.18 : 1);
-  }
-
-  function draw(ctx, m, opts) {
-    const d = defs[m.art];
-    if (!d) return;
-    const t = (opts && opts.t) || 0;
-    if (d.src) {
-      drawTex(ctx, m, d, t);
-      return;
-    }
-    const seed = m.seed || 0;
-    const h = displayHeight(m);
-    const k = h / (d.designH || DESIGN_H);
-    const pose = (d.pose || computePose)(m, t, seed);
-    const flip = Math.cos(m.facing || 0) < -0.05;
-
-    ctx.save();
-    ctx.translate(pose.dx, m.r * 0.72 + pose.dy - (m.hop || 0));
-    ctx.rotate(pose.rot);
-    ctx.scale(k * (flip ? -1 : 1) * pose.sx, k * pose.sy);
-    ctx.lineJoin = 'round';
-    ctx.lineCap = 'round';
-
-    d.draw(ctx, dimPal(d.pal || PAL), pose);
-    if (m.flash > 0) {
-      ctx.globalAlpha = Math.min(0.62, m.flash / 0.13);
-      d.draw(ctx, d.flashPal || FLASH_PAL, pose);
-      ctx.globalAlpha = 1;
-    }
-
-    // 出手瞬间：近战怪嘴/武器前的亮光，让咬击在不看特效时也能读出
-    const g0 = d.strikeGlow;
-    if (g0 && m.action && m.action.phase === 'strike') {
-      const e = easeOut(clamp(m.action.t / Math.max(0.01, m.action.strike), 0, 1));
-      const gx = g0.x + e * g0.dx;
-      const gy = g0.y;
-      const gr = g0.r + e * g0.dr;
-      const g = ctx.createRadialGradient(gx, gy, 1, gx, gy, gr);
-      g.addColorStop(0, rgba(m.fxColor || '#cbe8a4', 0.26 * e));
-      g.addColorStop(1, rgba(m.fxColor || '#cbe8a4', 0));
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.arc(gx, gy, gr, 0, PI2);
-      ctx.fill();
-      ctx.restore();
     }
     ctx.restore();
   }
@@ -11220,6 +11098,171 @@
     ctx.restore();
   }
 
+  DG.art.monsterDraw = { drawTex, drawEffect, drawFxSkin };
+})();
+
+
+;
+/* ==== js/art/monsters.js ==== */
+/* 美术 · 小怪：矢量分件角色（固定规范见 docs/monster-pipeline.md）
+ * 设计坐标系：脚底原点 (0,0)，向上为负 Y，总高 DESIGN_H。
+ * 分件顺序：腿 → 长袍 → 胸饰 → 头（脸 → 头巾 → 角 → 耳 → 毛簇 → 眼 → 鼻嘴）
+ * 动作由 m.moving / m.walkPhase / m.action 驱动：
+ *   idle → walk → windup → strike → recover
+ * 用法：DG.art.monsters.draw(ctx, m, { t })
+ *   ctx 已平移到怪物中心（与首领一致），内部按脚底贴地锚定。
+ * 拆分说明：调色板与公共绘制工具在 monsters/art.js，各怪物 pose/draw 与特效在 monsters/draw.js，
+ * 本文件保留对外接口（defs、贴图缓存烘焙、draw / preload / stats）。
+ */
+(function () {
+  const DG = window.DG;
+  DG.art = DG.art || {};
+  const {
+    PI2, DESIGN_H, ART_H, DARK_FILTER_TEX, clamp, easeOut, PAL, FLASH_PAL, dimPal, rgba
+  } = DG.art.monsterArt;
+  const { drawTex, drawEffect, drawFxSkin } = DG.art.monsterDraw;
+  // ---------- 批次五：图鉴裁切贴图小怪 ----------
+  // 直接使用参考图鉴中的角色，不重绘；首次加载缓存画布与白闪剪影，运行时只做 drawImage。
+  const texCache = {};
+
+  function texSource(src) {
+    let s = texCache[src];
+    if (s) return s;
+    s = {
+      src, img: new Image(), ready: false, failed: false,
+      canvas: null, flash: null, w: 0, h: 0, bw: 0, bh: 0
+    };
+    s.img.onload = () => {
+      const w = s.img.naturalWidth;
+      const h = s.img.naturalHeight;
+      if (!w || !h) return;
+      s.w = w;
+      s.h = h;
+      s.ready = true;
+      // 运行时显示高度约 82~120px，原始素材往往大得多。这里把暗色调与白闪
+      // 一次性烘焙到接近显示尺寸（每帧只需一次小图 drawImage，成本极低）。
+      const MAXH = 192;
+      const sc = Math.min(1, MAXH / h);
+      const bw = Math.max(1, Math.round(w * sc));
+      const bh = Math.max(1, Math.round(h * sc));
+      s.bw = bw;
+      s.bh = bh;
+      // 暗色调只烘焙一次，运行时不再逐帧走 ctx.filter 离屏滤镜
+      const dc = document.createElement('canvas');
+      dc.width = bw;
+      dc.height = bh;
+      const dg = dc.getContext('2d');
+      dg.imageSmoothingQuality = 'high';   // 仅烘焙时用高质量，运行时零成本
+      dg.filter = DARK_FILTER_TEX;
+      dg.drawImage(s.img, 0, 0, w, h, 0, 0, bw, bh);
+      s.dark = dc;
+      const f = document.createElement('canvas');
+      f.width = bw;
+      f.height = bh;
+      const fg = f.getContext('2d');
+      fg.drawImage(dc, 0, 0);
+      fg.globalCompositeOperation = 'source-atop';
+      fg.fillStyle = '#ffffff';
+      fg.fillRect(0, 0, bw, bh);
+      s.flash = f;
+    };
+    s.img.onerror = () => { s.failed = true; };
+    DG.assets.assign(s.img, src);
+    texCache[src] = s;
+    return s;
+  }
+
+
+  // ---------- 对外接口 ----------
+  // 全部小怪统一使用本轮新贴图：src 走 drawTex（脚底锚定 + 呼吸 / 前冲 / 受击白闪）
+  const defs = {
+    wolf: { h: 62, name: '腐化野狼', src: 'assets/monsters/wolf.png' },
+    skeleton: { h: 80, name: '骷髅战士', src: 'assets/monsters/skeleton.png' },
+    mistwalker: { h: 82, name: '迷雾行者', src: 'assets/monsters/mistwalker.png' },
+    pea: { h: 52, name: '孢帽菌人', src: 'assets/monsters/pea.png' },
+    musketeer: { h: 66, name: '菌帽枪手', src: 'assets/monsters/musketeer.png' },
+    pumpkin: { h: 62, name: '裂口刈手', src: 'assets/monsters/pumpkin.png' },
+    slime: { h: 54, name: '赤红史莱姆', src: 'assets/monsters/slime.png' },
+    frostwolf: { h: 64, name: '霜牙狼', src: 'assets/monsters/frostwolf.png' },
+    boneknight: { h: 84, name: '缠尸卫士', src: 'assets/monsters/boneknight.png' },
+    frostslime: { h: 66, name: '霜颅骸骨', src: 'assets/monsters/frostslime.png' },
+    bat: { h: 44, name: '血翼蝠', src: 'assets/monsters/bat.png' },
+    hornet: { h: 44, name: '毒刺蜂', src: 'assets/monsters/hornet.png' },
+    beetle: { h: 54, name: '青壳甲虫', src: 'assets/monsters/beetle.png' },
+    cinderraven: { h: 52, name: '黑焰蝠', src: 'assets/monsters/cinderraven.png' },
+    candle: { h: 74, name: '魔锅炉怪', src: 'assets/monsters/candle.png' },
+    urchin: { h: 66, name: '棘刺仙人掌', src: 'assets/monsters/urchin.png' },
+    deepfin: { h: 54, name: '幽蓝喙兽', src: 'assets/monsters/deepfin.png' },
+    cowlbandit: { h: 62, name: '游荡菌人', src: 'assets/monsters/cowlbandit.png' },
+    angler: { h: 46, name: '渊灯兽', src: 'assets/monsters/angler.png' },
+    fleece: { h: 60, name: '绷带猫', src: 'assets/monsters/fleece.png' },
+    foxraider: { h: 64, name: '灰狐掠手', src: 'assets/monsters/foxraider.png' },
+    emberdrake: { h: 62, name: '赤棘龙', src: 'assets/monsters/emberdrake.png' },
+    venomlisk: { h: 58, name: '绿鳞蛇', src: 'assets/monsters/venomlisk.png' },
+    bulwark: { h: 58, name: '铁背野猪', src: 'assets/monsters/bulwark.png' },
+    mummy: { h: 86, name: '墓穴木乃伊', src: 'assets/monsters/mummy.png' },
+    mawflower: { h: 92, name: '噬人蠕虫', src: 'assets/monsters/mawflower.png' },
+    plaguedoc: { h: 96, name: '瘟疫医师', src: 'assets/monsters/plaguedoc.png' },
+    warlock: { h: 86, name: '深渊巫师', src: 'assets/monsters/warlock.png' }
+  };
+
+  function displayHeight(m) {
+    const d = defs[m.art];
+    const base = (d ? d.h : ART_H) * (m.artScale || 1);
+    // 体型偏小的小怪统一放大 10%：按原始美术高度判定，精英加成不参与
+    const small = base <= 52 ? 1.1 : 1;
+    return base * small * (m.elite ? 1.18 : 1);
+  }
+
+  function draw(ctx, m, opts) {
+    const d = defs[m.art];
+    if (!d) return;
+    const t = (opts && opts.t) || 0;
+    if (d.src) {
+      drawTex(ctx, m, d, t);
+      return;
+    }
+    const seed = m.seed || 0;
+    const h = displayHeight(m);
+    const k = h / (d.designH || DESIGN_H);
+    const pose = (d.pose || computePose)(m, t, seed);
+    const flip = Math.cos(m.facing || 0) < -0.05;
+
+    ctx.save();
+    ctx.translate(pose.dx, m.r * 0.72 + pose.dy - (m.hop || 0));
+    ctx.rotate(pose.rot);
+    ctx.scale(k * (flip ? -1 : 1) * pose.sx, k * pose.sy);
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+
+    d.draw(ctx, dimPal(d.pal || PAL), pose);
+    if (m.flash > 0) {
+      ctx.globalAlpha = Math.min(0.62, m.flash / 0.13);
+      d.draw(ctx, d.flashPal || FLASH_PAL, pose);
+      ctx.globalAlpha = 1;
+    }
+
+    // 出手瞬间：近战怪嘴/武器前的亮光，让咬击在不看特效时也能读出
+    const g0 = d.strikeGlow;
+    if (g0 && m.action && m.action.phase === 'strike') {
+      const e = easeOut(clamp(m.action.t / Math.max(0.01, m.action.strike), 0, 1));
+      const gx = g0.x + e * g0.dx;
+      const gy = g0.y;
+      const gr = g0.r + e * g0.dr;
+      const g = ctx.createRadialGradient(gx, gy, 1, gx, gy, gr);
+      g.addColorStop(0, rgba(m.fxColor || '#cbe8a4', 0.26 * e));
+      g.addColorStop(1, rgba(m.fxColor || '#cbe8a4', 0));
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(gx, gy, gr, 0, PI2);
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
   function preload(ids) {
     const list = ids && ids.length ? ids : Object.keys(defs);
     for (const id of list) {
@@ -11238,6 +11281,10 @@
     }
     return { total, done };
   }
+
+  // 绘制层（monsters/draw.js）运行时需要取用贴图缓存与显示高度：回填到共享对象
+  DG.art.monsterDraw.texSource = texSource;
+  DG.art.monsterDraw.displayHeight = displayHeight;
 
   DG.art.monsters = {
     defs,
@@ -24209,6 +24256,12 @@
   ctx.closePath();
   }
 
+  // 拆分后的共享工具：地形、实体两个渲染子模块通过它取用（加载顺序：本文件先于两者）
+  DG.scenes.dungeonRender = {
+    W, H, ARENA_W, ARENA_H, U,
+    withAlpha, shapePath, RANGER_ARROW, TORNADO_SKIN, tornadoFx, buildTornadoWhite
+  };
+
   Object.assign(DG.scenes.dungeon.prototype, {
   draw() {
     const ctx = this.ctx;
@@ -24311,6 +24364,199 @@
     ctx.fill();
     ctx.restore();
   },
+  drawScreenOverlay(ctx) {
+    // 边缘暗角：预渲染成半分辨率离屏图后逐帧 drawImage。
+    // 整屏径向渐变填充在高分屏手机上每帧要重算数百万像素，是掉帧大户。
+    let vign = this._vignetteImg;
+    if (!vign) {
+      vign = document.createElement('canvas');
+      vign.width = Math.ceil(W / 2);
+      vign.height = Math.ceil(H / 2);
+      const vg = vign.getContext('2d');
+      vg.scale(0.5, 0.5);
+      const rg = vg.createRadialGradient(W / 2, H / 2, H * 0.42, W / 2, H / 2, H * 0.92);
+      rg.addColorStop(0, 'rgba(0,0,0,0)');
+      rg.addColorStop(1, 'rgba(0,0,0,0.62)');
+      vg.fillStyle = rg;
+      vg.fillRect(0, 0, W, H);
+      this._vignetteImg = vign;
+    }
+    ctx.drawImage(vign, 0, 0, W, H);
+
+    // 受击红闪
+    if (this.hurtFlash > 0) {
+      const hf = ctx.createRadialGradient(W / 2, H / 2, H * 0.28, W / 2, H / 2, H * 0.8);
+      hf.addColorStop(0, 'rgba(150, 20, 15, 0)');
+      hf.addColorStop(1, `rgba(150, 20, 15, ${this.hurtFlash * 0.55})`);
+      ctx.fillStyle = hf;
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    // 首领降临红屏：开场整屏压红，随后边缘脉动收束（渐变对象缓存，仅调 alpha）
+    if (this.bossFlash > 0) {
+      let bv = this._bossVignette;
+      if (!bv) {
+        bv = ctx.createRadialGradient(W / 2, H / 2, H * 0.1, W / 2, H / 2, H * 0.88);
+        bv.addColorStop(0, 'rgba(210, 36, 26, 0.05)');
+        bv.addColorStop(0.55, 'rgba(214, 40, 30, 0.2)');
+        bv.addColorStop(1, 'rgba(232, 44, 32, 0.62)');
+        this._bossVignette = bv;
+      }
+      const k = Math.min(1, this.bossFlash / 1.3);
+      const pulse = 0.72 + 0.28 * Math.sin((1.6 - this.bossFlash) * 22);
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, 0.35 + k * 0.65) * pulse;
+      ctx.fillStyle = bv;
+      ctx.fillRect(0, 0, W, H);
+      if (k > 0.62) {
+        ctx.globalAlpha = (k - 0.62) * 0.85;
+        ctx.fillStyle = 'rgba(168, 20, 14, 1)';
+        ctx.fillRect(0, 0, W, H);
+      }
+      ctx.restore();
+    }
+
+    this.drawMinimap(ctx);
+  },
+  // 小地图底图缓存：首次全量绘制，之后只补画刚揭开的格子，
+  // 避免每次探索推进都做一遍 90×96 全图填色（移动端很容易掉帧）
+  buildMinimapCache() {
+    const T = DG.scenes.dungeon.terrain;
+    const R = DG.scenes.dungeon.minimapRect;
+    const mw = R.w, mh = R.h;
+    const gw = (this.arenaW || T.COLS * T.TILE) / T.TILE;
+    const gh = (this.arenaH || T.ROWS * T.TILE) / T.TILE;
+    const sx = mw / gw;
+    const sy = mh / gh;
+    let c = this._minimapCanvas;
+    const full = !c;
+    if (!c) {
+      c = document.createElement('canvas');
+      c.width = mw;
+      c.height = mh;
+      this._minimapCanvas = c;
+    }
+    const g = c.getContext('2d');
+    const paint = (tx, ty) => {
+      g.fillStyle = this.isFloorTile(tx, ty)
+        ? 'rgba(120,150,128,.32)'
+        : 'rgba(26,34,30,.85)';
+      g.fillRect(tx * sx, ty * sy, Math.ceil(sx), Math.ceil(sy));
+    };
+    if (full) {
+      g.fillStyle = '#000';
+      g.fillRect(0, 0, mw, mh);
+      for (let ty = 0; ty < T.ROWS; ty++) {
+        for (let tx = 0; tx < T.COLS; tx++) {
+          if (this.explored[ty * T.COLS + tx]) paint(tx, ty);
+        }
+      }
+      this._minimapNew = null;
+    } else {
+      const list = this._minimapNew;
+      this._minimapNew = null;
+      if (list) {
+        for (let k = 0; k < list.length; k++) {
+          const i = list[k];
+          paint(i % T.COLS, (i / T.COLS) | 0);
+        }
+      }
+    }
+    this._minimapDirty = false;
+  },
+  // 小地图的屏幕区域：把 DOM 外框的位置换算回画布逻辑坐标。
+  // 画布固定按 810×1680 绘制，再等比缩放（cover）进舞台，
+  // 因此不能直接用 720 舞台里的写死坐标，否则地图会缩一圈并整体偏移。
+  minimapRectNow() {
+    // getBoundingClientRect 会强制同步布局，逐帧调用在手机上很贵；
+    // 400ms 内复用上次结果，转屏 / 改尺寸后最多半秒内自动跟上。
+    const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    if (this._mapRect && this._mapRectAt && now - this._mapRectAt < 400) return this._mapRect;
+    const c = this.canvas.getBoundingClientRect();
+    const f = this.$map && this.$map.getBoundingClientRect();
+    if (!f || !c.width || !c.height) return DG.scenes.dungeon.minimapRect;
+    const kx = W / c.width;
+    const ky = H / c.height;
+    const rect = {
+      x: (f.left - c.left) * kx,
+      y: (f.top - c.top) * ky,
+      w: f.width * kx,
+      h: f.height * ky
+    };
+    this._mapRect = rect;
+    this._mapRectAt = now;
+    return rect;
+  },
+  // 左上角小地图：只显示已探索区域、玩家位置与首领方位
+  drawMinimap(ctx) {
+    // 首领血条出现时同步屏蔽小地图（与 DOM 的 boss-mode 保持一致）
+    if (this.monsters.some(m => m.boss && !m.dead)) return;
+    const T = DG.scenes.dungeon.terrain;
+    const R = this.minimapRectNow();
+    const mx = R.x, my = R.y, mw = R.w, mh = R.h;
+    const gw = (this.arenaW || T.COLS * T.TILE) / T.TILE;
+    const gh = (this.arenaH || T.ROWS * T.TILE) / T.TILE;
+    const sx = mw / gw;
+    const sy = mh / gh;
+    ctx.save();
+    if (!this._minimapCanvas || this._minimapDirty) this.buildMinimapCache();
+    // 底图按外框实际大小拉伸绘制，保证与外框严丝合缝
+    ctx.drawImage(this._minimapCanvas, mx, my, mw, mh);
+
+    // 当前视野范围
+    const z = this.zoom || 1;
+    ctx.strokeStyle = 'rgba(255,255,255,.12)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(
+      mx + (this.camera.x - W / (2 * z)) / T.TILE * sx,
+      my + (this.camera.y - H / (2 * z)) / T.TILE * sy,
+      W / z / T.TILE * sx, H / z / T.TILE * sy
+    );
+
+    // 首领标记
+    const boss = this.monsters.find(m => m.boss && !m.dead);
+    if (boss) {
+      const bx = mx + boss.x / T.TILE * sx;
+      const by = my + boss.y / T.TILE * sy;
+      const pulse = 0.5 + Math.sin(this.time * 5) * 0.5;
+      ctx.fillStyle = `rgba(220,80,70,${0.3 + pulse * 0.4})`;
+      ctx.beginPath();
+      ctx.arc(bx, by, 5 + pulse * 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ff6a5e';
+      ctx.beginPath();
+      ctx.arc(bx, by, 2.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 玩家标记与朝向
+    const px = mx + this.player.x / T.TILE * sx;
+    const py = my + this.player.y / T.TILE * sy;
+    ctx.strokeStyle = 'rgba(159,230,173,.9)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    ctx.lineTo(px + Math.cos(this.player.facing) * 6, py + Math.sin(this.player.facing) * 6);
+    ctx.stroke();
+    ctx.fillStyle = '#9fe6ad';
+    ctx.beginPath();
+    ctx.arc(px, py, 2.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+  });
+})();
+
+
+;
+/* ==== js/scenes/dungeon/render/terrain.js ==== */
+/* 副本战斗 · 渲染地形：地块烘焙、分块缓存、地面与贴地立件绘制
+ * 方法仍挂在 DG.scenes.dungeon.prototype（原型方法名与签名不变）。
+ */
+(function () {
+  const DG = window.DG;
+  const { W, H, ARENA_W, ARENA_H } = DG.scenes.dungeonRender;
+  Object.assign(DG.scenes.dungeon.prototype, {
   // 进图时预热地块贴图：显存有限，手机端只烘焙出生点附近的若干块，
   // 其余在接近时再补，避免一次性占满低端机纹理内存。
   bakeTerrain() {
@@ -24709,6 +24955,21 @@
       AD.draw(ctx, p);
     }
   },
+  });
+})();
+
+
+;
+/* ==== js/scenes/dungeon/render/entities.js ==== */
+/* 副本战斗 · 渲染实体：宝箱、掉落、怪物、玩家、投射物、血条、恐惧图标、特效与飘字
+ * 方法仍挂在 DG.scenes.dungeon.prototype（原型方法名与签名不变）。
+ */
+(function () {
+  const DG = window.DG;
+  const {
+    H, U, withAlpha, shapePath, RANGER_ARROW, TORNADO_SKIN, tornadoFx, buildTornadoWhite
+  } = DG.scenes.dungeonRender;
+  Object.assign(DG.scenes.dungeon.prototype, {
   drawChests(ctx) {
     const v = this.viewRect(80);
     for (const c of this.chests || []) {
@@ -25917,186 +26178,6 @@
     }
     ctx.globalAlpha = 1;
   },
-  drawScreenOverlay(ctx) {
-    // 边缘暗角：预渲染成半分辨率离屏图后逐帧 drawImage。
-    // 整屏径向渐变填充在高分屏手机上每帧要重算数百万像素，是掉帧大户。
-    let vign = this._vignetteImg;
-    if (!vign) {
-      vign = document.createElement('canvas');
-      vign.width = Math.ceil(W / 2);
-      vign.height = Math.ceil(H / 2);
-      const vg = vign.getContext('2d');
-      vg.scale(0.5, 0.5);
-      const rg = vg.createRadialGradient(W / 2, H / 2, H * 0.42, W / 2, H / 2, H * 0.92);
-      rg.addColorStop(0, 'rgba(0,0,0,0)');
-      rg.addColorStop(1, 'rgba(0,0,0,0.62)');
-      vg.fillStyle = rg;
-      vg.fillRect(0, 0, W, H);
-      this._vignetteImg = vign;
-    }
-    ctx.drawImage(vign, 0, 0, W, H);
-
-    // 受击红闪
-    if (this.hurtFlash > 0) {
-      const hf = ctx.createRadialGradient(W / 2, H / 2, H * 0.28, W / 2, H / 2, H * 0.8);
-      hf.addColorStop(0, 'rgba(150, 20, 15, 0)');
-      hf.addColorStop(1, `rgba(150, 20, 15, ${this.hurtFlash * 0.55})`);
-      ctx.fillStyle = hf;
-      ctx.fillRect(0, 0, W, H);
-    }
-
-    // 首领降临红屏：开场整屏压红，随后边缘脉动收束（渐变对象缓存，仅调 alpha）
-    if (this.bossFlash > 0) {
-      let bv = this._bossVignette;
-      if (!bv) {
-        bv = ctx.createRadialGradient(W / 2, H / 2, H * 0.1, W / 2, H / 2, H * 0.88);
-        bv.addColorStop(0, 'rgba(210, 36, 26, 0.05)');
-        bv.addColorStop(0.55, 'rgba(214, 40, 30, 0.2)');
-        bv.addColorStop(1, 'rgba(232, 44, 32, 0.62)');
-        this._bossVignette = bv;
-      }
-      const k = Math.min(1, this.bossFlash / 1.3);
-      const pulse = 0.72 + 0.28 * Math.sin((1.6 - this.bossFlash) * 22);
-      ctx.save();
-      ctx.globalAlpha = Math.min(1, 0.35 + k * 0.65) * pulse;
-      ctx.fillStyle = bv;
-      ctx.fillRect(0, 0, W, H);
-      if (k > 0.62) {
-        ctx.globalAlpha = (k - 0.62) * 0.85;
-        ctx.fillStyle = 'rgba(168, 20, 14, 1)';
-        ctx.fillRect(0, 0, W, H);
-      }
-      ctx.restore();
-    }
-
-    this.drawMinimap(ctx);
-  },
-  // 小地图底图缓存：首次全量绘制，之后只补画刚揭开的格子，
-  // 避免每次探索推进都做一遍 90×96 全图填色（移动端很容易掉帧）
-  buildMinimapCache() {
-    const T = DG.scenes.dungeon.terrain;
-    const R = DG.scenes.dungeon.minimapRect;
-    const mw = R.w, mh = R.h;
-    const gw = (this.arenaW || T.COLS * T.TILE) / T.TILE;
-    const gh = (this.arenaH || T.ROWS * T.TILE) / T.TILE;
-    const sx = mw / gw;
-    const sy = mh / gh;
-    let c = this._minimapCanvas;
-    const full = !c;
-    if (!c) {
-      c = document.createElement('canvas');
-      c.width = mw;
-      c.height = mh;
-      this._minimapCanvas = c;
-    }
-    const g = c.getContext('2d');
-    const paint = (tx, ty) => {
-      g.fillStyle = this.isFloorTile(tx, ty)
-        ? 'rgba(120,150,128,.32)'
-        : 'rgba(26,34,30,.85)';
-      g.fillRect(tx * sx, ty * sy, Math.ceil(sx), Math.ceil(sy));
-    };
-    if (full) {
-      g.fillStyle = '#000';
-      g.fillRect(0, 0, mw, mh);
-      for (let ty = 0; ty < T.ROWS; ty++) {
-        for (let tx = 0; tx < T.COLS; tx++) {
-          if (this.explored[ty * T.COLS + tx]) paint(tx, ty);
-        }
-      }
-      this._minimapNew = null;
-    } else {
-      const list = this._minimapNew;
-      this._minimapNew = null;
-      if (list) {
-        for (let k = 0; k < list.length; k++) {
-          const i = list[k];
-          paint(i % T.COLS, (i / T.COLS) | 0);
-        }
-      }
-    }
-    this._minimapDirty = false;
-  },
-  // 小地图的屏幕区域：把 DOM 外框的位置换算回画布逻辑坐标。
-  // 画布固定按 810×1680 绘制，再等比缩放（cover）进舞台，
-  // 因此不能直接用 720 舞台里的写死坐标，否则地图会缩一圈并整体偏移。
-  minimapRectNow() {
-    // getBoundingClientRect 会强制同步布局，逐帧调用在手机上很贵；
-    // 400ms 内复用上次结果，转屏 / 改尺寸后最多半秒内自动跟上。
-    const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
-    if (this._mapRect && this._mapRectAt && now - this._mapRectAt < 400) return this._mapRect;
-    const c = this.canvas.getBoundingClientRect();
-    const f = this.$map && this.$map.getBoundingClientRect();
-    if (!f || !c.width || !c.height) return DG.scenes.dungeon.minimapRect;
-    const kx = W / c.width;
-    const ky = H / c.height;
-    const rect = {
-      x: (f.left - c.left) * kx,
-      y: (f.top - c.top) * ky,
-      w: f.width * kx,
-      h: f.height * ky
-    };
-    this._mapRect = rect;
-    this._mapRectAt = now;
-    return rect;
-  },
-  // 左上角小地图：只显示已探索区域、玩家位置与首领方位
-  drawMinimap(ctx) {
-    // 首领血条出现时同步屏蔽小地图（与 DOM 的 boss-mode 保持一致）
-    if (this.monsters.some(m => m.boss && !m.dead)) return;
-    const T = DG.scenes.dungeon.terrain;
-    const R = this.minimapRectNow();
-    const mx = R.x, my = R.y, mw = R.w, mh = R.h;
-    const gw = (this.arenaW || T.COLS * T.TILE) / T.TILE;
-    const gh = (this.arenaH || T.ROWS * T.TILE) / T.TILE;
-    const sx = mw / gw;
-    const sy = mh / gh;
-    ctx.save();
-    if (!this._minimapCanvas || this._minimapDirty) this.buildMinimapCache();
-    // 底图按外框实际大小拉伸绘制，保证与外框严丝合缝
-    ctx.drawImage(this._minimapCanvas, mx, my, mw, mh);
-
-    // 当前视野范围
-    const z = this.zoom || 1;
-    ctx.strokeStyle = 'rgba(255,255,255,.12)';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(
-      mx + (this.camera.x - W / (2 * z)) / T.TILE * sx,
-      my + (this.camera.y - H / (2 * z)) / T.TILE * sy,
-      W / z / T.TILE * sx, H / z / T.TILE * sy
-    );
-
-    // 首领标记
-    const boss = this.monsters.find(m => m.boss && !m.dead);
-    if (boss) {
-      const bx = mx + boss.x / T.TILE * sx;
-      const by = my + boss.y / T.TILE * sy;
-      const pulse = 0.5 + Math.sin(this.time * 5) * 0.5;
-      ctx.fillStyle = `rgba(220,80,70,${0.3 + pulse * 0.4})`;
-      ctx.beginPath();
-      ctx.arc(bx, by, 5 + pulse * 3, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#ff6a5e';
-      ctx.beginPath();
-      ctx.arc(bx, by, 2.4, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // 玩家标记与朝向
-    const px = mx + this.player.x / T.TILE * sx;
-    const py = my + this.player.y / T.TILE * sy;
-    ctx.strokeStyle = 'rgba(159,230,173,.9)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(px, py);
-    ctx.lineTo(px + Math.cos(this.player.facing) * 6, py + Math.sin(this.player.facing) * 6);
-    ctx.stroke();
-    ctx.fillStyle = '#9fe6ad';
-    ctx.beginPath();
-    ctx.arc(px, py, 2.6, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
   });
 })();
 
