@@ -271,7 +271,10 @@
       canvas.style.top = '0px';
     }
 
+    let closed = false;
     function close() {
+      if (closed) return;
+      closed = true;
       if (DG.audio) DG.audio.play('uiClose', { vol: 0.45, gap: 0.12 });
       document.removeEventListener('keydown', onKey);
       window.removeEventListener('resize', layout);
@@ -389,7 +392,11 @@
     }
 
     // 事件委托：根节点看信息，辅助节点消耗技能点激活
+    // 部分手机内置浏览器按下后不派发 click：pointerdown 起兜底计时，click 正常到达则取消
+    let closeTimer = 0;
     canvas.addEventListener('click', (e) => {
+      clearTimeout(closeTimer);
+      closeTimer = 0;
       if (e.target === screen) return;
       if (e.target.closest('[data-sk-close]')) { close(); return; }
 
@@ -430,6 +437,17 @@
       if (DG.audio) DG.audio.play('stageEquip', { vol: 0.5 });
       ui.toast(`已激活「${node.name}」· ${node.desc}`, 'gold');
       persist();
+    });
+
+    // 兜底：按下关闭按钮 350ms 内没有等来 click（部分 WebView 会吞掉）就直接关闭
+    canvas.addEventListener('pointerdown', (e) => {
+      if (!e.target.closest || !e.target.closest('[data-sk-close]')) return;
+      clearTimeout(closeTimer);
+      closeTimer = setTimeout(() => { closeTimer = 0; close(); }, 350);
+    });
+    canvas.addEventListener('pointercancel', () => {
+      clearTimeout(closeTimer);
+      closeTimer = 0;
     });
 
     render();

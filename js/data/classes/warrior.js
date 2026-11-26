@@ -17,9 +17,11 @@
     whirlwind: {
       id: 'whirlwind', name: '旋风', glyph: '旋', classId: 'warrior', icon: 'assets/ui/warrior/skill-whirlwind.png',
       unlock: 4,
-      type: 'aoeSelf', cooldown: 8, radius: 150, color: '#e08a56',
+      type: 'aoeSelf', cooldown: 8, radius: 150, duration: 1.6,
+      hitTimes: [0.1, 0.2, 0.3, 0.5, 0.6, 0.7, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
+      color: '#e08a56',
       mult: (lv) => 1.7 + 0.25 * (lv - 1),
-      desc: (lv) => `旋身 5 秒，期间移速 +30%、不可阻挡，持续对周身 ${150} 码内敌人造成每秒 <em>${pct((1.7 + 0.25 * (lv - 1)) * 0.5)}</em> 攻击力伤害。`
+      desc: (lv) => `旋身 1.6 秒，期间移速 +30%、不可阻挡，在固定的 13 个时点斩击周身 ${150} 码内敌人，总计造成 <em>${pct((1.7 + 0.25 * (lv - 1)) * 2.5)}</em> 攻击力伤害；命中敌人时召唤 3 道白色龙卷风，向四周散开后自动锁敌游走 5 秒。`
     },
     charge: {
       id: 'charge', name: '冲锋', glyph: '冲', classId: 'warrior', icon: 'assets/ui/warrior/skill-charge.png',

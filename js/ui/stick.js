@@ -46,8 +46,10 @@
       if (!layer.isConnected || dead) return;
       if (!DG.settings.touchEnabled()) return;
       if (id !== null) return;
-      if (root.querySelector('.modal-mask')) return;
       const hit = ev.target instanceof Element ? ev.target : null;
+      // 整屏面板 / 弹窗 / 加载遮罩上的操作不能被摇杆接管：
+      // 一旦这里 preventDefault，部分手机浏览器就不再派发 click，面板里的关闭与技能节点会点不动
+      if (hit && hit.closest('.modal-mask, .sk-screen, .eq-screen, .asset-mask')) return;
       if (hit && ignore && hit.closest(ignore)) return;
       ev.preventDefault();
       id = ev.pointerId;

@@ -203,6 +203,8 @@
   openPanel(open) {
     if (this.finished || this.ending || this._panelOpen) return;
     this._panelOpen = true;
+    // 面板打开时摇杆可能还处于拖动状态：先收杆，避免关闭面板后角色自己走
+    if (this._stick) this._stick.end();
     const wasPaused = this.paused;
     if (!wasPaused) this.setPaused(true, true);
     open(() => {

@@ -30,10 +30,10 @@
     {
       id: 'whirlwind', skill: 'whirlwind', name: '旋风斩',
       group: 'strong', unlock: 4,
-      desc: '旋身 5 秒，期间移速提高且不可阻挡，持续伤害周身敌人。',
+      desc: '旋身 1.6 秒，期间移速提高且不可阻挡，按固定节奏连斩周身敌人。',
       nodes: [
         { id: 'w_whirlwind_tornado', name: '龙卷风', slot: 0, icon: ICON + 'whirlwind-tornado.png',
-          desc: '旋风斩起手额外召唤 1 道游走龙卷风。' },
+          desc: '旋风斩命中敌人时，额外多召唤 1 道龙卷风（3 道 → 4 道）。' },
         { id: 'w_whirlwind_gale', name: '疾风', slot: 1, icon: ICON + 'whirlwind-gale.png',
           desc: '旋风斩期间移动速度额外提高 20%。' },
         { id: 'w_whirlwind_eye', name: '风眼', slot: 2, icon: ICON + 'whirlwind-eye.png',
@@ -43,7 +43,7 @@
         { id: 'w_whirlwind_frenzy', name: '狂暴', slot: 4, icon: ICON + 'whirlwind-frenzy.png',
           desc: '旋风斩持续期间攻击速度提高 30%。' },
         { id: 'w_whirlwind_endless', name: '不息', slot: 5, icon: ICON + 'whirlwind-endless.png',
-          desc: '旋风斩击杀敌人时延长 0.5 秒持续时间，最多延长 3 秒。' }
+          desc: '旋风斩击杀敌人时延长 0.1 秒持续时间，最多延长 0.6 秒。' }
       ]
     },
     {

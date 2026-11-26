@@ -118,7 +118,10 @@
     let bagScroll = 0;
     let stashScroll = 0;
 
+    let closed = false;
     function close() {
+      if (closed) return;
+      closed = true;
       if (DG.audio) DG.audio.play('uiClose', { vol: 0.45, gap: 0.12 });
       ui._equipPanel = null;
       document.removeEventListener('keydown', onKey);
@@ -258,6 +261,7 @@
       canvas.innerHTML = `
         <div class="eq-bg"></div>
         <div class="eq-title">背包</div>
+        <button class="eq-skill" aria-label="技能">技能</button>
         <button class="eq-close" aria-label="关闭"></button>
 
         <div class="eq-hero">
@@ -292,7 +296,22 @@
       `;
 
       // ---------- 头部 ----------
-      canvas.querySelector('.eq-close').addEventListener('click', close);
+      const closeBtn = canvas.querySelector('.eq-close');
+      let closeTimer = 0;
+      closeBtn.addEventListener('click', () => {
+        clearTimeout(closeTimer);
+        close();
+      });
+      // 兜底：按下关闭按钮 350ms 内没有等来 click（部分 WebView 会吞掉）就直接关闭
+      closeBtn.addEventListener('pointerdown', () => {
+        clearTimeout(closeTimer);
+        closeTimer = setTimeout(close, 350);
+      });
+      closeBtn.addEventListener('pointercancel', () => clearTimeout(closeTimer));
+      // 装备界面内直接进技能界面：关闭技能后回到背包，不需要先退出再点技能入口
+      canvas.querySelector('.eq-skill').addEventListener('click', () => {
+        DG.ui.openSkills(char, () => { if (onChange) onChange(); }, { onClose: render });
+      });
       canvas.querySelectorAll('.eq-tab').forEach(btn => {
         btn.addEventListener('click', () => {
           if (tab === btn.dataset.tab) return;

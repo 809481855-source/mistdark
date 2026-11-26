@@ -19,6 +19,37 @@
     arrowrain: { scale: 1.08, trail: 88,  width: 2.8, color: '#c2dbaa', glow: 0 }
   };
 
+  // 游走旋风外观：'thunderwind' = 接入的雷电龙卷 40 帧序列；'vector' = 原矢量尘风
+  // 只有旋风斩命中敌人后召唤的游走旋风用它，野蛮人旋风技能本身的刀光不受影响
+  const TORNADO_SKIN = 'thunderwind';
+  // 图集 8×5 格、每格 224×224，与 assets/fx/barb-thunderwind-frames.png 对应
+  // 序列帧 15fps 播放：旋转观感比原先的 30fps 慢一半，配合龙卷风的缓慢游动
+  const tornadoFx = {
+    img: null, white: null, cell: 224, cols: 8, frames: 40, fps: 15,
+    w: 178, h: 268,   // 单格绘制尺寸：横向略压，贴近原矢量旋风“窄高”的柱形
+    anchor: 0.808     // 画面底部在格内的比例，用来把柱脚钉在地面
+  };
+  // 白色染色：source-atop 只覆盖有像素的区域，保留柱身明暗，只把青绿色压成白色
+  function buildTornadoWhite() {
+    const img = tornadoFx.img;
+    if (tornadoFx.white || !img || !img.complete || !img.naturalWidth) return;
+    const c = document.createElement('canvas');
+    c.width = img.naturalWidth;
+    c.height = img.naturalHeight;
+    const g = c.getContext('2d');
+    g.drawImage(img, 0, 0);
+    g.globalCompositeOperation = 'source-atop';
+    g.fillStyle = 'rgba(236,242,248,0.66)';
+    g.fillRect(0, 0, c.width, c.height);
+    tornadoFx.white = c;
+  }
+  {
+    const img = new Image();
+    tornadoFx.img = img;
+    img.onload = buildTornadoWhite;
+    DG.assets.assign(img, 'assets/fx/barb-thunderwind-frames.png?v=20261125a');
+  }
+
   function shapePath(ctx, shape, r) {
   ctx.beginPath();
   if (shape === 'triangle') {
@@ -1237,9 +1268,36 @@
     ctx.drawImage(sp.img, -w / 2, -h / 2, w, h);
     ctx.restore();
   },
-  // 游走旋风：写实龙卷风——底部收束、往上迅速张成宽阔的漏斗口，
-  // 柱身随时间蜿蜒鼓胀，数股风带互相穿插盘旋，底部掀尘、顶部散入云底
+  // 游走旋风：按 TORNADO_SKIN 选择序列帧或原矢量画法；
+  // 序列帧未加载完成时自动回落到矢量版，不会出现空白
   drawTornado(ctx, t) {
+    const img = tornadoFx.img;
+    if (TORNADO_SKIN === 'thunderwind' && img && img.complete && img.naturalWidth) {
+      this.drawTornadoSprite(ctx, t);
+    } else {
+      this.drawTornadoVector(ctx, t);
+    }
+  },
+  // 白色龙卷序列帧：15fps 循环，出现 0.25 秒淡入、消失前 0.5 秒淡出
+  drawTornadoSprite(ctx, t) {
+    const fade = Math.min(1, t.t / 0.25, (t.life - t.t) / 0.5);
+    if (fade <= 0) return;
+    if (!tornadoFx.white) buildTornadoWhite();
+    const f = Math.floor(t.t * tornadoFx.fps) % tornadoFx.frames;
+    const c = tornadoFx.cell;
+    const sx = (f % tornadoFx.cols) * c;
+    const sy = Math.floor(f / tornadoFx.cols) * c;
+    const W2 = tornadoFx.w, H2 = tornadoFx.h;
+    ctx.save();
+    ctx.translate(t.x, t.y);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = 0.76 * fade;
+    ctx.drawImage(tornadoFx.white || tornadoFx.img, sx, sy, c, c, -W2 / 2, -H2 * tornadoFx.anchor, W2, H2);
+    ctx.restore();
+  },
+  // 游走旋风（原矢量版）：写实龙卷风——底部收束、往上迅速张成宽阔的漏斗口，
+  // 柱身随时间蜿蜒鼓胀，数股风带互相穿插盘旋，底部掀尘、顶部散入云底
+  drawTornadoVector(ctx, t) {
     const H = 172;        // 尘柱高度
     const RTOP = 54;      // 顶部半宽：从云底张开的漏斗口
     const RBOT = 4;       // 底部收束点

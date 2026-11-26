@@ -822,7 +822,6 @@
       return best;
     },
 
-    // 旋风：5 秒持续旋转，与冷却无关，时间不到不会停；期间可移动，每 0.1 秒持续结算伤害
     updateWhirl(dt) {
       const w = this.whirl;
       if (!w) {
@@ -836,41 +835,34 @@
       const ramp = ch < 0.16 ? 0.45 + 0.55 * (ch / 0.16) : 1;
       this.whirlSpin = (this.whirlSpin || 0) + dt * Math.PI * 2 * 2.4 * ramp;
       w.t += dt;
-      w.ftick -= dt;
-      const show = w.ftick <= 0;
-      if (show) w.ftick += 0.5;
-      w.tick -= dt;
-      if (w.tick <= 0) {
-        w.tick += 0.1;
+      while (w.hitIndex < w.hitTimes.length && w.t + 1e-6 >= w.hitTimes[w.hitIndex]) {
+        w.hitIndex++;
         for (const m of this.monsters) {
           if (m.dead) continue;
           if (U.dist(this.player, m) <= w.radius + m.r) {
-            // 持续伤害：每 0.1 秒扣一次，血条平滑下降；每 0.5 秒汇总飘一次字
-            const r = this.rollHit(w.mult * 0.05, w.sk, m);
-            this.hitMonster(m, r.dmg, r.crit, { quiet: true });
-            m.whirlAcc = (m.whirlAcc || 0) + r.dmg;
-            if (show) {
-              m.flash = 0.13;
-              this.addBlood(m);
-              this.addFloater(m.x + U.rand(-6, 6), m.y - m.r - 20,
-                U.fmt(Math.round(m.whirlAcc)), '#f2ead9', 21);
-              m.whirlAcc = 0;
-            }
+            const r = this.rollHit(w.hitMult, w.sk, m);
+            this.hitMonster(m, r.dmg, r.crit);
+            m.flash = 0.13;
+            this.addBlood(m);
+            w.hitSet.add(m);
           }
         }
+      }
+      // 旋风斩命中任意 1 名敌人就召唤龙卷风：基础 3 道，辅助节点「龙卷风」额外 +1 道
+      if (!w.tornadoSpawned && w.hitSet.size >= 1) {
+        w.tornadoSpawned = true;
+        const bonus = DG.skillTree && DG.skillTree.has(this.char, 'w_whirlwind_tornado') ? 1 : 0;
+        this.spawnTornadoes(3 + bonus);
       }
       if (w.t >= w.dur) this.whirl = null;
     },
 
-    // 旋风：起手时从身边甩出 3 个小旋风，在地图上无序游走、持续伤害、撞墙/道具回弹
-    spawnTornadoes() {
+    spawnTornadoes(count) {
       const w = this.whirl;
-      if (!w) return;
+      if (!w || !(count > 0)) return;
       if (!this.tornadoes) this.tornadoes = [];
-      // 同屏最多保留 9 个，防止高冷却缩减下无限叠加
-      while (this.tornadoes.length > 6) this.tornadoes.shift();
-      for (let i = 0; i < 3; i++) {
-        const a = (this.whirlSpin || 0) + i * Math.PI * 2 / 3 + U.rand(-0.25, 0.25);
+      for (let i = 0; i < count; i++) {
+        const a = (this.whirlSpin || 0) + i * Math.PI * 2 / count + U.rand(-0.25, 0.25);
         const d = U.rand(34, 58);
         let x = U.clamp(this.player.x + Math.cos(a) * d, 60, (this.arenaW || 3600) - 60);
         let y = U.clamp(this.player.y + Math.sin(a) * d, 60, (this.arenaH || 3840) - 60);
@@ -880,43 +872,93 @@
           x = this.player.x;
           y = this.player.y;
         }
-        const dir = U.rand(0, Math.PI * 2);
+        // 出生后先朝自己所在的方位向外游出去，散开后再锁敌，避免一出生就挤成一团
+        const dir = a + U.rand(-0.15, 0.15);
         this.tornadoes.push({
           x, y,
-          vx: Math.cos(dir) * 234, vy: Math.sin(dir) * 234,
+          vx: Math.cos(dir) * 104, vy: Math.sin(dir) * 104,
           t: 0, life: 5, r: 26,
           spin: dir, phase: U.rand(0, Math.PI * 2),
           tick: U.rand(0.05, 0.2), ftick: 0.5, acc: 0,
-          turn: U.rand(0.3, 0.8),
+          turn: U.rand(0.9, 1.8),
           // 游走范围锚点：以出生点为圆心，半径约为原先的两倍
           ox: x, oy: y, roam: 780,
+          // 散开时长：这段时间内只往外游，不锁敌
+          hunt: U.rand(0.6, 0.9), target: null, retarget: 0,
           sk: w.sk, mult: w.mult
         });
         this.addRing(x, y, 8, 44, 'rgba(255,255,255,0.55)', 0.3);
       }
+      // 场上最多同时存在 8 道，超出的先移除最早召唤的那批
+      while (this.tornadoes.length > 8) this.tornadoes.shift();
     },
 
     updateTornadoes(dt) {
       const list = this.tornadoes;
       if (!list || !list.length) return;
-      const aw = this.arenaW || 3600, ah = this.arenaH || 3840, SPEED = 234;
+      const aw = this.arenaW || 3600, ah = this.arenaH || 3840;
+      const SPEED = 104, SEEK = 1100, TURN_RATE = 2.2;
       for (let i = list.length - 1; i >= 0; i--) {
         const t = list[i];
         t.t += dt;
         if (t.t >= t.life) { list.splice(i, 1); continue; }
-        t.spin += dt * 9.5;
-        // 无序游走：每隔 0.3~0.8 秒随机拐一个弯；超出游走范围就往回拐
-        t.turn -= dt;
-        if (t.turn <= 0) {
-          const dx = (t.ox != null ? t.ox : t.x) - t.x;
-          const dy = (t.oy != null ? t.oy : t.y) - t.y;
-          const roam = t.roam || 780;
-          const a = dx * dx + dy * dy > roam * roam * 0.8
-            ? Math.atan2(dy, dx) + U.rand(-0.7, 0.7)
-            : Math.atan2(t.vy, t.vx) + U.rand(-1.4, 1.4);
-          t.vx = Math.cos(a) * SPEED;
-          t.vy = Math.sin(a) * SPEED;
-          t.turn = U.rand(0.35, 0.85);
+        // 旋转速度：原 9.5 降低一半，柱身风带转得更沉稳
+        t.spin += dt * 4.75;
+        // 刚出生的一小段时间只向外散开，不锁敌
+        t.hunt = (t.hunt || 0) - dt;
+        let target = null;
+        if (t.hunt <= 0) {
+          t.retarget = (t.retarget || 0) - dt;
+          let tgt = t.target;
+          if (tgt && (tgt.dead || (tgt.x - t.x) ** 2 + (tgt.y - t.y) ** 2 > SEEK * SEEK)) tgt = null;
+          if (!tgt || t.retarget <= 0) {
+            const alive = [];
+            for (const m of this.monsters) if (!m.dead) alive.push(m);
+            // 场上怪物很少时允许扎堆，否则尽量各追各的，避免全部挤在同一只怪身上
+            const allowCluster = alive.length <= 2;
+            const taken = new Set();
+            if (!allowCluster) {
+              for (const o of list) {
+                if (o !== t && o.target && !o.target.dead) taken.add(o.target);
+              }
+            }
+            let bestScore = Infinity;
+            tgt = null;
+            for (const m of alive) {
+              const dx = m.x - t.x, dy = m.y - t.y, d2 = dx * dx + dy * dy;
+              if (d2 > SEEK * SEEK) continue;
+              const score = taken.has(m) ? d2 * 4 : d2;
+              if (score < bestScore) { bestScore = score; tgt = m; }
+            }
+            t.target = tgt;
+            t.retarget = U.rand(0.5, 0.9);
+          }
+          target = t.target;
+        }
+        if (target) {
+          const cur = Math.atan2(t.vy, t.vx);
+          let diff = Math.atan2(target.y - t.y, target.x - t.x) - cur;
+          while (diff > Math.PI) diff -= Math.PI * 2;
+          while (diff < -Math.PI) diff += Math.PI * 2;
+          const step = Math.min(Math.abs(diff), TURN_RATE * dt) * Math.sign(diff);
+          const speed = Math.hypot(t.vx, t.vy) || SPEED;
+          t.vx = Math.cos(cur + step) * speed;
+          t.vy = Math.sin(cur + step) * speed;
+          t.turn = Math.max(t.turn, 0.6);
+        } else {
+          // 没有目标时维持缓慢游走：每隔 0.9~1.8 秒才轻轻拐一个弯；超出游走范围就往回拐
+          t.turn -= dt;
+          if (t.turn <= 0) {
+            const dx = (t.ox != null ? t.ox : t.x) - t.x;
+            const dy = (t.oy != null ? t.oy : t.y) - t.y;
+            const roam = t.roam || 780;
+            const a = dx * dx + dy * dy > roam * roam * 0.8
+              ? Math.atan2(dy, dx) + U.rand(-0.45, 0.45)
+              : Math.atan2(t.vy, t.vx) + U.rand(-0.85, 0.85);
+            t.vx = Math.cos(a) * SPEED;
+            t.vy = Math.sin(a) * SPEED;
+            t.turn = U.rand(0.9, 1.8);
+          }
         }
         // 回弹：墙壁、场景道具、地图边缘，撞上就反向，继续游走
         const nx = t.x + t.vx * dt;
@@ -930,6 +972,20 @@
           t.vy = -t.vy;
         } else {
           t.y = ny;
+        }
+        // 互相推开：多道龙卷风追到同一只怪身上时也不会完全叠在一起
+        for (let j = i - 1; j >= 0; j--) {
+          const o = list[j];
+          const dx = t.x - o.x, dy = t.y - o.y;
+          const d2 = dx * dx + dy * dy;
+          if (d2 <= 1 || d2 >= 48 * 48) continue;
+          const d = Math.sqrt(d2);
+          const push = (48 - d) * 0.35;
+          const kx = dx / d * push, ky = dy / d * push;
+          t.x = U.clamp(t.x + kx, t.r + 40, aw - t.r - 40);
+          t.y = U.clamp(t.y + ky, t.r + 40, ah - t.r - 40);
+          o.x = U.clamp(o.x - kx, o.r + 40, aw - o.r - 40);
+          o.y = U.clamp(o.y - ky, o.r + 40, ah - o.r - 40);
         }
         // 持续伤害：每 0.2 秒对范围内敌人结算一次，0.5 秒汇总飘字
         t.tick -= dt;
@@ -1269,16 +1325,13 @@
       } else if (sk.type === 'aoeSelf') {
         const radius = this.skillRadius(sk);
         if (sk.id === 'whirlwind') {
-          // 旋风：进入 5 秒持续旋转，期间可自由移动，每 0.1 秒结算一次范围伤害
-          // 连续施放（CD 压到 0）时沿用上一次的角度，避免每轮重新起转
           if (!((this.whirlIdleT || 99) < 0.3)) this.whirlChainT = 0;
-          // 起手即进入不可阻挡：清掉残余硬直与击退
           this.player.hurtT = 0;
           this.player.kbX = 0;
           this.player.kbY = 0;
-          this.whirl = { t: 0, dur: 5, tick: 0.1, ftick: 0.5, radius, sk, mult };
-          // 起手甩出 3 个游走旋风
-          this.spawnTornadoes();
+          const hitTimes = sk.hitTimes || [];
+          const hitMult = mult * 2.5 / Math.max(1, hitTimes.length);
+          this.whirl = { t: 0, dur: sk.duration || 1.6, hitTimes, hitIndex: 0, hitMult, radius, sk, mult, hitSet: new Set() };
         } else {
           for (const m of this.monsters) {
             if (m.dead) continue;

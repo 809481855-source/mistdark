@@ -12,7 +12,7 @@
  *   音频 Range  → 命中完整缓存时本地切片返回 206，BGM 可秒播、可拖动；
  *   后台预热    → 首屏完成后由页面发消息，按清单把未访问过的资源补进缓存。
  */
-const CORE_VERSION = 'c8';             // 脚本 / 样式更新策略变化时 +1
+const CORE_VERSION = 'c9';             // 脚本 / 样式更新策略变化时 +1
 const ASSET_VERSION = 'r5';            // 美术 / 音频有改动时 +1
 const CORE_CACHE = 'mistdark-core-' + CORE_VERSION;
 const ASSET_CACHE = 'mistdark-asset-' + ASSET_VERSION;
@@ -72,17 +72,17 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   if (CODE_RE.test(url.pathname)) {
-    event.respondWith(cacheFirst(event, CORE_CACHE));
+    event.respondWith(cacheFirst(event, CORE_CACHE, false));
     return;
   }
   // 资源包跟版本走：放在 core 缓存里，随 CORE_VERSION 一起更新，
   // 避免「旧索引配新包」或「新索引配旧包」，同时不牵连图片 / 音频缓存
   if (PACK_RE.test(url.pathname)) {
-    event.respondWith(cacheFirst(event, CORE_CACHE));
+    event.respondWith(cacheFirst(event, CORE_CACHE, false));
     return;
   }
   if (ASSET_RE.test(url.pathname)) {
-    event.respondWith(cacheFirst(event, ASSET_CACHE));
+    event.respondWith(cacheFirst(event, ASSET_CACHE, true));
   }
 });
 
@@ -121,9 +121,9 @@ function navKey(req) {
   return req.url;
 }
 
-async function cacheFirst(event, cacheName) {
+async function cacheFirst(event, cacheName, ignoreSearch) {
   const cache = await caches.open(cacheName);
-  const cached = await cache.match(event.request, { ignoreSearch: true });
+  const cached = await cache.match(event.request, { ignoreSearch: !!ignoreSearch });
   if (cached) return cached;
   const res = await fetch(event.request);
   // 写完缓存再返回，避免响应返回后 SW 被回收导致缓存没落盘
