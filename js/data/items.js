@@ -4,131 +4,20 @@
   const U = DG.util;
   const C = DG.CONFIG;
 
-  // 底材（implicit 为该底材固定的基础属性）
-  const bases = DG.data.itemBases = [
-    { id: 'sword', slot: 'weapon', name: '铁剑', cls: 'warrior', implicit: { atk: [5, 8] } },
-    { id: 'axe', slot: 'weapon', name: '战斧', cls: 'warrior', implicit: { atk: [7, 11] } },
-    { id: 'bow', slot: 'weapon', name: '短弓', cls: 'ranger', implicit: { atk: [4, 7] } },
-    { id: 'staff', slot: 'weapon', name: '骨杖', cls: 'mage', implicit: { atk: [6, 9] } },
-    { id: 'ironhelm', slot: 'helm', name: '铁盔', implicit: { armor: [4, 7] } },
-    { id: 'bonehelm', slot: 'helm', name: '骨盔', implicit: { armor: [3, 6], hp: [8, 14] } },
-    { id: 'hood', slot: 'helm', name: '狩猎兜帽', implicit: { armor: [2, 4], crit: [1, 2] } },
-    { id: 'leather', slot: 'armor', name: '皮甲', implicit: { armor: [6, 10] } },
-    { id: 'mail', slot: 'armor', name: '锁甲', implicit: { armor: [10, 15] } },
-    { id: 'robe', slot: 'armor', name: '法袍', implicit: { armor: [4, 7], hp: [10, 20] } },
-    { id: 'gloves', slot: 'gloves', name: '皮手套', implicit: { armor: [2, 4], attackSpeed: [2, 4] } },
-    { id: 'gauntlet', slot: 'gloves', name: '铁手甲', implicit: { armor: [5, 8] } },
-    { id: 'huntergrip', slot: 'gloves', name: '猎手护手', implicit: { atk: [2, 4] } },
-    { id: 'boots', slot: 'boots', name: '皮靴', implicit: { armor: [2, 4], moveSpeed: [3, 6] } },
-    { id: 'greaves', slot: 'boots', name: '胫甲', implicit: { armor: [6, 9] } },
-    { id: 'sandals', slot: 'boots', name: '轻履', implicit: { armor: [2, 3], moveSpeed: [4, 7] } },
-    { id: 'pauldron', slot: 'shoulder', name: '铁护肩', implicit: { armor: [3, 6] } },
-    { id: 'spaulder', slot: 'shoulder', name: '皮革护肩', implicit: { armor: [2, 4], hp: [6, 12] } },
-    { id: 'legging', slot: 'pants', name: '皮裤', implicit: { armor: [3, 5] } },
-    { id: 'legplate', slot: 'pants', name: '腿甲', implicit: { armor: [5, 8] } },
-    { id: 'clothpants', slot: 'pants', name: '布裤', implicit: { armor: [2, 3], hp: [8, 16] } },
-    { id: 'shield', slot: 'offhand', name: '圆盾', cls: 'warrior', implicit: { armor: [5, 9] } },
-    { id: 'orb', slot: 'offhand', name: '法球', cls: 'mage', implicit: { atk: [3, 6] } },
-    { id: 'quiver', slot: 'offhand', name: '箭袋', cls: 'ranger', implicit: { atk: [2, 4], crit: [1, 2] } },
-    { id: 'ring', slot: 'ring', name: '指环', implicit: {} },
-    { id: 'amulet', slot: 'amulet', name: '护符', implicit: {} }
-  ];
+  // 数据表已拆分到 js/data/items/ 下，这里只保留生成 / 重铸逻辑：
+  //   bases.js   底材表（DG.data.itemBases / itemBaseById）
+  //   affixes.js 词缀池与流派显示（DG.data.affixes / affixFamilies / affixSkillFields）
+  //   names.js   命名表（DG.data.itemNames）
+  const bases = DG.data.itemBases;
+  const baseById = DG.data.itemBaseById;
 
-  const baseById = {};
-  bases.forEach(b => { baseById[b.id] = b; });
-
-  // 词缀池：通用属性 + 流派专属词缀
-  // 流派词缀以 skill.<技能id>.<字段> 存储，战斗层聚合后直接生效
-  const affixes = DG.data.affixes = [
-    { stat: 'atk', min: 2, max: 4, weight: 10 },
-    { stat: 'atkPct', min: 3, max: 7, weight: 5 },
-    { stat: 'hp', min: 8, max: 16, weight: 10 },
-    { stat: 'armor', min: 4, max: 9, weight: 7 },
-    { stat: 'crit', min: 1.5, max: 3.5, weight: 5, decimals: 1 },
-    { stat: 'critDmg', min: 6, max: 14, weight: 5 },
-    { stat: 'moveSpeed', min: 3, max: 6, weight: 4, decimals: 1 },
-    { stat: 'attackSpeed', min: 3, max: 6, weight: 4, decimals: 1 },
-    { stat: 'hpRegen', min: 0.5, max: 1.5, weight: 4, decimals: 1 },
-
-    // —— 野蛮人流派：挥砍（普攻/出血） ——
-    { stat: 'skill.cleave.dmgPct', min: 8, max: 16, weight: 5, cls: 'warrior', family: 'cleave' },
-    { stat: 'skill.cleave.arcPct', min: 6, max: 12, weight: 4, cls: 'warrior', family: 'cleave' },
-    // —— 野蛮人流派：旋风 ——
-    { stat: 'skill.whirlwind.dmgPct', min: 8, max: 18, weight: 5, cls: 'warrior', family: 'whirlwind' },
-    { stat: 'skill.whirlwind.radiusPct', min: 6, max: 14, weight: 4, cls: 'warrior', family: 'whirlwind' },
-    { stat: 'skill.whirlwind.cdrPct', min: 6, max: 14, weight: 4, cls: 'warrior', family: 'whirlwind' },
-    // —— 野蛮人流派：冲锋 ——
-    { stat: 'skill.charge.dmgPct', min: 10, max: 20, weight: 5, cls: 'warrior', family: 'charge' },
-    { stat: 'skill.charge.cdrPct', min: 6, max: 14, weight: 4, cls: 'warrior', family: 'charge' },
-    { stat: 'skill.charge.distPct', min: 8, max: 16, weight: 3, cls: 'warrior', family: 'charge' },
-    // —— 野蛮人流派：震动波 ——
-    { stat: 'skill.shockwave.dmgPct', min: 8, max: 18, weight: 5, cls: 'warrior', family: 'shockwave' },
-    { stat: 'skill.shockwave.radiusPct', min: 6, max: 14, weight: 4, cls: 'warrior', family: 'shockwave' },
-    { stat: 'skill.shockwave.pierceBonus', min: 1, max: 1, weight: 3, cls: 'warrior', family: 'shockwave', decimals: 0 },
-    // —— 野蛮人流派：战吼 ——
-    { stat: 'skill.warcry.dmgPct', min: 10, max: 20, weight: 5, cls: 'warrior', family: 'warcry' },
-    { stat: 'skill.warcry.radiusPct', min: 8, max: 16, weight: 4, cls: 'warrior', family: 'warcry' },
-    { stat: 'skill.warcry.slowPct', min: 5, max: 10, weight: 4, cls: 'warrior', family: 'warcry' },
-    { stat: 'skill.warcry.slowDurPct', min: 10, max: 20, weight: 4, cls: 'warrior', family: 'warcry' },
-
-    // —— 游侠流派 ——
-    { stat: 'skill.arrow.dmgPct', min: 8, max: 16, weight: 4, cls: 'ranger', family: 'arrow' },
-    { stat: 'skill.snipe.dmgPct', min: 10, max: 20, weight: 4, cls: 'ranger', family: 'snipe' },
-    { stat: 'skill.multishot.countBonus', min: 1, max: 1, weight: 3, cls: 'ranger', family: 'multishot', decimals: 0 },
-    // —— 法师流派 ——
-    { stat: 'skill.meteor.dmgPct', min: 10, max: 20, weight: 4, cls: 'mage', family: 'meteor' },
-    { stat: 'skill.frostnova.radiusPct', min: 6, max: 14, weight: 4, cls: 'mage', family: 'frostnova' },
-    { stat: 'skill.chainbolt.dmgPct', min: 8, max: 16, weight: 4, cls: 'mage', family: 'chainbolt' }
-  ];
-
-  // 流派名称：用于稀有/传奇装备命名，让词条一眼能看出走了哪条路
-  const families = {
-    cleave: '裂刃', whirlwind: '疾风', charge: '破阵', shockwave: '震荡', warcry: '战栗',
-    arrow: '穿云', snipe: '猎星', multishot: '箭雨',
-    meteor: '陨火', frostnova: '霜环', chainbolt: '链雷'
-  };
-
-  const magicPrefix = ['锋锐的', '厚重的', '迅捷的', '幽影的', '守护的', '猎手的'];
-  const rareSuffix = ['迷雾', '残响', '黎明', '沉沦', '断罪', '低语'];
-  const legendNames = {
-    weapon: '灭雾者',
-    offhand: '守夜之壁',
-    helm: '雾隐之冠',
-    armor: '不眠壁垒',
-    shoulder: '碎誓者',
-    gloves: '碎岩之握',
-    pants: '长夜行者',
-    boots: '追风踏',
-    ring: '回响之戒',
-    amulet: '亡者低语'
-  };
-
-  // 套装名：绿装按部位取固定套装名，便于一眼看出成套
-  const setNames = {
-    weapon: '裂魂',
-    offhand: '守誓',
-    helm: '夜视',
-    armor: '不眠',
-    shoulder: '铁誓',
-    gloves: '缚灵',
-    pants: '长夜',
-    boots: '逐暗',
-    ring: '回响',
-    amulet: '低语'
-  };
-
-  // 流派词缀的显示文案：skill.<id>.<字段>
-  const SKILL_FIELD = {
-    dmgPct: { label: '伤害', suffix: '%', decimals: 0 },
-    cdrPct: { label: '冷却缩减', suffix: '%', decimals: 0 },
-    radiusPct: { label: '范围', suffix: '%', decimals: 0 },
-    arcPct: { label: '弧度', suffix: '%', decimals: 0 },
-    slowPct: { label: '减速强度', suffix: '%', decimals: 0 },
-    slowDurPct: { label: '减速持续', suffix: '%', decimals: 0 },
-    countBonus: { label: '额外投射物', suffix: '', decimals: 0 },
-    pierceBonus: { label: '穿透', suffix: '', decimals: 0 },
-    distPct: { label: '距离', suffix: '%', decimals: 0 }
-  };
+  const affixes = DG.data.affixes;
+  const families = DG.data.affixFamilies;
+  const SKILL_FIELD = DG.data.affixSkillFields;
+  const magicPrefix = DG.data.itemNames.magicPrefix;
+  const rareSuffix = DG.data.itemNames.rareSuffix;
+  const legendNames = DG.data.itemNames.legendNames;
+  const setNames = DG.data.itemNames.setNames;
 
   function randRarity(minIndex) {
     let list = DG.data.rarity;

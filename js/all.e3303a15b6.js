@@ -2530,15 +2530,15 @@
 
 
 ;
-/* ==== js/data/items.js ==== */
-/* 装备生成：底材、词缀（含野蛮人流派词缀）、稀有度 */
+/* ==== js/data/items/bases.js ==== */
+/* 装备 · 底材表：id / 部位 / 名称 / 职业限定 / 固有属性（implicit）
+   新增一件装备只需要在这里加一行；生成、重铸、掉落逻辑都在 js/data/items.js 里，不用改。 */
 (function () {
   const DG = window.DG;
-  const U = DG.util;
-  const C = DG.CONFIG;
+  DG.data = DG.data || {};
 
-  // 底材（implicit 为该底材固定的基础属性）
-  const bases = DG.data.itemBases = [
+  // 没有 cls 字段表示全职业通用；有则只有该职业能装备
+  DG.data.itemBases = [
     { id: 'sword', slot: 'weapon', name: '铁剑', cls: 'warrior', implicit: { atk: [5, 8] } },
     { id: 'axe', slot: 'weapon', name: '战斧', cls: 'warrior', implicit: { atk: [7, 11] } },
     { id: 'bow', slot: 'weapon', name: '短弓', cls: 'ranger', implicit: { atk: [4, 7] } },
@@ -2567,12 +2567,22 @@
     { id: 'amulet', slot: 'amulet', name: '护符', implicit: {} }
   ];
 
-  const baseById = {};
-  bases.forEach(b => { baseById[b.id] = b; });
+  // 便捷索引：各处按 id 取底材时不必重复建表
+  DG.data.itemBaseById = {};
+  DG.data.itemBases.forEach((b) => { DG.data.itemBaseById[b.id] = b; });
+})();
 
-  // 词缀池：通用属性 + 流派专属词缀
-  // 流派词缀以 skill.<技能id>.<字段> 存储，战斗层聚合后直接生效
-  const affixes = DG.data.affixes = [
+
+;
+/* ==== js/data/items/affixes.js ==== */
+/* 装备 · 词缀池：通用属性词缀 + 各职业流派词缀
+   流派词缀以 skill.<技能id>.<字段> 存储，战斗层聚合后直接生效；
+   cls 字段表示只在该职业的装备上出现，family 用于命名与显示分类。 */
+(function () {
+  const DG = window.DG;
+  DG.data = DG.data || {};
+
+  DG.data.affixes = [
     { stat: 'atk', min: 2, max: 4, weight: 10 },
     { stat: 'atkPct', min: 3, max: 7, weight: 5 },
     { stat: 'hp', min: 8, max: 16, weight: 10 },
@@ -2615,43 +2625,14 @@
   ];
 
   // 流派名称：用于稀有/传奇装备命名，让词条一眼能看出走了哪条路
-  const families = {
+  DG.data.affixFamilies = {
     cleave: '裂刃', whirlwind: '疾风', charge: '破阵', shockwave: '震荡', warcry: '战栗',
     arrow: '穿云', snipe: '猎星', multishot: '箭雨',
     meteor: '陨火', frostnova: '霜环', chainbolt: '链雷'
   };
 
-  const magicPrefix = ['锋锐的', '厚重的', '迅捷的', '幽影的', '守护的', '猎手的'];
-  const rareSuffix = ['迷雾', '残响', '黎明', '沉沦', '断罪', '低语'];
-  const legendNames = {
-    weapon: '灭雾者',
-    offhand: '守夜之壁',
-    helm: '雾隐之冠',
-    armor: '不眠壁垒',
-    shoulder: '碎誓者',
-    gloves: '碎岩之握',
-    pants: '长夜行者',
-    boots: '追风踏',
-    ring: '回响之戒',
-    amulet: '亡者低语'
-  };
-
-  // 套装名：绿装按部位取固定套装名，便于一眼看出成套
-  const setNames = {
-    weapon: '裂魂',
-    offhand: '守誓',
-    helm: '夜视',
-    armor: '不眠',
-    shoulder: '铁誓',
-    gloves: '缚灵',
-    pants: '长夜',
-    boots: '逐暗',
-    ring: '回响',
-    amulet: '低语'
-  };
-
   // 流派词缀的显示文案：skill.<id>.<字段>
-  const SKILL_FIELD = {
+  DG.data.affixSkillFields = {
     dmgPct: { label: '伤害', suffix: '%', decimals: 0 },
     cdrPct: { label: '冷却缩减', suffix: '%', decimals: 0 },
     radiusPct: { label: '范围', suffix: '%', decimals: 0 },
@@ -2662,6 +2643,74 @@
     pierceBonus: { label: '穿透', suffix: '', decimals: 0 },
     distPct: { label: '距离', suffix: '%', decimals: 0 }
   };
+})();
+
+
+;
+/* ==== js/data/items/names.js ==== */
+/* 装备 · 命名表：魔法前缀 / 稀有后缀 / 传奇名 / 套装名
+   新增装备部位或改风格只动这里，生成逻辑在 js/data/items.js。 */
+(function () {
+  const DG = window.DG;
+  DG.data = DG.data || {};
+
+  DG.data.itemNames = {
+    magicPrefix: ['锋锐的', '厚重的', '迅捷的', '幽影的', '守护的', '猎手的'],
+    rareSuffix: ['迷雾', '残响', '黎明', '沉沦', '断罪', '低语'],
+
+    // 传奇装备按部位取名
+    legendNames: {
+      weapon: '灭雾者',
+      offhand: '守夜之壁',
+      helm: '雾隐之冠',
+      armor: '不眠壁垒',
+      shoulder: '碎誓者',
+      gloves: '碎岩之握',
+      pants: '长夜行者',
+      boots: '追风踏',
+      ring: '回响之戒',
+      amulet: '亡者低语'
+    },
+
+    // 套装名：绿装按部位取固定套装名，便于一眼看出成套
+    setNames: {
+      weapon: '裂魂',
+      offhand: '守誓',
+      helm: '夜视',
+      armor: '不眠',
+      shoulder: '铁誓',
+      gloves: '缚灵',
+      pants: '长夜',
+      boots: '逐暗',
+      ring: '回响',
+      amulet: '低语'
+    }
+  };
+})();
+
+
+;
+/* ==== js/data/items.js ==== */
+/* 装备生成：底材、词缀（含野蛮人流派词缀）、稀有度 */
+(function () {
+  const DG = window.DG;
+  const U = DG.util;
+  const C = DG.CONFIG;
+
+  // 数据表已拆分到 js/data/items/ 下，这里只保留生成 / 重铸逻辑：
+  //   bases.js   底材表（DG.data.itemBases / itemBaseById）
+  //   affixes.js 词缀池与流派显示（DG.data.affixes / affixFamilies / affixSkillFields）
+  //   names.js   命名表（DG.data.itemNames）
+  const bases = DG.data.itemBases;
+  const baseById = DG.data.itemBaseById;
+
+  const affixes = DG.data.affixes;
+  const families = DG.data.affixFamilies;
+  const SKILL_FIELD = DG.data.affixSkillFields;
+  const magicPrefix = DG.data.itemNames.magicPrefix;
+  const rareSuffix = DG.data.itemNames.rareSuffix;
+  const legendNames = DG.data.itemNames.legendNames;
+  const setNames = DG.data.itemNames.setNames;
 
   function randRarity(minIndex) {
     let list = DG.data.rarity;
