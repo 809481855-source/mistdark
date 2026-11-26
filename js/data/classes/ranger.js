@@ -122,6 +122,8 @@
     autoSkill: 'arrow',
     skills: ['multishot', 'roll', 'snipe', 'arrowrain'],
     starterWeapon: 'bow',
+    // 受击音效由职业数据指定，战斗代码不再判断职业 id
+    behitSfx: 'rangerBehit',
     icons: { equip: 'assets/ui/ranger/func-equip.png' }
   }, { skills, skillTags, talents });
 })();

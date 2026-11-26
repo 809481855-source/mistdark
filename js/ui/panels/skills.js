@@ -225,7 +225,8 @@
   // ---------- 野蛮人：全屏技能树 ----------
   ui.openSkills = function (char, onChange, opts) {
     opts = opts || {};
-    if (char.cls !== 'warrior' || !DG.data.skillTrees.warrior) {
+    // 有技能树数据的职业走新面板，没有的（如游侠/法师未配树）回落到旧列表
+    if (!DG.data.skillTrees || !DG.data.skillTrees[char.cls]) {
       return openLegacy(char, onChange, opts);
     }
     // 连点技能入口时不叠出第二层面板，直接把已有实例返回

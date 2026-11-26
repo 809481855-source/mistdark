@@ -784,7 +784,8 @@
     // 冲锋残影：把角色当前姿态画进离屏画布再整体染色，得到一张可复用的暖色剪影
     chargeGhostImage(phase, flip) {
       if (typeof document === 'undefined' || !DG.art.heroFor) return null;
-      const hero = DG.art.heroFor('warrior');
+      // 残影用当前职业的英雄贴图，新角色接入时无需改这里
+      const hero = DG.art.heroFor(this.char && this.char.cls);
       if (!hero || !hero.canvasDraw) return null;
       const W = 190, H = 190, ox = W / 2, oy = H - 30;
       const cv = document.createElement('canvas');

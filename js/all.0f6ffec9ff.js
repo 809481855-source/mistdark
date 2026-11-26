@@ -2398,6 +2398,8 @@
     autoSkill: 'arrow',
     skills: ['multishot', 'roll', 'snipe', 'arrowrain'],
     starterWeapon: 'bow',
+    // 受击音效由职业数据指定，战斗代码不再判断职业 id
+    behitSfx: 'rangerBehit',
     icons: { equip: 'assets/ui/ranger/func-equip.png' }
   }, { skills, skillTags, talents });
 })();
@@ -13260,7 +13262,8 @@
   // ---------- 野蛮人：全屏技能树 ----------
   ui.openSkills = function (char, onChange, opts) {
     opts = opts || {};
-    if (char.cls !== 'warrior' || !DG.data.skillTrees.warrior) {
+    // 有技能树数据的职业走新面板，没有的（如游侠/法师未配树）回落到旧列表
+    if (!DG.data.skillTrees || !DG.data.skillTrees[char.cls]) {
       return openLegacy(char, onChange, opts);
     }
     // 连点技能入口时不叠出第二层面板，直接把已有实例返回
@@ -20994,7 +20997,7 @@
       : Math.max(this.hurtFlash, 0.3);
     this.shake = Math.max(this.shake, weakHurt ? 0.06 : 0.18);
     if (DG.audio) {
-      DG.audio.play(this.cls && this.cls.id === 'ranger' ? 'rangerBehit' : 'barbBehit',
+      DG.audio.play((this.cls && this.cls.behitSfx) || 'barbBehit',
         { vol: weakHurt ? 0.4 : 0.7, gap: 0.15 });
     }
     this.addFloater(this.player.x, this.player.y - 34, '-' + taken, '#ff8a80', 22);
@@ -23162,7 +23165,8 @@
     // 冲锋残影：把角色当前姿态画进离屏画布再整体染色，得到一张可复用的暖色剪影
     chargeGhostImage(phase, flip) {
       if (typeof document === 'undefined' || !DG.art.heroFor) return null;
-      const hero = DG.art.heroFor('warrior');
+      // 残影用当前职业的英雄贴图，新角色接入时无需改这里
+      const hero = DG.art.heroFor(this.char && this.char.cls);
       if (!hero || !hero.canvasDraw) return null;
       const W = 190, H = 190, ox = W / 2, oy = H - 30;
       const cv = document.createElement('canvas');

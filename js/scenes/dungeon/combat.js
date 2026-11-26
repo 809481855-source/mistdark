@@ -286,7 +286,7 @@
       : Math.max(this.hurtFlash, 0.3);
     this.shake = Math.max(this.shake, weakHurt ? 0.06 : 0.18);
     if (DG.audio) {
-      DG.audio.play(this.cls && this.cls.id === 'ranger' ? 'rangerBehit' : 'barbBehit',
+      DG.audio.play((this.cls && this.cls.behitSfx) || 'barbBehit',
         { vol: weakHurt ? 0.4 : 0.7, gap: 0.15 });
     }
     this.addFloater(this.player.x, this.player.y - 34, '-' + taken, '#ff8a80', 22);
