@@ -25158,27 +25158,14 @@
       if (d.x < v.l || d.x > v.r || d.y < v.t || d.y > v.b) continue;
       const bob = Math.sin(d.t * 4) * 3;
       if (d.kind === 'item') {
+        // 只留地面光晕：图标与名字由 drawDropLabels 统一画在一个品质框里
         const rar = DG.items.rarityInfo(d.item);
-        ctx.save();
-        ctx.translate(d.x, d.y + bob);
         const gr = (d.item.rarity === 'legend' ? 26 : d.item.rarity === 'set' ? 22 : 18) *
           (d.item.ancient ? 1.2 : 1);
+        ctx.save();
+        ctx.translate(d.x, d.y + bob);
         ctx.globalCompositeOperation = 'lighter';
         ctx.drawImage(this.glowSprite(rar.color), -gr, -gr, gr * 2, gr * 2);
-        ctx.globalCompositeOperation = 'source-over';
-        // 品质框：常驻的方形描边，地上不用靠近也能一眼看出品质
-        const half = 10 * (d.item.ancient ? 1.2 : 1);
-        ctx.fillStyle = 'rgba(8,10,12,0.82)';
-        ctx.fillRect(-half, -half, half * 2, half * 2);
-        ctx.strokeStyle = rar.color;
-        ctx.lineWidth = 2;
-        ctx.strokeRect(-half, -half, half * 2, half * 2);
-        // 框内菱形图标
-        ctx.rotate(Math.PI / 4);
-        ctx.fillStyle = rar.color;
-        ctx.fillRect(-5, -5, 10, 10);
-        ctx.fillStyle = 'rgba(10,12,14,0.75)';
-        ctx.fillRect(-3, -3, 6, 6);
         ctx.restore();
       } else if (d.kind === 'orb') {
         // 血球：红色、大而醒目，靠近自动回血
@@ -25235,29 +25222,61 @@
       }
     }
   },
-  // 掉落物名字：常驻显示，字号按屏幕像素固定，不随镜头缩放变大变小
+  // 掉落标签：一个品质色描边的圆角框，里面并排放图标与名字；
+  // 框宽按文字实际宽度算，长名字自动变宽，全程常驻不消失。
   drawDropLabels(ctx) {
-    const v = this.viewRect(160);
+    const v = this.viewRect(200);
     const z = this.zoom || 1;
-    const fs = Math.max(9, Math.round(12 / z));
+    const fs = 12 / z;            // 字号固定 12 屏幕像素
+    const h = 20 / z;             // 框高
+    const pad = 4 / z;
+    const icon = 12 / z;
+    const gap = 3 / z;
+    const lw = 2 / z;
+    const radius = 3 / z;
     ctx.save();
     ctx.font = '600 ' + fs + 'px "Microsoft YaHei", "Noto Sans SC", sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.lineJoin = 'round';
     for (const d of this.drops) {
       if (d.kind !== 'item' || !d.item || !d.item.name) continue;
       if (d.x < v.l || d.x > v.r || d.y < v.t || d.y > v.b) continue;
       const rar = DG.items.rarityInfo(d.item);
-      const bob = Math.sin(d.t * 4) * 3;
-      const tx = d.x + 13 * (d.item.ancient ? 1.2 : 1);
-      const ty = d.y + bob - 1;
-      // 黑色描边：无论地面是血泊还是火圈，名字都能读清
-      ctx.lineWidth = Math.max(2, 3 / z);
-      ctx.strokeStyle = 'rgba(0,0,0,0.9)';
-      ctx.strokeText(d.item.name, tx, ty);
+      const name = d.item.name;
+      const tw = ctx.measureText(name).width;
+      const w = pad + icon + gap + tw + pad;
+      const x = d.x + 14 / z;
+      const y = d.y + Math.sin(d.t * 4) * 3 - h / 2;
+
+      // 底板 + 品质描边
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + w - radius, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+      ctx.lineTo(x + w, y + h - radius);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+      ctx.lineTo(x + radius, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(8,10,12,0.82)';
+      ctx.fill();
+      ctx.lineWidth = lw;
+      ctx.strokeStyle = rar.color;
+      ctx.stroke();
+
+      // 框内图标
+      const ix = x + pad;
+      const iy = y + (h - icon) / 2;
       ctx.fillStyle = rar.color;
-      ctx.fillText(d.item.name, tx, ty);
+      ctx.fillRect(ix, iy, icon, icon);
+      ctx.fillStyle = 'rgba(10,12,14,0.8)';
+      ctx.fillRect(ix + icon * 0.28, iy + icon * 0.28, icon * 0.44, icon * 0.44);
+
+      // 名字
+      ctx.fillStyle = rar.color;
+      ctx.fillText(name, ix + icon + gap, y + h / 2 + 0.5 / z);
     }
     ctx.restore();
   },
