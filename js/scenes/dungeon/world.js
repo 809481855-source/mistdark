@@ -390,9 +390,10 @@
       { x: p.x, y: p.y };
     if (rnd < 0.05) {
       // 少量魔法品质：属性略好一点，仍然只算“垃圾”级产出
+      // excludeTop：砸道具永远不出套装 / 暗金，否则满场道具会把稀有度冲垮
       if (!DG.items) return;
       const ilvl = Math.max(1, (this.def && this.def.ilvl) || 1);
-      const item = DG.items.generate(ilvl, { minRarity: 'magic', cls: this.char && this.char.cls });
+      const item = DG.items.generate(ilvl, { minRarity: 'magic', excludeTop: true, cls: this.char && this.char.cls });
       const at = pos(20, 22);
       this.drops.push({ kind: 'item', item, x: at.x, y: at.y, r: 12, t: 0 });
       return;

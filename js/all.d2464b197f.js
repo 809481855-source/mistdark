@@ -1548,12 +1548,15 @@
 
   // 品质（对应掉落权重 / 词缀数量）：白 → 蓝 → 紫 → 绿（套装）→ 橙（暗金）
   // 套装与暗金有概率roll出「远古」版本，基础属性与词缀数值更高
+  // 注意：套装 / 暗金不参与下面的普通权重抽取，实际概率由 items.js 里的
+  // LEGEND_CHANCE（暗金 0.2%，任何关卡）与 SET_CHANCE（套装 0.15%，物品等级 30 起）单独控制，
+  // weight 仅用于界面排序，抽稀有度时会被过滤掉。
   DG.data.rarity = [
     { id: 'normal', name: '普通', color: '#cfc9bb', weight: 52, affix: [0, 0] },
     { id: 'magic', name: '魔法', color: '#5b8bd6', weight: 31, affix: [1, 2] },
     { id: 'rare', name: '稀有', color: '#b06fd8', weight: 12, affix: [3, 4] },
-    { id: 'set', name: '套装', color: '#5fae5a', weight: 3, affix: [3, 4] },
-    { id: 'legend', name: '暗金', color: '#e8853c', weight: 2, affix: [4, 5] }
+    { id: 'set', name: '套装', color: '#5fae5a', weight: 0, affix: [3, 4] },
+    { id: 'legend', name: '暗金', color: '#e8853c', weight: 0, affix: [4, 5] }
   ];
 
   DG.data.rarityById = {};
@@ -2724,9 +2727,23 @@
   const legendNames = DG.data.itemNames.legendNames;
   const setNames = DG.data.itemNames.setNames;
 
-  function randRarity(minIndex) {
-    let list = DG.data.rarity;
-    if (minIndex > 0) list = list.slice(minIndex);
+  // 稀有度抽取：普通 / 魔法 / 稀有走权重表；暗金与套装改成独立的极低概率，
+  // 不再参与加权——否则带 minRarity 的掉落（精英、首领）会把它们的实际概率放大好几倍。
+  // 暗金：任何关卡都可能出；套装：物品等级 30 以上才会出现。
+  const LEGEND_CHANCE = 0.002;   // 0.2%（每关十几次生成，约三十关才见一件）
+  const SET_CHANCE = 0.0015;     // 0.15%（仅 30 级以上）
+  const SET_MIN_ILVL = 30;
+
+  // excludeTop：可破坏道具的“垃圾”掉落用，永远不会出套装 / 暗金
+  function randRarity(minIndex, ilvl, excludeTop) {
+    const byId = DG.data.rarityById;
+    if (!excludeTop) {
+      if (U.chance(LEGEND_CHANCE)) return byId.legend;
+      if ((ilvl || 1) >= SET_MIN_ILVL && U.chance(SET_CHANCE)) return byId.set;
+    }
+    const plain = list => list.filter(r => r.id !== 'legend' && r.id !== 'set');
+    const list = plain(minIndex > 0 ? DG.data.rarity.slice(minIndex) : DG.data.rarity);
+    if (!list.length) return byId.rare;
     return U.weighted(list);
   }
 
@@ -2839,7 +2856,7 @@
       const minIndex = opts.minRarity ? DG.data.rarity.findIndex(r => r.id === opts.minRarity) : 0;
       const rarity = opts.rarity
         ? (DG.data.rarityById[opts.rarity] || DG.data.rarity[0])
-        : randRarity(Math.max(0, minIndex));
+        : randRarity(Math.max(0, minIndex), ilvl, !!opts.excludeTop);
 
       let base;
       const allowBase = b => !b.cls || !opts.cls || b.cls === opts.cls;
@@ -18334,9 +18351,10 @@
       { x: p.x, y: p.y };
     if (rnd < 0.05) {
       // 少量魔法品质：属性略好一点，仍然只算“垃圾”级产出
+      // excludeTop：砸道具永远不出套装 / 暗金，否则满场道具会把稀有度冲垮
       if (!DG.items) return;
       const ilvl = Math.max(1, (this.def && this.def.ilvl) || 1);
-      const item = DG.items.generate(ilvl, { minRarity: 'magic', cls: this.char && this.char.cls });
+      const item = DG.items.generate(ilvl, { minRarity: 'magic', excludeTop: true, cls: this.char && this.char.cls });
       const at = pos(20, 22);
       this.drops.push({ kind: 'item', item, x: at.x, y: at.y, r: 12, t: 0 });
       return;

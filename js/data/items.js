@@ -19,9 +19,23 @@
   const legendNames = DG.data.itemNames.legendNames;
   const setNames = DG.data.itemNames.setNames;
 
-  function randRarity(minIndex) {
-    let list = DG.data.rarity;
-    if (minIndex > 0) list = list.slice(minIndex);
+  // 稀有度抽取：普通 / 魔法 / 稀有走权重表；暗金与套装改成独立的极低概率，
+  // 不再参与加权——否则带 minRarity 的掉落（精英、首领）会把它们的实际概率放大好几倍。
+  // 暗金：任何关卡都可能出；套装：物品等级 30 以上才会出现。
+  const LEGEND_CHANCE = 0.002;   // 0.2%（每关十几次生成，约三十关才见一件）
+  const SET_CHANCE = 0.0015;     // 0.15%（仅 30 级以上）
+  const SET_MIN_ILVL = 30;
+
+  // excludeTop：可破坏道具的“垃圾”掉落用，永远不会出套装 / 暗金
+  function randRarity(minIndex, ilvl, excludeTop) {
+    const byId = DG.data.rarityById;
+    if (!excludeTop) {
+      if (U.chance(LEGEND_CHANCE)) return byId.legend;
+      if ((ilvl || 1) >= SET_MIN_ILVL && U.chance(SET_CHANCE)) return byId.set;
+    }
+    const plain = list => list.filter(r => r.id !== 'legend' && r.id !== 'set');
+    const list = plain(minIndex > 0 ? DG.data.rarity.slice(minIndex) : DG.data.rarity);
+    if (!list.length) return byId.rare;
     return U.weighted(list);
   }
 
@@ -134,7 +148,7 @@
       const minIndex = opts.minRarity ? DG.data.rarity.findIndex(r => r.id === opts.minRarity) : 0;
       const rarity = opts.rarity
         ? (DG.data.rarityById[opts.rarity] || DG.data.rarity[0])
-        : randRarity(Math.max(0, minIndex));
+        : randRarity(Math.max(0, minIndex), ilvl, !!opts.excludeTop);
 
       let base;
       const allowBase = b => !b.cls || !opts.cls || b.cls === opts.cls;

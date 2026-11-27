@@ -35,12 +35,15 @@
 
   // 品质（对应掉落权重 / 词缀数量）：白 → 蓝 → 紫 → 绿（套装）→ 橙（暗金）
   // 套装与暗金有概率roll出「远古」版本，基础属性与词缀数值更高
+  // 注意：套装 / 暗金不参与下面的普通权重抽取，实际概率由 items.js 里的
+  // LEGEND_CHANCE（暗金 0.2%，任何关卡）与 SET_CHANCE（套装 0.15%，物品等级 30 起）单独控制，
+  // weight 仅用于界面排序，抽稀有度时会被过滤掉。
   DG.data.rarity = [
     { id: 'normal', name: '普通', color: '#cfc9bb', weight: 52, affix: [0, 0] },
     { id: 'magic', name: '魔法', color: '#5b8bd6', weight: 31, affix: [1, 2] },
     { id: 'rare', name: '稀有', color: '#b06fd8', weight: 12, affix: [3, 4] },
-    { id: 'set', name: '套装', color: '#5fae5a', weight: 3, affix: [3, 4] },
-    { id: 'legend', name: '暗金', color: '#e8853c', weight: 2, affix: [4, 5] }
+    { id: 'set', name: '套装', color: '#5fae5a', weight: 0, affix: [3, 4] },
+    { id: 'legend', name: '暗金', color: '#e8853c', weight: 0, affix: [4, 5] }
   ];
 
   DG.data.rarityById = {};
