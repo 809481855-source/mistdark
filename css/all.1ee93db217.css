@@ -3104,6 +3104,30 @@ input::placeholder{color:#6b675e;}
 .eq-dbtn.red{background-image:url("../assets/ui/public/btn-primary-red.png");}
 .eq-dbtn:active{transform:scale(.95);filter:brightness(.94);}
 
+/* ---------- 分解装备：按品质勾选 ---------- */
+.salvage-list{display:flex;flex-direction:column;}
+.salvage-row{
+  display:flex;align-items:center;gap:12px;
+  height:68px;padding:0 2px;
+  border-bottom:1px solid rgba(90,60,30,.16);
+  cursor:pointer;
+}
+.salvage-row:last-child{border-bottom:0;}
+.salvage-row .ui-check-box{flex:0 0 auto;}
+/* 勾选图标按行高重新对齐，避免沿用登录页的负偏移 */
+.salvage-row .ui-check-tick{top:calc(50% - 28px);}
+.salvage-row .salvage-name{
+  display:flex;align-items:center;gap:10px;
+  font-size:24px;font-weight:700;letter-spacing:1px;color:#33291d;
+}
+.salvage-dot{
+  width:14px;height:14px;border-radius:50%;
+  box-shadow:0 0 0 1px rgba(60,40,20,.35);
+}
+.salvage-count{margin-left:auto;font-size:22px;letter-spacing:.5px;color:#4a3a28;}
+.salvage-row.empty{opacity:.45;cursor:default;}
+.salvage-note{margin-top:14px;font-size:20px;line-height:1.7;color:#4a3a28;}
+
 /* ============================================================
    任务面板（主线 / 悬赏）
    ------------------------------------------------------------

@@ -12796,6 +12796,9 @@
     { id: 'other', name: '其他' }
   ];
 
+  // 分解品质勾选：面板关闭后仍保留本次选择，默认普通 + 魔法（与旧版一键分解范围一致）
+  let salvagePick = ['normal', 'magic'];
+
   function slotOf(item) {
     return DG.items.slotInfo(item.slot) || { name: '装备', glyph: '?' };
   }
@@ -12929,18 +12932,73 @@
       }, { danger: true, okText: '丢弃' });
     }
 
-    // 一键分解：默认只处理白装与蓝装，紫 / 套装 / 暗金保留
+    // 分解装备：按品质勾选，一键分解所选品质的全部装备
     function dismantle() {
-      const junk = char.bag.filter(it => it && (it.rarity === 'normal' || it.rarity === 'magic'));
-      if (!junk.length) {
-        ui.toast('没有可分解的白装或蓝装', 'danger');
+      // 统计「装备」页各品质数量，没有物品的品质不可勾选
+      const counts = {};
+      (char.bag || []).forEach(it => {
+        if (it && it.rarity) counts[it.rarity] = (counts[it.rarity] || 0) + 1;
+      });
+      if (!DG.data.rarity.some(r => counts[r.id])) {
+        ui.toast('临时装备库没有可分解的装备', 'danger');
         return;
       }
-      ui.confirm(`分解 ${junk.length} 件白装 / 蓝装？分解后无法找回。`, () => {
-        char.bag = char.bag.filter(it => !(it && (it.rarity === 'normal' || it.rarity === 'magic')));
+
+      const body = U.el('div', 'salvage');
+      body.innerHTML =
+        '<div class="salvage-list">' +
+          DG.data.rarity.map(r => {
+            const n = counts[r.id] || 0;
+            const on = n > 0 && salvagePick.indexOf(r.id) >= 0;
+            return `<label class="ui-check salvage-row${n ? '' : ' empty'}" data-rarity="${r.id}">` +
+              `<input type="checkbox"${on ? ' checked' : ''}${n ? '' : ' disabled'}>` +
+              '<span class="ui-check-box"></span>' +
+              '<span class="ui-check-tick"></span>' +
+              `<span class="salvage-name"><i class="salvage-dot" style="background:${r.color}"></i>${r.name}</span>` +
+              `<span class="salvage-count">${n} 件</span>` +
+            '</label>';
+          }).join('') +
+        '</div>' +
+        '<div class="salvage-note">只分解「装备」页的物品，勾选后一键清理，分解后无法找回。</div>';
+
+      const modal = ui.modal({ title: '分解装备', subtitle: '勾选品质后一键分解', body });
+      modal.foot.classList.add('center');
+      const btn = U.el('button', 'btn primary');
+      modal.foot.appendChild(btn);
+
+      // 已勾选且确实有库存的品质
+      const picked = () => salvagePick.filter(id => (counts[id] || 0) > 0);
+      const pickedCount = () => picked().reduce((n, id) => n + counts[id], 0);
+
+      function refresh() {
+        const n = pickedCount();
+        btn.textContent = n ? `分 解 ${n} 件` : '请勾选品质';
+        btn.disabled = !n;
+      }
+
+      body.querySelectorAll('.salvage-row input').forEach(cb => {
+        cb.addEventListener('change', () => {
+          const id = cb.closest('.salvage-row').getAttribute('data-rarity');
+          if (cb.checked) {
+            if (salvagePick.indexOf(id) < 0) salvagePick.push(id);
+          } else {
+            salvagePick = salvagePick.filter(x => x !== id);
+          }
+          refresh();
+        });
+      });
+
+      btn.addEventListener('click', () => {
+        const ids = picked();
+        const junk = (char.bag || []).filter(it => it && ids.indexOf(it.rarity) >= 0);
+        if (!junk.length) return;
+        char.bag = char.bag.filter(it => !(it && ids.indexOf(it.rarity) >= 0));
         ui.toast(`已分解 ${junk.length} 件装备`, 'gold');
+        modal.close();
         persist();
-      }, { danger: true, okText: '分解' });
+      });
+
+      refresh();
     }
 
     function openDetail(item, source) {
@@ -25227,13 +25285,15 @@
   drawDropLabels(ctx) {
     const v = this.viewRect(200);
     const z = this.zoom || 1;
-    const fs = 12 / z;            // 字号固定 12 屏幕像素
-    const h = 20 / z;             // 框高
-    const pad = 4 / z;
-    const icon = 12 / z;
-    const gap = 3 / z;
-    const lw = 2 / z;
-    const radius = 3 / z;
+    // 整体放大系数：字号/框高/内边距/图标统一放大，避免只放大字导致比例失衡
+    const K = 1.3;
+    const fs = 12 * K / z;        // 字号固定 15.6 屏幕像素
+    const h = 20 * K / z;         // 框高
+    const pad = 4 * K / z;
+    const icon = 12 * K / z;
+    const gap = 3 * K / z;
+    const lw = 2 * K / z;
+    const radius = 3 * K / z;
     ctx.save();
     ctx.font = '600 ' + fs + 'px "Microsoft YaHei", "Noto Sans SC", sans-serif';
     ctx.textAlign = 'left';
@@ -25245,7 +25305,7 @@
       const name = d.item.name;
       const tw = ctx.measureText(name).width;
       const w = pad + icon + gap + tw + pad;
-      const x = d.x + 14 / z;
+      const x = d.x + 14 * K / z;
       const y = d.y + Math.sin(d.t * 4) * 3 - h / 2;
 
       // 底板 + 品质描边

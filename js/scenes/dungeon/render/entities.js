@@ -142,13 +142,15 @@
   drawDropLabels(ctx) {
     const v = this.viewRect(200);
     const z = this.zoom || 1;
-    const fs = 12 / z;            // 字号固定 12 屏幕像素
-    const h = 20 / z;             // 框高
-    const pad = 4 / z;
-    const icon = 12 / z;
-    const gap = 3 / z;
-    const lw = 2 / z;
-    const radius = 3 / z;
+    // 整体放大系数：字号/框高/内边距/图标统一放大，避免只放大字导致比例失衡
+    const K = 1.3;
+    const fs = 12 * K / z;        // 字号固定 15.6 屏幕像素
+    const h = 20 * K / z;         // 框高
+    const pad = 4 * K / z;
+    const icon = 12 * K / z;
+    const gap = 3 * K / z;
+    const lw = 2 * K / z;
+    const radius = 3 * K / z;
     ctx.save();
     ctx.font = '600 ' + fs + 'px "Microsoft YaHei", "Noto Sans SC", sans-serif';
     ctx.textAlign = 'left';
@@ -160,7 +162,7 @@
       const name = d.item.name;
       const tw = ctx.measureText(name).width;
       const w = pad + icon + gap + tw + pad;
-      const x = d.x + 14 / z;
+      const x = d.x + 14 * K / z;
       const y = d.y + Math.sin(d.t * 4) * 3 - h / 2;
 
       // 底板 + 品质描边
