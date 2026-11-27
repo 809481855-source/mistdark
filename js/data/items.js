@@ -232,6 +232,32 @@
       return DG.data.rarityById[item && item.rarity] || DG.data.rarity[0];
     },
 
+    // 套装分组：按部位找到所属套装
+    setForSlot(slot) {
+      const groups = (DG.data.itemNames && DG.data.itemNames.setGroups) || [];
+      return groups.find(g => g.slots.indexOf(slot) >= 0) || null;
+    },
+
+    // 套装状态：complete=同组部位全部装备套装品质；ancient=同组全部为远古套装
+    setState(char, item) {
+      const empty = { complete: false, ancient: false };
+      if (!char || !item || item.rarity !== 'set') return empty;
+      const group = items.setForSlot(item.slot);
+      if (!group) return empty;
+      let complete = true;
+      let ancient = true;
+      group.slots.forEach(slot => {
+        const eq = char.equipment && char.equipment[slot];
+        if (!eq || eq.rarity !== 'set') {
+          complete = false;
+          ancient = false;
+        } else if (!eq.ancient) {
+          ancient = false;
+        }
+      });
+      return { complete, ancient: complete && ancient };
+    },
+
     // 品质文案：普通 / 魔法 / 稀有 / 套装 / 暗金，远古前缀
     qualityLabel(item) {
       const r = items.rarityInfo(item);

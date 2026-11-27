@@ -414,7 +414,15 @@
 
       // 结算面板出现时切回主城音乐，避免战斗音乐停掉后出现长时间静音
       if (DG.audio) DG.audio.playBgm('lobby');
-      DG.ui.showSettlement(result, () => this.gotoTown());
+      // 通关后可直接进入下一关；已是最后一关或未通关时按钮回主城
+      const list = DG.data.dungeons || [];
+      const idx = list.findIndex(d => d.id === result.stageId);
+      const nextDef = result.victory && idx >= 0 ? (list[idx + 1] || null) : null;
+      DG.ui.showSettlement(result, {
+        nextDef,
+        onNext: (def) => this.startDungeon(def),
+        onReturn: () => this.gotoTown()
+      });
     },
 
     stopDungeon() {

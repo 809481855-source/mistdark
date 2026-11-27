@@ -137,7 +137,7 @@
       `</div>`;
   };
 
-  // 公用道具框：白 / 蓝 / 紫 / 套装 / 暗金，套装与暗金另有远古框
+  // 公用道具框：白 / 蓝 / 紫 / 套装 / 暗金；成套/远古为已装备状态框
   const FRAME_DIR = 'assets/ui/items/frames/';
   const FRAMES = {
     normal: 'frame-normal.png',
@@ -146,14 +146,17 @@
     set: 'frame-set.png',
     legend: 'frame-legend.png'
   };
-  const FRAMES_ANCIENT = {
-    set: 'frame-set-ancient.png',
-    legend: 'frame-legend-ancient.png'
-  };
-  ui.itemFrameSrc = function (item) {
+  ui.itemFrameSrc = function (item, equipped, setState) {
     const rarity = item && item.rarity;
-    const ancient = item && item.ancient && FRAMES_ANCIENT[rarity];
-    return FRAME_DIR + (ancient || FRAMES[rarity] || FRAMES.normal);
+    const st = setState || {};
+    // 已装备状态框：远古套装需整组远古套装齐全；成套框需整组套装齐全；
+    // 远古暗金只看该件是否为远古暗金
+    if (equipped) {
+      if (rarity === 'set' && st.ancient) return FRAME_DIR + 'frame-set-ancient.png?v=20261128b';
+      if (rarity === 'set' && st.complete) return FRAME_DIR + 'frame-set-full.png?v=20261128b';
+      if (rarity === 'legend' && item.ancient) return FRAME_DIR + 'frame-legend-ancient.png?v=20261128b';
+    }
+    return FRAME_DIR + (FRAMES[rarity] || FRAMES.normal) + '?v=20261128b';
   };
 
   ui.itemCell = function (item, opts) {

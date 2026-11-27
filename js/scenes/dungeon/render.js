@@ -132,6 +132,8 @@
     this.drawProjectiles(ctx);
     this.drawEffects(ctx, false);
     this.drawFloaters(ctx);
+    // 掉落名字常驻：画在实体之上，保证不会怪物/角色挡住
+    this.drawDropLabels(ctx);
 
     ctx.restore();
 

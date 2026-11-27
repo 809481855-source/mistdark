@@ -81,11 +81,19 @@
         ctx.globalCompositeOperation = 'lighter';
         ctx.drawImage(this.glowSprite(rar.color), -gr, -gr, gr * 2, gr * 2);
         ctx.globalCompositeOperation = 'source-over';
+        // 品质框：常驻的方形描边，地上不用靠近也能一眼看出品质
+        const half = 10 * (d.item.ancient ? 1.2 : 1);
+        ctx.fillStyle = 'rgba(8,10,12,0.82)';
+        ctx.fillRect(-half, -half, half * 2, half * 2);
+        ctx.strokeStyle = rar.color;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-half, -half, half * 2, half * 2);
+        // 框内菱形图标
         ctx.rotate(Math.PI / 4);
         ctx.fillStyle = rar.color;
-        ctx.fillRect(-7, -7, 14, 14);
+        ctx.fillRect(-5, -5, 10, 10);
         ctx.fillStyle = 'rgba(10,12,14,0.75)';
-        ctx.fillRect(-4, -4, 8, 8);
+        ctx.fillRect(-3, -3, 6, 6);
         ctx.restore();
       } else if (d.kind === 'orb') {
         // 血球：红色、大而醒目，靠近自动回血
@@ -141,6 +149,32 @@
         ctx.restore();
       }
     }
+  },
+  // 掉落物名字：常驻显示，字号按屏幕像素固定，不随镜头缩放变大变小
+  drawDropLabels(ctx) {
+    const v = this.viewRect(160);
+    const z = this.zoom || 1;
+    const fs = Math.max(9, Math.round(12 / z));
+    ctx.save();
+    ctx.font = '600 ' + fs + 'px "Microsoft YaHei", "Noto Sans SC", sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round';
+    for (const d of this.drops) {
+      if (d.kind !== 'item' || !d.item || !d.item.name) continue;
+      if (d.x < v.l || d.x > v.r || d.y < v.t || d.y > v.b) continue;
+      const rar = DG.items.rarityInfo(d.item);
+      const bob = Math.sin(d.t * 4) * 3;
+      const tx = d.x + 13 * (d.item.ancient ? 1.2 : 1);
+      const ty = d.y + bob - 1;
+      // 黑色描边：无论地面是血泊还是火圈，名字都能读清
+      ctx.lineWidth = Math.max(2, 3 / z);
+      ctx.strokeStyle = 'rgba(0,0,0,0.9)';
+      ctx.strokeText(d.item.name, tx, ty);
+      ctx.fillStyle = rar.color;
+      ctx.fillText(d.item.name, tx, ty);
+    }
+    ctx.restore();
   },
   // 每帧只排序一次，前后两层绘制复用同一列表
   sortMonstersForDraw() {

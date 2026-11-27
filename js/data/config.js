@@ -4,7 +4,7 @@
   DG.data = DG.data || {};
 
   DG.CONFIG = {
-    BAG_SIZE: 100,
+    BAG_SIZE: 32,
     MAX_SKILL_LEVEL: 10,
     MAX_LEVEL: 60,
     // 装备槽位：与装备界面 PSD 的 10 个格子一一对应

@@ -352,7 +352,7 @@
     return true;
   },
   onPlayerDeath() {
-    if (this.ending) return;
+    if (this.ending || this.victory) return;
     this.defeat = true;
     this.victory = false;
     this.ending = true;
@@ -477,9 +477,9 @@
     const drop = m.noLoot
       ? { items: [], orb: false, rune: false }
       : DG.loot.roll(m, this.def.ilvl, this.char && this.char.cls);
-    // 首领的战利品直接落在玩家脚下，避免结算前来不及拾取
-    const bx = m.boss ? this.player.x : m.x;
-    const by = m.boss ? this.player.y : m.y;
+    // 掉落落在怪物倒下的位置：首领被击败后留出拾取时间，玩家需要走过去捡
+    const bx = m.x;
+    const by = m.y;
     // 掉落点吸附到可站立地面，避免掉进墙体
     const aw = this.arenaW || ARENA_W, ah = this.arenaH || ARENA_H;
     const place = (x, y) => this.nearestFloorPoint(
@@ -506,16 +506,24 @@
     if (m.boss) {
       // 通关记录：解锁下一关，并推进悬赏的“通关”类任务
       if (DG.quests && this.char) DG.quests.onStageClear(this.char, this.def.id);
-      // 首领倒下的瞬间就落盘，避免结局动画期间刷新或退出丢掉通关进度
+      // 首领倒下的瞬间就落盘，避免拾取/结算期间刷新或退出丢掉通关进度
       if (DG.game && DG.game.save) DG.game.save();
       this.victory = true;
-      this.ending = true;
-      this.finishTimer = 1.8;
+      // 通关成绩锁定在首领倒下的一刻，战后拾取时间不计入时长
+      this.clearTime = Math.round(this.time);
+      // 不立刻结算：保留约 6 秒拾取窗口，玩家可以走过去捡起首领掉落
+      this.settleDelay = 6;
+      this._settleWarned = false;
+      this.player.invuln = Math.max(this.player.invuln || 0, this.settleDelay + 1);
+      this.autoMode = false;
+      this.syncAutoButton();
+      this.attackHeld = false;
       this.shake = 0.6;
-      this.announce('首领已被击败', 2200);
+      this.announce('首领已被击败 · 拾取战利品', 2600);
       this.$bossWrap.classList.add('hidden');
       // 立即解除屏蔽，不让进度/小地图多隐藏 0.1 秒
       this.hud.classList.remove('boss-mode');
+      if (this.$wave) this.$wave.textContent = '已通关';
     } else if (this.phase === 'wave') {
       // 击杀数达到本图门槛，或怪群已全部刷出且场上再无小怪时兜底触发，
       // 避免刷怪上限截断导致击杀数永远差几只、首领无法出现

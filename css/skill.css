@@ -20,14 +20,15 @@
 
 /* 标题与资源角标 */
 .sk-title{
-  position:absolute;left:0;right:0;top:24px;height:58px;line-height:58px;
-  text-align:center;font-size:46px;font-weight:800;letter-spacing:4px;
+  position:absolute;left:0;right:0;top:28px;height:54px;line-height:54px;
+  text-align:center;font-size:42px;font-weight:800;letter-spacing:5px;
+  font-family:"Microsoft YaHei","PingFang SC","Noto Sans SC","Hiragino Sans GB",sans-serif;
   color:#fff;-webkit-text-stroke:3px #000;paint-order:stroke fill;
   text-shadow:none;
   pointer-events:none;
 }
 .sk-close{
-  position:absolute;right:18px;top:24px;width:55px;height:53px;padding:0;border:0;
+  position:absolute;right:16px;top:27px;width:61px;height:59px;padding:0;border:0;
   background:url("../assets/ui/public/dialog-close.png") center/100% 100% no-repeat;
   cursor:pointer;z-index:5;
 }

@@ -30,7 +30,7 @@
     {
       id: 'whirlwind', skill: 'whirlwind', name: '旋风斩',
       group: 'strong', unlock: 4,
-      desc: '旋身 1.6 秒，期间移速提高且不可阻挡，按固定节奏连斩周身敌人。',
+      desc: '旋身 3 秒，期间移速提高且不可阻挡，按固定节奏连斩周身敌人。',
       nodes: [
         { id: 'w_whirlwind_tornado', name: '龙卷风', slot: 0, icon: ICON + 'whirlwind-tornado.png',
           desc: '旋风斩命中敌人时，额外多召唤 1 道龙卷风（3 道 → 4 道）。' },

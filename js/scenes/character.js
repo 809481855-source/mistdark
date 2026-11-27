@@ -262,6 +262,8 @@
         DG.game.enterCharacter(slotIndex);
       });
 
+      // 只有一个主操作，居中摆放（与右侧关闭按钮错开，视觉更稳）
+      modal.foot.classList.add('center');
       modal.foot.appendChild(btn);
       nameEl.focus();
       nameEl.addEventListener('keydown', e => {

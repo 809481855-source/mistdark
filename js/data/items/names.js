@@ -34,6 +34,14 @@
       boots: '逐暗',
       ring: '回响',
       amulet: '低语'
-    }
+    },
+
+    // 套装分组：同组部位全部穿上套装品质装备时判定为“成套”，
+    // 装备栏里该组装备会显示套装成套框；不成套仍显示普通套装框
+    setGroups: [
+      { id: 'mian', name: '不眠', slots: ['helm', 'armor', 'pants', 'boots'] },
+      { id: 'fuling', name: '缚灵', slots: ['shoulder', 'gloves', 'ring'] },
+      { id: 'liehun', name: '裂魂', slots: ['weapon', 'offhand', 'amulet'] }
+    ]
   };
 })();

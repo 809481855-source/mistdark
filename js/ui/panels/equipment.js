@@ -5,11 +5,8 @@
   const C = DG.CONFIG;
   const ui = DG.ui = DG.ui || {};
 
-  // 画布就是 PSD 的 810×1680，只按实际屏幕算一次等比缩放，JS 全程使用 PSD 原始坐标
+  // 画布严格使用 PSD 的 720×1440 坐标居中显示；背景 810×1680 由 -45/-120 向外补边
   const ASSET = 'assets/ui/equip/';
-  const PSD_W = 810;
-  const PSD_H = 1680;
-  const CONTENT_H = 1605;   // PSD 内容最低点（装备库面板底边），保证任何比例下内容不被裁掉
 
   // 装备页（PSD 65,400 438×601）内的格子坐标，已减去页面左上角
   const SLOT_POS = {
@@ -36,42 +33,9 @@
     return DG.items.slotInfo(item.slot) || { name: '装备', glyph: '?' };
   }
 
-  // 把 810×1680 画布按舞台实际显示尺寸铺满（cover），并抵消舞台自身的非等比缩放，
-  // 保证 PSD 的圆形、字号、间距在任何屏幕上都不变形、不被二次压缩
-  function fitCanvas(canvas, layoutW) {
-    const stage = document.getElementById('stage');
-    if (!stage) return;
-    const rect = stage.getBoundingClientRect();
-    const tf = getComputedStyle(stage).transform;
-    let kx = 1;
-    let ky = 1;
-    if (tf && tf !== 'none') {
-      const m = tf.match(/matrix\(([^)]+)\)/);
-      if (m) {
-        const v = m[1].split(',').map(Number);
-        kx = v[0] || 1;
-        ky = v[3] || 1;
-      }
-    }
-    // 以“铺满屏幕”为准；屏幕过扁时退让到内容高度，避免底部装备栏被切
-    const scale = Math.min(
-      Math.max(rect.width / PSD_W, rect.height / PSD_H),
-      rect.height / CONTENT_H
-    );
-    const sx = scale / kx;
-    const sy = scale / ky;
-    canvas.style.transformOrigin = 'left top';
-    canvas.style.transform = `scale(${sx}, ${sy})`;
-    canvas.style.left = ((layoutW || 720) / 2 - (PSD_W / 2) * sx) + 'px';
-    canvas.style.top = '0px';
-    // 舞台比 810 窄时（短屏 720×1680）画布左右各被裁掉一部分，
-    // 把裁切宽度传给 CSS，让贴边的关闭按钮跟着内收，避免被切掉
-    const cropX = Math.max(0, (PSD_W * sx - (layoutW || 720)) / 2);
-    canvas.style.setProperty('--eq-crop', cropX + 'px');
-  }
-
   // 单个道具格：空格显示部位名，有装备时叠品质框 + 部位图标 + 等级
-  function fillCell(cell, item, slot) {
+  // equipped=true 时使用“已装备”状态框（套装成套 / 远古套装 / 远古暗金）
+  function fillCell(cell, item, slot, equipped, setState) {
     cell.innerHTML = '';
     if (!item) {
       cell.classList.remove('has');
@@ -80,7 +44,7 @@
     }
     cell.classList.add('has');
     const img = U.el('img', 'eq-frame');
-    img.src = DG.ui.itemFrameSrc(item);
+    img.src = DG.ui.itemFrameSrc(item, equipped, setState);
     img.alt = '';
     cell.appendChild(img);
     cell.appendChild(U.el('span', 'eq-glyph', slot.glyph));
@@ -107,7 +71,10 @@
       screen.style.top = ((1440 - dh) / 2) + 'px';
       screen.style.width = dw + 'px';
       screen.style.height = dh + 'px';
-      fitCanvas(canvas, dw);
+      // PSD 画布 720×1440 居中，超出部分由 810×1680 背景补边
+      canvas.style.left = ((dw - 720) / 2) + 'px';
+      canvas.style.top = ((dh - 1440) / 2) + 'px';
+      canvas.style.transform = 'none';
     };
     layout();
     const onResize = () => layout();
@@ -237,7 +204,11 @@
     function render() {
       const stats = DG.stats.compute(char);
       const cls = DG.data.classes[char.cls];
-      const used = DG.character.bagUsed(char);
+      // 三个分页各自独立：装备 / 道具 / 其他，各 32 格
+      const bagList = tab === 'item' ? (char.bagItems || [])
+        : tab === 'other' ? (char.bagOther || [])
+        : (char.bag || []);
+      const used = bagList.filter(Boolean).length;
       const cap = C.BAG_SIZE;
       const tabIndex = Math.max(0, TABS.findIndex(t => t.id === tab));
 
@@ -261,12 +232,11 @@
       canvas.innerHTML = `
         <div class="eq-bg"></div>
         <div class="eq-title">背包</div>
-        <button class="eq-skill" aria-label="技能">技能</button>
         <button class="eq-close" aria-label="关闭"></button>
 
         <div class="eq-hero">
           <div class="eq-hero-frame"></div>
-          <div class="eq-portrait"><img src="${ASSET}avatar.png" alt=""></div>
+          <div class="eq-portrait"><img src="${ASSET}avatar.png?v=20261127" alt=""></div>
           <div class="eq-hero-name">${U.escapeHtml(char.name)}<span class="lv">${char.level}级</span></div>
           <div class="eq-hero-sub">${U.escapeHtml(cls.name)} · ${U.escapeHtml(cls.title)}</div>
           <div class="eq-power"><span>战力</span><b>${U.fmt(stats.power)}</b></div>
@@ -282,15 +252,16 @@
         ${page === 'bag' ? `
         <div class="eq-bag-page">
           <div class="eq-tabs">
-            <div class="eq-tab-pill" style="left:${tabIndex * 125}px"></div>
+            <div class="eq-tab-pill" style="left:${tabIndex * 124}px"></div>
             ${TABS.map((t, i) =>
-              `<button class="eq-tab${t.id === tab ? ' on' : ''}" data-tab="${t.id}" style="left:${i * 125}px">${t.name}</button>`
+              `<button class="eq-tab${t.id === tab ? ' on' : ''}" data-tab="${t.id}" style="left:${i * 124}px">${t.name}</button>`
             ).join('')}
           </div>
           <button class="eq-btn stash">装备库</button>
           <button class="eq-btn dismantle">分解</button>
           <div class="eq-cap">容量：<b>${used}</b>/${cap}</div>
           <div class="eq-grid-wrap"><div class="eq-grid"></div></div>
+          <div class="eq-bag-hint">及时清理背包哦！容量有限！</div>
           <div class="eq-empty hidden"></div>
         </div>` : ''}
       `;
@@ -308,10 +279,6 @@
         closeTimer = setTimeout(close, 350);
       });
       closeBtn.addEventListener('pointercancel', () => clearTimeout(closeTimer));
-      // 装备界面内直接进技能界面：关闭技能后回到背包，不需要先退出再点技能入口
-      canvas.querySelector('.eq-skill').addEventListener('click', () => {
-        DG.ui.openSkills(char, () => { if (onChange) onChange(); }, { onClose: render });
-      });
       canvas.querySelectorAll('.eq-tab').forEach(btn => {
         btn.addEventListener('click', () => {
           if (tab === btn.dataset.tab) return;
@@ -330,7 +297,7 @@
         const cell = U.el('button', 'eq-cell eq-slot');
         cell.style.left = pos[0] + 'px';
         cell.style.top = pos[1] + 'px';
-        fillCell(cell, item, slot);
+        fillCell(cell, item, slot, true, DG.items.setState(char, item));
         if (item) cell.addEventListener('click', () => openDetail(item, 'equip'));
         equipPage.appendChild(cell);
       });
@@ -345,21 +312,21 @@
         bagPage.querySelector('.eq-btn.dismantle').addEventListener('click', dismantle);
 
         const grid = bagPage.querySelector('.eq-grid');
-        const list = tab === 'equip' ? char.bag.filter(Boolean) : [];
+        // 当前分页自己的物品列表，各自补满 32 格
+        const list = (tab === 'item' ? char.bagItems : tab === 'other' ? char.bagOther : char.bag).filter(Boolean);
         list.forEach(item => {
           const cell = U.el('button', 'eq-cell');
           fillCell(cell, item, slotOf(item));
-          cell.addEventListener('click', () => openDetail(item, 'bag'));
+          if (tab === 'equip') cell.addEventListener('click', () => openDetail(item, 'bag'));
           grid.appendChild(cell);
         });
-        // 装备页按容量补齐空格，直观看出还剩多少位置
-        if (tab === 'equip') {
-          for (let i = list.length; i < cap; i++) grid.appendChild(U.el('div', 'eq-cell empty'));
-        } else if (!list.length) {
-          const hint = bagPage.querySelector('.eq-empty');
-          hint.classList.remove('hidden');
-          hint.textContent = tab === 'item' ? '暂无道具' : '暂无其他物品';
-        }
+        // 按容量补齐空格，直观看出还剩多少位置
+        for (let i = list.length; i < cap; i++) grid.appendChild(U.el('div', 'eq-cell empty'));
+        // PSD 固定 8 列 × 4 行：格子按 84 / 85 间距绝对定位，32 格一次全部展示
+        Array.from(grid.children).forEach((cell, i) => {
+          cell.style.left = (i % 8) * 84 + 'px';
+          cell.style.top = Math.floor(i / 8) * 85 + 'px';
+        });
 
         const wrap = bagPage.querySelector('.eq-grid-wrap');
         wrap.scrollTop = bagScroll;

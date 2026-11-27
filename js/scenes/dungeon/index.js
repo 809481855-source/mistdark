@@ -171,6 +171,10 @@
       this.finished = false;
       this.ending = false;
       this.finishTimer = 0;
+      // 通关后先留出拾取战利品的时间，再进入结算
+      this.settleDelay = 0;
+      this.clearTime = 0;
+      this._settleWarned = false;
       this.victory = false;
       this.defeat = false;
       this.shake = 0;
@@ -255,7 +259,9 @@
         retreat: !this.victory && !this.defeat,
         defeat: this.defeat,
         kills: this.kills,
-        time: Math.round(this.time),
+        // 通关时长以首领倒下的一刻为准，不含战后拾取时间
+        time: this.clearTime > 0 ? this.clearTime : Math.round(this.time),
+        stageId: this.def ? this.def.id : null,
         xp: Math.round(this.xpEarned),
         gold: Math.round(this.goldEarned),
         items: this.items.slice(),
@@ -377,6 +383,19 @@
       this.autoRescueCd = Math.max(0, (this.autoRescueCd || 0) - dt);
       this.tickTalentTimers(dt);
       this.hudTimer -= dt;
+
+      // 通关拾取窗口：首领倒下后保留约 6 秒让玩家拾取掉落，再弹出结算
+      if (this.victory && this.settleDelay > 0) {
+        this.settleDelay -= dt;
+        if (this.settleDelay <= 2 && !this._settleWarned) {
+          this._settleWarned = true;
+          this.announce('即将结算…', 1400);
+        }
+        if (this.settleDelay <= 0) {
+          this.finishNow();
+          return;
+        }
+      }
 
       if (this.ending) {
         this.finishTimer -= dt;

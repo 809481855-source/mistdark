@@ -1517,7 +1517,7 @@
   DG.data = DG.data || {};
 
   DG.CONFIG = {
-    BAG_SIZE: 100,
+    BAG_SIZE: 32,
     MAX_SKILL_LEVEL: 10,
     MAX_LEVEL: 60,
     // 装备槽位：与装备界面 PSD 的 10 个格子一一对应
@@ -2156,11 +2156,15 @@
     whirlwind: {
       id: 'whirlwind', name: '旋风', glyph: '旋', classId: 'warrior', icon: 'assets/ui/warrior/skill-whirlwind.png',
       unlock: 4,
-      type: 'aoeSelf', cooldown: 8, radius: 150, duration: 1.6,
-      hitTimes: [0.1, 0.2, 0.3, 0.5, 0.6, 0.7, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5],
+      type: 'aoeSelf', cooldown: 8, radius: 150, duration: 3,
+      // 3 秒内保持原有约 0.1 秒一次的斩击节奏，总伤害不变（单次伤害按命中次数均分）
+      hitTimes: [
+        0.1, 0.2, 0.3, 0.5, 0.6, 0.7, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5,
+        1.6, 1.7, 1.8, 2.0, 2.1, 2.2, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 3.0
+      ],
       color: '#e08a56',
       mult: (lv) => 1.7 + 0.25 * (lv - 1),
-      desc: (lv) => `旋身 1.6 秒，期间移速 +30%、不可阻挡，在固定的 13 个时点斩击周身 ${150} 码内敌人，总计造成 <em>${pct((1.7 + 0.25 * (lv - 1)) * 2.5)}</em> 攻击力伤害；命中敌人时召唤 3 道白色龙卷风，向四周散开后自动锁敌游走 5 秒。`
+      desc: (lv) => `旋身 3 秒，期间移速 +30%、不可阻挡，持续斩击周身 ${150} 码内敌人，总计造成 <em>${pct((1.7 + 0.25 * (lv - 1)) * 2.5)}</em> 攻击力伤害；命中敌人时召唤 3 道白色龙卷风，向四周散开后自动锁敌游走 5 秒。`
     },
     charge: {
       id: 'charge', name: '冲锋', glyph: '冲', classId: 'warrior', icon: 'assets/ui/warrior/skill-charge.png',
@@ -2684,7 +2688,15 @@
       boots: '逐暗',
       ring: '回响',
       amulet: '低语'
-    }
+    },
+
+    // 套装分组：同组部位全部穿上套装品质装备时判定为“成套”，
+    // 装备栏里该组装备会显示套装成套框；不成套仍显示普通套装框
+    setGroups: [
+      { id: 'mian', name: '不眠', slots: ['helm', 'armor', 'pants', 'boots'] },
+      { id: 'fuling', name: '缚灵', slots: ['shoulder', 'gloves', 'ring'] },
+      { id: 'liehun', name: '裂魂', slots: ['weapon', 'offhand', 'amulet'] }
+    ]
   };
 })();
 
@@ -2925,6 +2937,32 @@
       return DG.data.rarityById[item && item.rarity] || DG.data.rarity[0];
     },
 
+    // 套装分组：按部位找到所属套装
+    setForSlot(slot) {
+      const groups = (DG.data.itemNames && DG.data.itemNames.setGroups) || [];
+      return groups.find(g => g.slots.indexOf(slot) >= 0) || null;
+    },
+
+    // 套装状态：complete=同组部位全部装备套装品质；ancient=同组全部为远古套装
+    setState(char, item) {
+      const empty = { complete: false, ancient: false };
+      if (!char || !item || item.rarity !== 'set') return empty;
+      const group = items.setForSlot(item.slot);
+      if (!group) return empty;
+      let complete = true;
+      let ancient = true;
+      group.slots.forEach(slot => {
+        const eq = char.equipment && char.equipment[slot];
+        if (!eq || eq.rarity !== 'set') {
+          complete = false;
+          ancient = false;
+        } else if (!eq.ancient) {
+          ancient = false;
+        }
+      });
+      return { complete, ancient: complete && ancient };
+    },
+
     // 品质文案：普通 / 魔法 / 稀有 / 套装 / 暗金，远古前缀
     qualityLabel(item) {
       const r = items.rarityInfo(item);
@@ -2968,7 +3006,7 @@
     {
       id: 'whirlwind', skill: 'whirlwind', name: '旋风斩',
       group: 'strong', unlock: 4,
-      desc: '旋身 1.6 秒，期间移速提高且不可阻挡，按固定节奏连斩周身敌人。',
+      desc: '旋身 3 秒，期间移速提高且不可阻挡，按固定节奏连斩周身敌人。',
       nodes: [
         { id: 'w_whirlwind_tornado', name: '龙卷风', slot: 0, icon: ICON + 'whirlwind-tornado.png',
           desc: '旋风斩命中敌人时，额外多召唤 1 道龙卷风（3 道 → 4 道）。' },
@@ -11690,6 +11728,9 @@
         talents: {},
         equipment,
         bag: [],
+        // 背包三个分页各自独立存放：装备 / 道具 / 其他，各 32 格
+        bagItems: [],
+        bagOther: [],
         // 大仓库：临时装备页收藏进来的物品，容量无上限
         stash: [],
         // 关卡通关记录：解锁下一关的依据
@@ -11772,6 +11813,8 @@
         if (!(slot.id in char.equipment)) char.equipment[slot.id] = null;
       });
       if (!Array.isArray(char.bag)) char.bag = [];
+      if (!Array.isArray(char.bagItems)) char.bagItems = [];
+      if (!Array.isArray(char.bagOther)) char.bagOther = [];
       if (!Array.isArray(char.stash)) char.stash = [];
       if (DG.talents && DG.talents.ensure) DG.talents.ensure(char);
       if (DG.quests && DG.quests.ensure) DG.quests.ensure(char);
@@ -12538,7 +12581,7 @@
       `</div>`;
   };
 
-  // 公用道具框：白 / 蓝 / 紫 / 套装 / 暗金，套装与暗金另有远古框
+  // 公用道具框：白 / 蓝 / 紫 / 套装 / 暗金；成套/远古为已装备状态框
   const FRAME_DIR = 'assets/ui/items/frames/';
   const FRAMES = {
     normal: 'frame-normal.png',
@@ -12547,14 +12590,17 @@
     set: 'frame-set.png',
     legend: 'frame-legend.png'
   };
-  const FRAMES_ANCIENT = {
-    set: 'frame-set-ancient.png',
-    legend: 'frame-legend-ancient.png'
-  };
-  ui.itemFrameSrc = function (item) {
+  ui.itemFrameSrc = function (item, equipped, setState) {
     const rarity = item && item.rarity;
-    const ancient = item && item.ancient && FRAMES_ANCIENT[rarity];
-    return FRAME_DIR + (ancient || FRAMES[rarity] || FRAMES.normal);
+    const st = setState || {};
+    // 已装备状态框：远古套装需整组远古套装齐全；成套框需整组套装齐全；
+    // 远古暗金只看该件是否为远古暗金
+    if (equipped) {
+      if (rarity === 'set' && st.ancient) return FRAME_DIR + 'frame-set-ancient.png?v=20261128b';
+      if (rarity === 'set' && st.complete) return FRAME_DIR + 'frame-set-full.png?v=20261128b';
+      if (rarity === 'legend' && item.ancient) return FRAME_DIR + 'frame-legend-ancient.png?v=20261128b';
+    }
+    return FRAME_DIR + (FRAMES[rarity] || FRAMES.normal) + '?v=20261128b';
   };
 
   ui.itemCell = function (item, opts) {
@@ -12726,11 +12772,8 @@
   const C = DG.CONFIG;
   const ui = DG.ui = DG.ui || {};
 
-  // 画布就是 PSD 的 810×1680，只按实际屏幕算一次等比缩放，JS 全程使用 PSD 原始坐标
+  // 画布严格使用 PSD 的 720×1440 坐标居中显示；背景 810×1680 由 -45/-120 向外补边
   const ASSET = 'assets/ui/equip/';
-  const PSD_W = 810;
-  const PSD_H = 1680;
-  const CONTENT_H = 1605;   // PSD 内容最低点（装备库面板底边），保证任何比例下内容不被裁掉
 
   // 装备页（PSD 65,400 438×601）内的格子坐标，已减去页面左上角
   const SLOT_POS = {
@@ -12757,42 +12800,9 @@
     return DG.items.slotInfo(item.slot) || { name: '装备', glyph: '?' };
   }
 
-  // 把 810×1680 画布按舞台实际显示尺寸铺满（cover），并抵消舞台自身的非等比缩放，
-  // 保证 PSD 的圆形、字号、间距在任何屏幕上都不变形、不被二次压缩
-  function fitCanvas(canvas, layoutW) {
-    const stage = document.getElementById('stage');
-    if (!stage) return;
-    const rect = stage.getBoundingClientRect();
-    const tf = getComputedStyle(stage).transform;
-    let kx = 1;
-    let ky = 1;
-    if (tf && tf !== 'none') {
-      const m = tf.match(/matrix\(([^)]+)\)/);
-      if (m) {
-        const v = m[1].split(',').map(Number);
-        kx = v[0] || 1;
-        ky = v[3] || 1;
-      }
-    }
-    // 以“铺满屏幕”为准；屏幕过扁时退让到内容高度，避免底部装备栏被切
-    const scale = Math.min(
-      Math.max(rect.width / PSD_W, rect.height / PSD_H),
-      rect.height / CONTENT_H
-    );
-    const sx = scale / kx;
-    const sy = scale / ky;
-    canvas.style.transformOrigin = 'left top';
-    canvas.style.transform = `scale(${sx}, ${sy})`;
-    canvas.style.left = ((layoutW || 720) / 2 - (PSD_W / 2) * sx) + 'px';
-    canvas.style.top = '0px';
-    // 舞台比 810 窄时（短屏 720×1680）画布左右各被裁掉一部分，
-    // 把裁切宽度传给 CSS，让贴边的关闭按钮跟着内收，避免被切掉
-    const cropX = Math.max(0, (PSD_W * sx - (layoutW || 720)) / 2);
-    canvas.style.setProperty('--eq-crop', cropX + 'px');
-  }
-
   // 单个道具格：空格显示部位名，有装备时叠品质框 + 部位图标 + 等级
-  function fillCell(cell, item, slot) {
+  // equipped=true 时使用“已装备”状态框（套装成套 / 远古套装 / 远古暗金）
+  function fillCell(cell, item, slot, equipped, setState) {
     cell.innerHTML = '';
     if (!item) {
       cell.classList.remove('has');
@@ -12801,7 +12811,7 @@
     }
     cell.classList.add('has');
     const img = U.el('img', 'eq-frame');
-    img.src = DG.ui.itemFrameSrc(item);
+    img.src = DG.ui.itemFrameSrc(item, equipped, setState);
     img.alt = '';
     cell.appendChild(img);
     cell.appendChild(U.el('span', 'eq-glyph', slot.glyph));
@@ -12828,7 +12838,10 @@
       screen.style.top = ((1440 - dh) / 2) + 'px';
       screen.style.width = dw + 'px';
       screen.style.height = dh + 'px';
-      fitCanvas(canvas, dw);
+      // PSD 画布 720×1440 居中，超出部分由 810×1680 背景补边
+      canvas.style.left = ((dw - 720) / 2) + 'px';
+      canvas.style.top = ((dh - 1440) / 2) + 'px';
+      canvas.style.transform = 'none';
     };
     layout();
     const onResize = () => layout();
@@ -12958,7 +12971,11 @@
     function render() {
       const stats = DG.stats.compute(char);
       const cls = DG.data.classes[char.cls];
-      const used = DG.character.bagUsed(char);
+      // 三个分页各自独立：装备 / 道具 / 其他，各 32 格
+      const bagList = tab === 'item' ? (char.bagItems || [])
+        : tab === 'other' ? (char.bagOther || [])
+        : (char.bag || []);
+      const used = bagList.filter(Boolean).length;
       const cap = C.BAG_SIZE;
       const tabIndex = Math.max(0, TABS.findIndex(t => t.id === tab));
 
@@ -12982,12 +12999,11 @@
       canvas.innerHTML = `
         <div class="eq-bg"></div>
         <div class="eq-title">背包</div>
-        <button class="eq-skill" aria-label="技能">技能</button>
         <button class="eq-close" aria-label="关闭"></button>
 
         <div class="eq-hero">
           <div class="eq-hero-frame"></div>
-          <div class="eq-portrait"><img src="${ASSET}avatar.png" alt=""></div>
+          <div class="eq-portrait"><img src="${ASSET}avatar.png?v=20261127" alt=""></div>
           <div class="eq-hero-name">${U.escapeHtml(char.name)}<span class="lv">${char.level}级</span></div>
           <div class="eq-hero-sub">${U.escapeHtml(cls.name)} · ${U.escapeHtml(cls.title)}</div>
           <div class="eq-power"><span>战力</span><b>${U.fmt(stats.power)}</b></div>
@@ -13003,15 +13019,16 @@
         ${page === 'bag' ? `
         <div class="eq-bag-page">
           <div class="eq-tabs">
-            <div class="eq-tab-pill" style="left:${tabIndex * 125}px"></div>
+            <div class="eq-tab-pill" style="left:${tabIndex * 124}px"></div>
             ${TABS.map((t, i) =>
-              `<button class="eq-tab${t.id === tab ? ' on' : ''}" data-tab="${t.id}" style="left:${i * 125}px">${t.name}</button>`
+              `<button class="eq-tab${t.id === tab ? ' on' : ''}" data-tab="${t.id}" style="left:${i * 124}px">${t.name}</button>`
             ).join('')}
           </div>
           <button class="eq-btn stash">装备库</button>
           <button class="eq-btn dismantle">分解</button>
           <div class="eq-cap">容量：<b>${used}</b>/${cap}</div>
           <div class="eq-grid-wrap"><div class="eq-grid"></div></div>
+          <div class="eq-bag-hint">及时清理背包哦！容量有限！</div>
           <div class="eq-empty hidden"></div>
         </div>` : ''}
       `;
@@ -13029,10 +13046,6 @@
         closeTimer = setTimeout(close, 350);
       });
       closeBtn.addEventListener('pointercancel', () => clearTimeout(closeTimer));
-      // 装备界面内直接进技能界面：关闭技能后回到背包，不需要先退出再点技能入口
-      canvas.querySelector('.eq-skill').addEventListener('click', () => {
-        DG.ui.openSkills(char, () => { if (onChange) onChange(); }, { onClose: render });
-      });
       canvas.querySelectorAll('.eq-tab').forEach(btn => {
         btn.addEventListener('click', () => {
           if (tab === btn.dataset.tab) return;
@@ -13051,7 +13064,7 @@
         const cell = U.el('button', 'eq-cell eq-slot');
         cell.style.left = pos[0] + 'px';
         cell.style.top = pos[1] + 'px';
-        fillCell(cell, item, slot);
+        fillCell(cell, item, slot, true, DG.items.setState(char, item));
         if (item) cell.addEventListener('click', () => openDetail(item, 'equip'));
         equipPage.appendChild(cell);
       });
@@ -13066,21 +13079,21 @@
         bagPage.querySelector('.eq-btn.dismantle').addEventListener('click', dismantle);
 
         const grid = bagPage.querySelector('.eq-grid');
-        const list = tab === 'equip' ? char.bag.filter(Boolean) : [];
+        // 当前分页自己的物品列表，各自补满 32 格
+        const list = (tab === 'item' ? char.bagItems : tab === 'other' ? char.bagOther : char.bag).filter(Boolean);
         list.forEach(item => {
           const cell = U.el('button', 'eq-cell');
           fillCell(cell, item, slotOf(item));
-          cell.addEventListener('click', () => openDetail(item, 'bag'));
+          if (tab === 'equip') cell.addEventListener('click', () => openDetail(item, 'bag'));
           grid.appendChild(cell);
         });
-        // 装备页按容量补齐空格，直观看出还剩多少位置
-        if (tab === 'equip') {
-          for (let i = list.length; i < cap; i++) grid.appendChild(U.el('div', 'eq-cell empty'));
-        } else if (!list.length) {
-          const hint = bagPage.querySelector('.eq-empty');
-          hint.classList.remove('hidden');
-          hint.textContent = tab === 'item' ? '暂无道具' : '暂无其他物品';
-        }
+        // 按容量补齐空格，直观看出还剩多少位置
+        for (let i = list.length; i < cap; i++) grid.appendChild(U.el('div', 'eq-cell empty'));
+        // PSD 固定 8 列 × 4 行：格子按 84 / 85 间距绝对定位，32 格一次全部展示
+        Array.from(grid.children).forEach((cell, i) => {
+          cell.style.left = (i % 8) * 84 + 'px';
+          cell.style.top = Math.floor(i / 8) * 85 + 'px';
+        });
 
         const wrap = bagPage.querySelector('.eq-grid-wrap');
         wrap.scrollTop = bagScroll;
@@ -13993,74 +14006,152 @@
 
 ;
 /* ==== js/ui/panels/settlement.js ==== */
-/* 副本结算面板 */
+/* 副本结算界面：按「战斗结算.psd」还原（720×1440） */
 (function () {
   const DG = window.DG;
   const U = DG.util;
   const ui = DG.ui = DG.ui || {};
+  const PSD_W = 720;
+  // 结算停留倒计时，归零自动回主城
+  const LEAVE_SECONDS = 10;
+  // 旋涡门序列帧：6×4 共 24 帧，单帧 216×272，按 12fps 循环播放
+  // 帧顺序已按画面相似度重排，循环首尾衔接平滑
+  const PORTAL_SHEET = 'assets/ui/settle/portal-sheet.png?v=20261201';
+  const PORTAL_COLS = 6;
+  const PORTAL_ROWS = 4;
+  const PORTAL_FRAMES = 24;
+  const PORTAL_W = 216;
+  const PORTAL_H = 272;
+  const PORTAL_FPS = 12;
+  // 提前把精灵图放进缓存，结算出现时首帧就绪
+  const portalPreload = new Image();
+  portalPreload.src = PORTAL_SHEET;
 
-  ui.showSettlement = function (result, onReturn) {
-    const body = U.el('div');
-    const victory = result.victory;
+  ui.showSettlement = function (result, opts) {
+    opts = opts || {};
+    const victory = !!result.victory;
+    const nextDef = opts.nextDef || null;
+    const nextLabel = nextDef ? '进入下一关' : '返回主城';
+    // 战斗内的拾取/升级提示不带到结算画面上
+    const toastWrap = document.getElementById('toast-wrap');
+    if (toastWrap) toastWrap.innerHTML = '';
+    let left = LEAVE_SECONDS;
+    let paused = false;
+    let closed = false;
 
-    const items = result.items || [];
-    const lootHtml = items.length
-      ? items.map(it => {
-          const slot = DG.items.slotInfo(it.slot);
-          return `<div class="loot-cell r-${it.rarity}" title="${U.escapeHtml(it.name)}">` +
-            `<img class="loot-frame" src="${DG.ui.itemFrameSrc(it)}" alt="">` +
-            `<span class="qty">${DG.data.rarityById[it.rarity].name}</span>` +
-            `<span class="loot-glyph">${U.escapeHtml(slot.glyph)}</span>` +
-            `<span class="loot-name">${U.escapeHtml(it.name)}</span></div>`;
-        }).join('')
-      : `<div class="loot-empty">本次没有获得装备。</div>`;
-
-    const levelNote = (result.levels && result.levels.length)
-      ? `<div class="levelup-note">等级提升！当前等级 Lv.${result.levels[result.levels.length - 1]}` +
-        `${result.skillPoints ? `（获得 ${result.skillPoints} 个技能点）` : ''}</div>`
-      : '';
-    const penaltyNote = (result.keepRate != null && result.keepRate < 1)
-      ? `<div class="levelup-note">${result.retreat ? '主动撤退' : '重伤归来'}：本局金币与经验按 ${Math.round(result.keepRate * 100)}% 结算，装备保留</div>`
-      : '';
-    const skillNote = (result.skillUps && result.skillUps.length)
-      ? `<div class="skillup-note">技能成长：${result.skillUps.map(s => `${U.escapeHtml(s)}`).join('、')}</div>`
-      : '';
-
-    body.innerHTML = `
-      <div class="result-banner ${victory ? '' : 'fail'}">
-        <h2>${victory ? '讨 伐 成 功' : (result.retreat ? '撤 退' : '重 伤 归 来')}</h2>
-        <p>${victory ? '首领已被击败，迷雾暂时退散' : '整理行装，再次出发'}</p>
-      </div>
-      <div class="result-grid">
-        <div class="result-cell"><div class="k">击杀数量</div><div class="v">${result.kills}</div></div>
-        <div class="result-cell"><div class="k">用时</div><div class="v">${U.timeText(result.time)}</div></div>
-        <div class="result-cell"><div class="k">获得经验</div><div class="v ok">${U.fmt(result.xp)}</div></div>
-        <div class="result-cell"><div class="k">获得金币</div><div class="v gold">${U.fmt(result.gold)}</div></div>
-        <div class="result-cell"><div class="k">拾取装备</div><div class="v">${items.length}</div></div>
-        <div class="result-cell"><div class="k">当前等级</div><div class="v">Lv.${result.level || 1}</div></div>
-      </div>
-      ${levelNote}${penaltyNote}${skillNote}
-      <div class="loot-area" style="margin-top:16px;">
-        <div class="loot-title"><span>战利品</span><span>已放入背包</span></div>
-        <div class="loot-grid">${lootHtml}</div>
+    const screen = U.el('div', 'st-screen' + (victory ? '' : ' fail'));
+    screen.innerHTML = `
+      <div class="st-canvas">
+        <button class="st-pause clickable" data-st-pause>暂停</button>
+        <button class="st-retreat clickable" data-st-retreat aria-label="撤退">
+          <img src="assets/ui/settle/btn-retreat.png?v=20261129" alt="">
+        </button>
+        <div class="st-time">${victory ? '通关时长' : '本次时长'} <b>${U.timeText(result.time || 0)}</b></div>
+        <img class="st-title" src="assets/ui/settle/${victory ? 'title-success' : 'title-fail'}.png?v=20261129" alt="">
+        <div class="st-portal" data-st-portal></div>
+        <div class="st-leave" data-st-leave>${U.timeText(LEAVE_SECONDS)}后离开</div>
+        <button class="st-next clickable" data-st-next><span>${nextLabel}</span></button>
+        <div class="st-card hidden" data-st-card>
+          <div class="st-card-box">
+            <h3>暂 停</h3>
+            <button class="st-card-btn clickable" data-st-resume>继续</button>
+            <button class="st-card-btn clickable" data-st-settings>操作设置</button>
+          </div>
+        </div>
       </div>`;
+    const host = (DG.game && DG.game.ui) || document.getElementById('ui');
+    if (host) host.appendChild(screen);
+    const canvas = screen.querySelector('.st-canvas');
+    const leaveEl = screen.querySelector('[data-st-leave]');
+    const card = screen.querySelector('[data-st-card]');
+    const portalEl = screen.querySelector('[data-st-portal]');
+    let portalFrame = 0;
+    const portalTimer = setInterval(() => {
+      portalFrame = (portalFrame + 1) % PORTAL_FRAMES;
+      const col = portalFrame % PORTAL_COLS;
+      const row = Math.floor(portalFrame / PORTAL_COLS);
+      portalEl.style.backgroundPosition = `${-col * PORTAL_W}px ${-row * PORTAL_H}px`;
+    }, 1000 / PORTAL_FPS);
 
-    const modal = ui.modal({
-      title: '副本结算',
-      subtitle: '战利品与成长已记录',
-      body,
-      width: 640,
-      dismissible: false,
-      footer: ''
-    });
+    // 与技能界面一致的 720×1440 画布适配：按舞台宽度等比缩放
+    const layout = () => {
+      const stage = document.getElementById('stage');
+      if (stage && (stage.scrollLeft || stage.scrollTop)) {
+        stage.scrollLeft = 0;
+        stage.scrollTop = 0;
+      }
+      const dw = (stage && stage.offsetWidth) || 720;
+      const dh = (stage && stage.offsetHeight) || 1440;
+      screen.style.left = ((720 - dw) / 2) + 'px';
+      screen.style.top = ((1440 - dh) / 2) + 'px';
+      screen.style.width = dw + 'px';
+      screen.style.height = dh + 'px';
+      const scale = dw / PSD_W;
+      canvas.style.transform = `scale(${scale})`;
+      canvas.style.left = ((dw - PSD_W * scale) / 2) + 'px';
+      canvas.style.top = '0px';
+    };
+    layout();
+    requestAnimationFrame(layout);
+    window.addEventListener('resize', layout);
 
-    const btn = U.el('button', 'btn primary settle-btn', '返回主城');
-    btn.addEventListener('click', () => {
-      modal.close();
-      onReturn();
+    const close = () => {
+      if (closed) return;
+      closed = true;
+      clearInterval(timer);
+      clearInterval(portalTimer);
+      window.removeEventListener('resize', layout);
+      window.removeEventListener('keydown', onKey);
+      if (screen.parentNode) screen.remove();
+    };
+    const leave = () => {
+      close();
+      if (opts.onReturn) opts.onReturn();
+    };
+    const goNext = () => {
+      close();
+      if (nextDef && opts.onNext) opts.onNext(nextDef);
+      else leave();
+    };
+
+    const timer = setInterval(() => {
+      if (paused || closed) return;
+      left--;
+      if (left <= 0) {
+        leaveEl.textContent = U.timeText(0) + '后离开';
+        leave();
+        return;
+      }
+      leaveEl.textContent = U.timeText(left) + '后离开';
+    }, 1000);
+
+    screen.querySelector('[data-st-pause]').addEventListener('click', () => {
+      paused = true;
+      card.classList.remove('hidden');
     });
-    modal.foot.appendChild(btn);
-    return modal;
+    screen.querySelector('[data-st-resume]').addEventListener('click', () => {
+      card.classList.add('hidden');
+      paused = false;
+    });
+    screen.querySelector('[data-st-settings]').addEventListener('click', () => {
+      if (DG.ui.openControls) DG.ui.openControls();
+    });
+    screen.querySelector('[data-st-retreat]').addEventListener('click', leave);
+    screen.querySelector('[data-st-next]').addEventListener('click', goNext);
+
+    const onKey = (e) => {
+      if (e.code !== 'Escape') return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (card.classList.contains('hidden')) {
+        paused = true;
+        card.classList.remove('hidden');
+      } else {
+        card.classList.add('hidden');
+        paused = false;
+      }
+    };
+    window.addEventListener('keydown', onKey);
   };
 })();
 
@@ -14695,6 +14786,8 @@
         DG.game.enterCharacter(slotIndex);
       });
 
+      // 只有一个主操作，居中摆放（与右侧关闭按钮错开，视觉更稳）
+      modal.foot.classList.add('center');
       modal.foot.appendChild(btn);
       nameEl.focus();
       nameEl.addEventListener('keydown', e => {
@@ -15419,6 +15512,10 @@
       this.finished = false;
       this.ending = false;
       this.finishTimer = 0;
+      // 通关后先留出拾取战利品的时间，再进入结算
+      this.settleDelay = 0;
+      this.clearTime = 0;
+      this._settleWarned = false;
       this.victory = false;
       this.defeat = false;
       this.shake = 0;
@@ -15503,7 +15600,9 @@
         retreat: !this.victory && !this.defeat,
         defeat: this.defeat,
         kills: this.kills,
-        time: Math.round(this.time),
+        // 通关时长以首领倒下的一刻为准，不含战后拾取时间
+        time: this.clearTime > 0 ? this.clearTime : Math.round(this.time),
+        stageId: this.def ? this.def.id : null,
         xp: Math.round(this.xpEarned),
         gold: Math.round(this.goldEarned),
         items: this.items.slice(),
@@ -15625,6 +15724,19 @@
       this.autoRescueCd = Math.max(0, (this.autoRescueCd || 0) - dt);
       this.tickTalentTimers(dt);
       this.hudTimer -= dt;
+
+      // 通关拾取窗口：首领倒下后保留约 6 秒让玩家拾取掉落，再弹出结算
+      if (this.victory && this.settleDelay > 0) {
+        this.settleDelay -= dt;
+        if (this.settleDelay <= 2 && !this._settleWarned) {
+          this._settleWarned = true;
+          this.announce('即将结算…', 1400);
+        }
+        if (this.settleDelay <= 0) {
+          this.finishNow();
+          return;
+        }
+      }
 
       if (this.ending) {
         this.finishTimer -= dt;
@@ -21159,7 +21271,7 @@
     return true;
   },
   onPlayerDeath() {
-    if (this.ending) return;
+    if (this.ending || this.victory) return;
     this.defeat = true;
     this.victory = false;
     this.ending = true;
@@ -21284,9 +21396,9 @@
     const drop = m.noLoot
       ? { items: [], orb: false, rune: false }
       : DG.loot.roll(m, this.def.ilvl, this.char && this.char.cls);
-    // 首领的战利品直接落在玩家脚下，避免结算前来不及拾取
-    const bx = m.boss ? this.player.x : m.x;
-    const by = m.boss ? this.player.y : m.y;
+    // 掉落落在怪物倒下的位置：首领被击败后留出拾取时间，玩家需要走过去捡
+    const bx = m.x;
+    const by = m.y;
     // 掉落点吸附到可站立地面，避免掉进墙体
     const aw = this.arenaW || ARENA_W, ah = this.arenaH || ARENA_H;
     const place = (x, y) => this.nearestFloorPoint(
@@ -21313,16 +21425,24 @@
     if (m.boss) {
       // 通关记录：解锁下一关，并推进悬赏的“通关”类任务
       if (DG.quests && this.char) DG.quests.onStageClear(this.char, this.def.id);
-      // 首领倒下的瞬间就落盘，避免结局动画期间刷新或退出丢掉通关进度
+      // 首领倒下的瞬间就落盘，避免拾取/结算期间刷新或退出丢掉通关进度
       if (DG.game && DG.game.save) DG.game.save();
       this.victory = true;
-      this.ending = true;
-      this.finishTimer = 1.8;
+      // 通关成绩锁定在首领倒下的一刻，战后拾取时间不计入时长
+      this.clearTime = Math.round(this.time);
+      // 不立刻结算：保留约 6 秒拾取窗口，玩家可以走过去捡起首领掉落
+      this.settleDelay = 6;
+      this._settleWarned = false;
+      this.player.invuln = Math.max(this.player.invuln || 0, this.settleDelay + 1);
+      this.autoMode = false;
+      this.syncAutoButton();
+      this.attackHeld = false;
       this.shake = 0.6;
-      this.announce('首领已被击败', 2200);
+      this.announce('首领已被击败 · 拾取战利品', 2600);
       this.$bossWrap.classList.add('hidden');
       // 立即解除屏蔽，不让进度/小地图多隐藏 0.1 秒
       this.hud.classList.remove('boss-mode');
+      if (this.$wave) this.$wave.textContent = '已通关';
     } else if (this.phase === 'wave') {
       // 击杀数达到本图门槛，或怪群已全部刷出且场上再无小怪时兜底触发，
       // 避免刷怪上限截断导致击杀数永远差几只、首领无法出现
@@ -24311,6 +24431,8 @@
     this.drawProjectiles(ctx);
     this.drawEffects(ctx, false);
     this.drawFloaters(ctx);
+    // 掉落名字常驻：画在实体之上，保证不会怪物/角色挡住
+    this.drawDropLabels(ctx);
 
     ctx.restore();
 
@@ -25044,11 +25166,19 @@
         ctx.globalCompositeOperation = 'lighter';
         ctx.drawImage(this.glowSprite(rar.color), -gr, -gr, gr * 2, gr * 2);
         ctx.globalCompositeOperation = 'source-over';
+        // 品质框：常驻的方形描边，地上不用靠近也能一眼看出品质
+        const half = 10 * (d.item.ancient ? 1.2 : 1);
+        ctx.fillStyle = 'rgba(8,10,12,0.82)';
+        ctx.fillRect(-half, -half, half * 2, half * 2);
+        ctx.strokeStyle = rar.color;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-half, -half, half * 2, half * 2);
+        // 框内菱形图标
         ctx.rotate(Math.PI / 4);
         ctx.fillStyle = rar.color;
-        ctx.fillRect(-7, -7, 14, 14);
+        ctx.fillRect(-5, -5, 10, 10);
         ctx.fillStyle = 'rgba(10,12,14,0.75)';
-        ctx.fillRect(-4, -4, 8, 8);
+        ctx.fillRect(-3, -3, 6, 6);
         ctx.restore();
       } else if (d.kind === 'orb') {
         // 血球：红色、大而醒目，靠近自动回血
@@ -25104,6 +25234,32 @@
         ctx.restore();
       }
     }
+  },
+  // 掉落物名字：常驻显示，字号按屏幕像素固定，不随镜头缩放变大变小
+  drawDropLabels(ctx) {
+    const v = this.viewRect(160);
+    const z = this.zoom || 1;
+    const fs = Math.max(9, Math.round(12 / z));
+    ctx.save();
+    ctx.font = '600 ' + fs + 'px "Microsoft YaHei", "Noto Sans SC", sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round';
+    for (const d of this.drops) {
+      if (d.kind !== 'item' || !d.item || !d.item.name) continue;
+      if (d.x < v.l || d.x > v.r || d.y < v.t || d.y > v.b) continue;
+      const rar = DG.items.rarityInfo(d.item);
+      const bob = Math.sin(d.t * 4) * 3;
+      const tx = d.x + 13 * (d.item.ancient ? 1.2 : 1);
+      const ty = d.y + bob - 1;
+      // 黑色描边：无论地面是血泊还是火圈，名字都能读清
+      ctx.lineWidth = Math.max(2, 3 / z);
+      ctx.strokeStyle = 'rgba(0,0,0,0.9)';
+      ctx.strokeText(d.item.name, tx, ty);
+      ctx.fillStyle = rar.color;
+      ctx.fillText(d.item.name, tx, ty);
+    }
+    ctx.restore();
   },
   // 每帧只排序一次，前后两层绘制复用同一列表
   sortMonstersForDraw() {
@@ -26600,7 +26756,15 @@
 
       // 结算面板出现时切回主城音乐，避免战斗音乐停掉后出现长时间静音
       if (DG.audio) DG.audio.playBgm('lobby');
-      DG.ui.showSettlement(result, () => this.gotoTown());
+      // 通关后可直接进入下一关；已是最后一关或未通关时按钮回主城
+      const list = DG.data.dungeons || [];
+      const idx = list.findIndex(d => d.id === result.stageId);
+      const nextDef = result.victory && idx >= 0 ? (list[idx + 1] || null) : null;
+      DG.ui.showSettlement(result, {
+        nextDef,
+        onNext: (def) => this.startDungeon(def),
+        onReturn: () => this.gotoTown()
+      });
     },
 
     stopDungeon() {
